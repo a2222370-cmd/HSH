@@ -685,6 +685,9 @@
   var DARKMODE_KEY = 'lottery_darkmode_pref';
   var CLOUD_URL_KEY = 'lottery_cloud_api_url';
   var CLOUD_TOKEN_KEY = 'lottery_cloud_api_token';
+  // 預設雲端 API：新電腦第一次打開就自動使用，不用每台手動設定（管理者仍可在「雲端同步設定」改掉）
+  var DEFAULT_CLOUD_API_URL = 'https://script.google.com/macros/s/AKfycbwzJhYBVkOoho6i5XDnPhe_Jc66dbpYY-L0GYZI2TDZDx7rUyV88FFGAmCBdViUTFjZjA/exec';
+  var DEFAULT_CLOUD_API_TOKEN = 'CHANGE_ME_TO_A_SECRET'; // 要跟 Code.gs 的 API_TOKEN 一致
   var CLOUD_API_URL = '';
   var CLOUD_API_TOKEN = '';
   var CLOUD_SESSION_ID = null;
@@ -692,8 +695,15 @@
   var CLOUD_ADMIN_UNLOCKED = false;
   var CLOUD_ADMIN_TIMER = null;
   var CLOUD_ADMIN_TIMEOUT_MS = 10 * 60 * 1000; // 解鎖 10 分鐘後自動上鎖
-  var APP_VERSION = 'v1.10.1';
+  var APP_VERSION = 'v1.10.3';
   var CHANGELOG = [
+    { v: 'v1.10.3', date: '2026-10-02', notes: [
+      '內建公司的雲端 API 網址與驗證碼，新電腦打開就會自動同步、顯示線上人數，不用每台各自設定'
+    ] },
+    { v: 'v1.10.2', date: '2026-10-02', notes: [
+      '管理者密碼輸錯鎖定改成「只鎖輸錯的那台電腦」，取消「所有電腦合計 20 次全部暫停」，管理者不會再被別台電腦亂輸連累',
+      '同一台電腦用瀏覽器裝置 ID 與內網 IP（偵測得到時）一起辨識，清除瀏覽器資料或開無痕視窗也繞不過（需搭配後端 Code.gs 新版）'
+    ] },
     { v: 'v1.10.1', date: '2026-10-02', notes: [
       '線上清單新增「電腦 IP」欄位，偵測方式跟許瑞興訂單管理系統一樣：對外 IP（api.ipify.org）＋ 內網 IP（瀏覽器 WebRTC，偵測得到才顯示）',
       '管理者密碼連續輸錯 5 次，這台電腦暫時鎖住 15 分鐘；所有電腦合計 15 分鐘內錯 20 次，管理功能全部暫停 15 分鐘（由後端計算，重新整理頁面也無法繞過）',
@@ -1492,9 +1502,15 @@
   // ============ 雲端同步（Google 試算表 / GAS API） ============
   function loadCloudSettings() {
     try {
-      CLOUD_API_URL = localStorage.getItem(CLOUD_URL_KEY) || '';
-      CLOUD_API_TOKEN = localStorage.getItem(CLOUD_TOKEN_KEY) || '';
-    } catch (e) {}
+      var savedUrl = localStorage.getItem(CLOUD_URL_KEY);
+      var savedToken = localStorage.getItem(CLOUD_TOKEN_KEY);
+      // 從沒存過（null）才套用預設值；管理者若刻意存成空白（關閉同步）則尊重設定
+      CLOUD_API_URL = savedUrl === null ? DEFAULT_CLOUD_API_URL : savedUrl;
+      CLOUD_API_TOKEN = savedToken === null ? DEFAULT_CLOUD_API_TOKEN : savedToken;
+    } catch (e) {
+      CLOUD_API_URL = DEFAULT_CLOUD_API_URL;
+      CLOUD_API_TOKEN = DEFAULT_CLOUD_API_TOKEN;
+    }
     var urlInput = document.getElementById('cloudUrlInput');
     var tokenInput = document.getElementById('cloudTokenInput');
     if (urlInput) urlInput.value = CLOUD_API_URL;
