@@ -686,7 +686,7 @@
   var CLOUD_URL_KEY = 'lottery_cloud_api_url';
   var CLOUD_TOKEN_KEY = 'lottery_cloud_api_token';
   // 預設雲端 API：新電腦第一次打開就自動使用，不用每台手動設定（管理者仍可在「雲端同步設定」改掉）
-  var BACKEND_MIN_VERSION = 'v1.10.4'; // 搭配的後端 Code.gs 版本
+  var BACKEND_MIN_VERSION = 'v1.10.5'; // 搭配的後端 Code.gs 版本
   var DEFAULT_CLOUD_API_URL = 'https://script.google.com/macros/s/AKfycbwzJhYBVkOoho6i5XDnPhe_Jc66dbpYY-L0GYZI2TDZDx7rUyV88FFGAmCBdViUTFjZjA/exec';
   var DEFAULT_CLOUD_API_TOKEN = 'CHANGE_ME_TO_A_SECRET'; // 要跟 Code.gs 的 API_TOKEN 一致
   var CLOUD_API_URL = '';
@@ -696,8 +696,13 @@
   var CLOUD_ADMIN_UNLOCKED = false;
   var CLOUD_ADMIN_TIMER = null;
   var CLOUD_ADMIN_TIMEOUT_MS = 10 * 60 * 1000; // 解鎖 10 分鐘後自動上鎖
-  var APP_VERSION = 'v1.10.4';
+  var APP_VERSION = 'v1.10.5';
   var CHANGELOG = [
+    { v: 'v1.10.5', date: '2026-10-02', notes: [
+      '線上人數加快：打開網頁立刻送出第一次回報（不再等瀏覽器資訊與 IP 偵測），並先顯示上次的人數，回來後再更新',
+      '後端線上回報不再跟抽籤寫入排隊（取消鎖定），回應更快（需搭配後端 Code.gs 新版）',
+      '徽章會顯示「連線中…」「連線失敗」等狀態，連不上時點開清單可看到原因；單次等待超過 20 秒會自動放棄並重試'
+    ] },
     { v: 'v1.10.4', date: '2026-10-02', notes: [
       '管理者解鎖失敗時會自動檢查雲端後端版本，部署的不是最新版就直接提示要重新部署',
       '管理者密碼比對會忽略前後空白；瀏覽器打開「API 網址?action=ping」可看到後端版本'
@@ -1670,6 +1675,7 @@
         if (m) ONLINE_ENV.browser = m.join(' ');
       }
     };
+    finish(); // 先用 userAgent 填好，第一次回報不用等
     try {
       var d = navigator.userAgentData;
       if (d && d.getHighEntropyValues) {
@@ -1738,16 +1744,25 @@
     var countEl = document.getElementById('onlineCount');
     if (!badge || !countEl) return;
     var on = cloudEnabled_() && ONLINE.ok;
-    countEl.textContent = on ? ONLINE.count : '—';
+    if (on) {
+      countEl.textContent = ONLINE.count;
+    } else if (cloudEnabled_() && ONLINE.pending) {
+      countEl.textContent = ONLINE.count != null ? ONLINE.count + '（更新中）' : '連線中…';
+    } else if (cloudEnabled_()) {
+      countEl.textContent = '連線失敗';
+    } else {
+      countEl.textContent = '—';
+    }
     badge.classList.toggle('off', !on);
-    badge.title = on ? '點擊查看目前在線的電腦' : '這台電腦尚未設定雲端同步（或連不到 API），無法統計線上人數';
+    badge.title = on ? '點擊查看目前在線的電腦' : cloudEnabled_() ? (ONLINE.pending ? '正在向雲端取得線上人數…' : '連線失敗：' + (ONLINE.err || '') + '（點擊查看）') : '這台電腦尚未設定雲端同步，無法統計線上人數';
   }
 
   function renderOnlineList_() {
     var el = document.getElementById('onlineList');
     if (!el) return;
     if (!cloudEnabled_()) { el.innerHTML = '這台電腦尚未設定雲端同步，無法統計線上人數（請洽管理者設定「雲端同步設定」）。'; return; }
-    if (!ONLINE.ok) { el.innerHTML = '目前連不到雲端 API，暫時無法取得線上人數。'; return; }
+    if (!ONLINE.ok && ONLINE.pending) { el.innerHTML = '正在向雲端取得線上人數…'; return; }
+    if (!ONLINE.ok) { el.innerHTML = '暫時無法取得線上人數：' + escHtml_(ONLINE.err || '未知原因') + '。30 秒後會自動再試。'; return; }
     if (!ONLINE.users.length) { el.innerHTML = '目前沒有其他人在線'; return; }
     el.innerHTML = '<table><thead><tr><th>#</th><th>電腦 IP</th><th>電腦</th><th>作業系統</th><th>瀏覽器</th><th>裝置 ID</th><th>連線時間</th></tr></thead><tbody>' +
       ONLINE.users.map(function(u, i) {
@@ -1766,26 +1781,52 @@
     if (show) { renderOnlineList_(); pingPresence(); }
   }
 
+  var ONLINE_CACHE_KEY = 'lottery_online_last';
+  var presenceBusy = false;
   function pingPresence() {
-    if (!cloudEnabled_()) { ONLINE = { ok: false, count: 0, users: [] }; updateOnlineBadge_(); return; }
+    if (!cloudEnabled_()) { ONLINE = { ok: false, count: 0, users: [], err: '未設定雲端同步' }; updateOnlineBadge_(); return; }
+    if (presenceBusy) return; // 上一次還沒回來就不重複送
+    presenceBusy = true;
+    var done = false;
+    var finishPing = function(result) {
+      if (done) return;
+      done = true;
+      presenceBusy = false;
+      ONLINE = result;
+      if (result.ok) {
+        try { localStorage.setItem(ONLINE_CACHE_KEY, JSON.stringify({ t: Date.now(), count: result.count })); } catch (e) {}
+      }
+      updateOnlineBadge_();
+      if (document.getElementById('onlineList').style.display !== 'none') renderOnlineList_();
+    };
+    var timer = setTimeout(function() { finishPing({ ok: false, count: 0, users: [], err: '雲端 API 超過 20 秒沒有回應' }); }, 20000);
     fetch(CLOUD_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'presence', sid: MY_DEVICE_ID, ip: MY_IP, os: ONLINE_ENV.os, browser: ONLINE_ENV.browser })
     }).then(function(res) { return res.json(); })
       .then(function(data) {
-        ONLINE = (data && data.ok) ? { ok: true, count: data.count, users: data.users || [], now: data.now } : { ok: false, count: 0, users: [] };
-      })['catch'](function() { ONLINE = { ok: false, count: 0, users: [] }; })
-      .then(function() {
-        updateOnlineBadge_();
-        if (document.getElementById('onlineList').style.display !== 'none') renderOnlineList_();
+        clearTimeout(timer);
+        finishPing((data && data.ok) ? { ok: true, count: data.count, users: data.users || [], now: data.now }
+          : { ok: false, count: 0, users: [], err: (data && data.error) || '回應格式不正確' });
+      })['catch'](function() {
+        clearTimeout(timer);
+        finishPing({ ok: false, count: 0, users: [], err: '連不到雲端 API（網路或部署問題）' });
       });
   }
 
   function startPresence_() {
-    // 先送一次（不等 IP），IP 偵測完成後再補送一次帶 IP 的回報
-    detectOnlineEnv_().then(pingPresence);
-    detectIp_().then(pingPresence);
+    // 先顯示上次的人數（10 分鐘內的才用），標示更新中
+    try {
+      var last = JSON.parse(localStorage.getItem(ONLINE_CACHE_KEY) || 'null');
+      if (last && cloudEnabled_() && Date.now() - last.t < 10 * 60 * 1000) ONLINE = { ok: false, pending: true, count: last.count, users: [] };
+      else if (cloudEnabled_()) ONLINE = { ok: false, pending: true, count: null, users: [] };
+    } catch (e) {}
+    updateOnlineBadge_();
+    // 立刻送第一次回報；瀏覽器版本與 IP 偵測完成後再補送一次
+    var envP = detectOnlineEnv_();
+    pingPresence();
+    Promise.all([envP, detectIp_()]).then(function() { presenceBusy = false; pingPresence(); });
     setInterval(pingPresence, 30000);
     document.addEventListener('visibilitychange', function() { if (!document.hidden) pingPresence(); });
     window.addEventListener('pagehide', function() {
