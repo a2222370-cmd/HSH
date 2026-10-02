@@ -380,9 +380,13 @@
     // ==========================================
     // 版本與改版記錄
     // ==========================================
-    const APP_VERSION = 'v2.0.0';
-    const BACKEND_MIN_VERSION = 'v2.0.0';
+    const APP_VERSION = 'v2.1.0';
+    const BACKEND_MIN_VERSION = 'v2.1.0';
     const CHANGELOG = [
+      { v: 'v2.1.0', date: '2026-10-02', notes: [
+        '戰情室管理員新增「🧹 一鍵清除數據」：可清除全部、只清今天，或指定日期範圍，方便上課／測試後快速刪除測試數據',
+        '清除前要輸入「清除」兩個字並再次確認；後端會先自動把要刪的資料備份到新工作表「備份_日期時間」，清錯了可以還原；標題列、歷史選單與稽核紀錄都不會被清掉（需搭配後端 Code.gs v2.1.0）'
+      ] },
       { v: 'v2.0.0', date: '2026-10-02', notes: [
         '系統名稱改為「許瑞興機台狀態回報系統」，換上 HSH Logo ＋ SINCE 1960（跟圖面／標準文件查詢系統同樣的標誌）',
         '新增「線上人數」：跟電腦挑人抽籤系統一樣每 30 秒回報一次，點一下可展開目前在線的裝置清單（IP、手機／電腦、作業系統、瀏覽器、裝置 ID、連線時間）；同一台裝置開多個分頁只算一人',
@@ -866,7 +870,7 @@
       const el = document.getElementById('backendVersionInfo');
       el.textContent = '後端版本：檢查中…';
       apiGet({ action: 'ping' }).then(d => {
-        if (d && d.version === BACKEND_MIN_VERSION) el.innerHTML = '✅ 後端版本：' + escHtml(d.version) + '（已是最新）';
+        if (d && d.version && d.version.localeCompare(BACKEND_MIN_VERSION, undefined, { numeric: true }) >= 0) el.innerHTML = '✅ 後端版本：' + escHtml(d.version) + '（已是最新）';
         else el.innerHTML = '⚠️ 後端版本：' + escHtml((d && d.version) || '舊版') + '，前台需要 ' + BACKEND_MIN_VERSION + '。請把最新 Code.gs 貼上後「部署 → 管理部署作業 → 編輯 → 新版本」。';
       }).catch(() => { el.textContent = '❌ 無法連線到後端，請確認網址'; });
     }

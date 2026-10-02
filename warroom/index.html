@@ -413,6 +413,7 @@
               <option value="">全部狀態</option><option value="正常">正常報工</option><option value="故障">故障停機</option><option value="保養">例行保養</option>
             </select>
             <button id="adminBatchDelBtn" onclick="adminBatchDelete()" class="hidden px-3 py-1.5 rounded bg-rose-700/70 hover:bg-rose-600 border border-rose-400 text-white">🗑️ 刪除勾選 (0)</button>
+            <button onclick="openClearModal()" class="px-3 py-1.5 rounded bg-rose-950/70 hover:bg-rose-900 border border-rose-500/70 text-rose-300">🧹 一鍵清除數據</button>
             <button onclick="adminLock()" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300">🔒 鎖定退出</button>
           </div>
         </div>
@@ -577,6 +578,40 @@
           <button onclick="closeEditModal()" class="px-4 py-2 rounded bg-slate-800 text-slate-300">取消</button>
           <button id="editSaveBtn" onclick="saveEdit()" class="px-5 py-2 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold">儲存修改</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 🧹 一鍵清除數據（測試數據快速刪除） -->
+  <!-- =============================== -->
+  <div id="clearModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="relative w-full max-w-md bg-slate-900 border border-rose-500 rounded-lg p-6 font-mono text-xs shadow-[0_0_25px_rgba(255,46,84,0.35)]">
+      <div class="flex items-center justify-between pb-3 border-b border-rose-900/60 mb-4">
+        <h3 class="text-base font-bold text-rose-300">🧹 一鍵清除數據（測試數據快速刪除）</h3>
+        <button onclick="closeClearModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <div class="space-y-2 text-slate-300">
+        <label class="flex items-center gap-2"><input type="radio" name="clearScope" value="all" checked onchange="updateClearPreview()"> 清除<b class="text-rose-300">全部</b>回報資料</label>
+        <label class="flex items-center gap-2"><input type="radio" name="clearScope" value="today" onchange="updateClearPreview()"> 只清除<b>今天</b>的回報</label>
+        <label class="flex items-center gap-2"><input type="radio" name="clearScope" value="range" onchange="updateClearPreview()"> 指定日期範圍：</label>
+        <div class="flex items-center gap-2 pl-6">
+          <input type="date" id="clearFrom" onchange="document.querySelector('input[name=clearScope][value=range]').checked=true; updateClearPreview()" class="bg-black/70 border border-slate-700 rounded px-2 py-1 text-cyan-200">
+          <span>～</span>
+          <input type="date" id="clearTo" onchange="document.querySelector('input[name=clearScope][value=range]').checked=true; updateClearPreview()" class="bg-black/70 border border-slate-700 rounded px-2 py-1 text-cyan-200">
+        </div>
+      </div>
+      <div id="clearPreview" class="mt-4 p-3 rounded bg-rose-950/40 border border-rose-800/60 text-rose-200"></div>
+      <div class="mt-3 p-3 rounded bg-slate-950/70 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+        ‧ 清除前後端會自動把要刪的資料複製到新工作表「備份_日期時間」，清錯了可以從備份貼回。<br>
+        ‧ 標題列、歷史選單（機台／異常代碼／部門）與 AdminLog 稽核紀錄都不會被清除。
+      </div>
+      <label class="block text-slate-300 mt-4 mb-1">請輸入「<b class="text-rose-300">清除</b>」兩個字確認：</label>
+      <input id="clearConfirmInput" autocomplete="off" oninput="updateClearPreview()" class="w-full bg-black/70 border border-slate-700 rounded px-3 py-2 text-rose-200 text-sm focus:outline-none focus:border-rose-400">
+      <div id="clearErr" class="hidden text-xs font-bold text-rose-400 mt-2"></div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button onclick="closeClearModal()" class="px-4 py-2 rounded bg-slate-800 text-slate-300">取消</button>
+        <button id="clearGoBtn" onclick="executeClearData()" disabled class="px-5 py-2 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold disabled:opacity-30 disabled:cursor-not-allowed">確定清除</button>
       </div>
     </div>
   </div>
@@ -1268,6 +1303,7 @@
       document.getElementById('adminSection').classList.add('hidden');
       document.getElementById('adminBtnText').textContent = '管理員';
       closeEditModal();
+      closeClearModal();
       pingPresence();
     }
     // 管理員操作共用：密碼錯誤或被鎖時自動上鎖
@@ -1360,6 +1396,73 @@
       btn.textContent = `🗑️ 刪除勾選 (${n})`;
     }
     function adminBatchDelete() { adminDelete(Object.keys(adminSelected)); }
+
+    // ==========================================
+    // 🧹 一鍵清除數據（測試數據快速刪除）
+    // ==========================================
+    function taipeiDay(v) {
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return '';
+      const t = new Date(d.getTime() + 8 * 3600 * 1000); // 換算台灣日期，跟後端判斷一致
+      return t.toISOString().slice(0, 10);
+    }
+    function getClearRange() {
+      const scope = (document.querySelector('input[name=clearScope]:checked') || {}).value || 'all';
+      if (scope === 'today') { const d = taipeiDay(Date.now()); return { scope, from: d, to: d }; }
+      if (scope === 'range') return { scope, from: document.getElementById('clearFrom').value, to: document.getElementById('clearTo').value };
+      return { scope, from: '', to: '' };
+    }
+    function openClearModal() {
+      if (!ADMIN.unlocked) return;
+      adminTouch();
+      if (DATA_IS_DEMO) { alert('目前顯示的是示範資料（沒連上試算表），無法清除。'); return; }
+      document.querySelector('input[name=clearScope][value=all]').checked = true;
+      document.getElementById('clearFrom').value = '';
+      document.getElementById('clearTo').value = '';
+      document.getElementById('clearConfirmInput').value = '';
+      document.getElementById('clearErr').classList.add('hidden');
+      updateClearPreview();
+      document.getElementById('clearModal').classList.remove('hidden');
+    }
+    function closeClearModal() { document.getElementById('clearModal').classList.add('hidden'); }
+    function updateClearPreview() {
+      const r = getClearRange();
+      const el = document.getElementById('clearPreview');
+      let n = 0, ok = true;
+      if (r.scope === 'range' && !r.from && !r.to) { el.innerHTML = '請選擇開始或結束日期（可以只填一邊）。'; ok = false; }
+      else if (r.from && r.to && r.from > r.to) { el.innerHTML = '開始日期不能晚於結束日期。'; ok = false; }
+      else {
+        n = LAST_DATA.filter(x => {
+          if (!r.from && !r.to) return true;
+          const day = taipeiDay(x.Timestamp);
+          return day && (!r.from || day >= r.from) && (!r.to || day <= r.to);
+        }).length;
+        const label = r.scope === 'all' ? '全部' : (r.from || '最早') + ' ～ ' + (r.to || '最新');
+        el.innerHTML = `範圍：<b>${escHtml(label)}</b><br>預計清除 <b class="text-lg text-rose-300">${n}</b> 筆（目前共 ${LAST_DATA.length} 筆，以最後一次同步的資料估算）`;
+      }
+      const typed = document.getElementById('clearConfirmInput').value.trim() === '清除';
+      document.getElementById('clearGoBtn').disabled = !(ok && n > 0 && typed);
+    }
+    function executeClearData() {
+      const r = getClearRange();
+      const btn = document.getElementById('clearGoBtn');
+      const errEl = document.getElementById('clearErr');
+      if (!confirm('最後確認：真的要清除這些回報資料嗎？\n（後端會先自動備份到新工作表）')) return;
+      btn.disabled = true; btn.textContent = '清除中…';
+      adminCall({ action: 'clearData', confirm: 'CLEAR_DATA', from: r.from, to: r.to })
+        .then(d => {
+          closeClearModal();
+          adminSelected = {};
+          setStatus(`🧹 已清除 ${d.cleared} 筆回報資料` + (d.backup ? `，備份在試算表工作表「${d.backup}」` : '') + '。');
+          alert(`✅ 已清除 ${d.cleared} 筆回報資料，剩下 ${d.kept} 筆。` + (d.backup ? `\n\n備份工作表：${d.backup}` : ''));
+          fetchTelemetryData();
+        })
+        .catch(err => {
+          const msg = /未知的 action/.test(err.message) ? '後端還沒更新到 v2.1.0，請貼上最新 Code.gs 並重新部署（新版本）' : err.message;
+          errEl.textContent = '❌ 清除失敗：' + msg; errEl.classList.remove('hidden');
+        })
+        .finally(() => { btn.textContent = '確定清除'; updateClearPreview(); });
+    }
 
     function adminDelete(ids) {
       if (!ADMIN.unlocked || !ids.length) return;
