@@ -219,20 +219,28 @@
     <div id="onlineList" class="hidden mt-3 p-3 rounded bg-black/50 border border-emerald-700/50 text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto"></div>
 
     <!-- 🚨 停機逾時嚴重警報列 (Downtime Alert Banner) -->
-    <div id="downtimeAlarmBanner" class="hidden mt-3 p-3 rounded-lg bg-rose-950/90 border-2 border-rose-500 shadow-glow-red text-rose-200 text-xs font-mono flex flex-wrap items-center justify-between gap-3 animate-pulse">
-      <div class="flex items-center gap-2.5">
-        <span class="text-xl">🚨</span>
+    <div id="downtimeAlarmBanner" class="hidden mt-3 p-3.5 rounded-lg bg-rose-950/95 border-2 border-rose-500 shadow-[0_0_25px_rgba(255,46,84,0.5)] text-rose-200 text-xs font-mono flex flex-wrap items-center justify-between gap-3 animate-pulse">
+      <div class="flex items-center gap-2.5 flex-1 min-w-[280px]">
+        <span class="text-2xl animate-bounce">🚨</span>
         <div>
-          <span class="font-bold text-rose-300 tracking-wide">停機逾時嚴重警示：</span>
-          <span id="downtimeAlarmText" class="text-white font-bold"></span>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-rose-300 tracking-wide text-sm">停機逾時嚴重警示</span>
+            <span id="downtimeOverdueBadge" class="px-1.5 py-0.2 rounded bg-rose-900 text-rose-200 text-[10px] border border-rose-400">已逾時</span>
+          </div>
+          <span id="downtimeAlarmText" class="text-white font-semibold text-[12px] block mt-0.5"></span>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <button type="button" id="btnAlarmMute" onclick="toggleAlarmAudio()" class="px-2.5 py-1 rounded bg-rose-900 hover:bg-rose-800 border border-rose-400 text-white text-[11px] font-bold">
-          🔊 警報音效: 開
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- 動態一鍵回復正常按鈕群 -->
+        <div id="downtimeQuickRecoverBtns" class="flex flex-wrap items-center gap-1.5"></div>
+        <button type="button" id="btnAlarmMute" onclick="toggleAlarmAudio()" class="px-2.5 py-1.5 rounded bg-rose-900/90 hover:bg-rose-800 border border-rose-400 text-white text-[11px] font-bold">
+          🔊 音效: 開
         </button>
-        <button type="button" onclick="scrollToDigitalTwin()" class="px-2.5 py-1 rounded bg-white text-rose-900 text-[11px] font-bold hover:bg-rose-100">
-          立即查看機台
+        <button type="button" onclick="dismissAlarmBanner()" class="px-3 py-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-600 text-slate-200 text-[11px] font-bold transition-all shadow" title="暫時關閉此警報列與提示音">
+          🔕 我知道了（暫停警示）
+        </button>
+        <button type="button" onclick="scrollToDigitalTwin()" class="px-3 py-1.5 rounded bg-rose-500 hover:bg-rose-400 text-white text-[11px] font-bold shadow-[0_0_10px_rgba(255,46,84,0.4)]">
+          查看機台 ▾
         </button>
       </div>
     </div>
@@ -858,8 +866,11 @@
         <!-- 動態時間軸項目 -->
       </div>
 
-      <div class="pt-3 border-t border-slate-800 flex justify-end flex-shrink-0 mt-3">
-        <button type="button" onclick="closeMachineTimeline()" class="px-5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold">關閉</button>
+      <div class="pt-3 border-t border-slate-800 flex items-center justify-between flex-shrink-0 mt-3">
+        <button type="button" id="mtBtnRecover" onclick="openQuickRecoverModal(document.getElementById('mtMachineId').textContent)" class="hidden px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-black text-xs font-bold shadow-[0_0_12px_rgba(0,255,157,0.3)]">
+          🟢 標記已回復正常（故障排除）
+        </button>
+        <button type="button" onclick="closeMachineTimeline()" class="px-5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold ml-auto">關閉</button>
       </div>
     </div>
   </div>
@@ -881,6 +892,73 @@
           🔗 在 Google Drive 開啟原圖
         </a>
         <button type="button" onclick="closePhotoModal()" class="px-4 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 🟢 機台快速回復正常運轉彈窗 -->
+  <!-- ========================================== -->
+  <div id="quickRecoverModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden" onclick="if(event.target===this) closeQuickRecoverModal()">
+    <div class="relative w-full max-w-md bg-slate-900 border border-emerald-500 rounded-xl p-6 font-mono text-xs shadow-[0_0_25px_rgba(0,255,157,0.3)]" onclick="event.stopPropagation()">
+      <div class="cyber-corner-tl" style="border-color:#10b981"></div>
+      <div class="cyber-corner-tr" style="border-color:#10b981"></div>
+      <div class="cyber-corner-bl" style="border-color:#10b981"></div>
+      <div class="cyber-corner-br" style="border-color:#10b981"></div>
+
+      <div class="flex items-center justify-between pb-3 border-b border-emerald-900/60 mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🟢</span>
+          <h3 class="text-base font-bold text-emerald-300">機台故障排除 · 改為已回復正常</h3>
+        </div>
+        <button type="button" onclick="closeQuickRecoverModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-slate-200">
+        <div>
+          <label class="block text-slate-400 mb-1 text-[11px]">設備編號</label>
+          <input type="text" id="qrMachineId" readonly class="w-full bg-slate-950 border border-emerald-600/60 rounded px-3 py-2 text-emerald-300 font-bold text-sm tracking-wider" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1 text-[11px]">操作人員</label>
+            <input type="text" id="qrOperator" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-1.5 text-cyan-200 focus:outline-none focus:border-emerald-400" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 text-[11px]">部門</label>
+            <input type="text" id="qrDept" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-1.5 text-cyan-200 focus:outline-none focus:border-emerald-400" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 text-[11px]">變更運作狀態</label>
+          <div class="px-3 py-2 rounded bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 font-bold flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#00ff9d]"></span>
+            <span>正常報工（已排除故障）</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 text-[11px]">生產產量 (PCS)</label>
+          <input type="number" id="qrProducedQty" value="0" min="0" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-1.5 text-cyan-200 text-right focus:outline-none focus:border-emerald-400" />
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 text-[11px]">備註說明</label>
+          <textarea id="qrNotes" rows="2" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-1.5 text-cyan-200 focus:outline-none focus:border-emerald-400" placeholder="故障已排除，機台恢復正常運轉"></textarea>
+        </div>
+      </div>
+
+      <div id="qrErrMsg" class="hidden mt-3 p-2 rounded bg-rose-950/60 border border-rose-600/60 text-xs text-rose-300 font-bold"></div>
+
+      <div class="flex justify-end gap-2.5 mt-5 pt-3 border-t border-slate-800">
+        <button type="button" onclick="closeQuickRecoverModal()" class="px-4 py-2 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-bold">
+          取消
+        </button>
+        <button type="button" id="qrSubmitBtn" onclick="submitQuickRecover()" class="px-5 py-2 rounded bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold shadow-[0_0_12px_rgba(0,255,157,0.4)]">
+          🟢 確認恢復運轉
+        </button>
       </div>
     </div>
   </div>
@@ -1956,19 +2034,20 @@
     // ==========================================
     // 🏭 全廠設備數位雙生矩陣 (Digital Twin Matrix) 與停機逾時追蹤
     // ==========================================
-    const DEFAULT_FLEET = ['CNC-001', 'CNC-002', 'CNC-003', 'CNC-004', 'CNC-005', 'CNC-006', 'CNC-007', 'CNC-008', 'CNC-009', 'CNC-010', 'CNC-011', 'CNC-012'];
     let currentMatrixFilter = 'ALL';
     let DOWNTIME_THRESHOLD_MINUTES = parseInt(lsGet('hsh_downtime_thresh', '30')) || 30;
     let ALARM_SOUND_ENABLED = lsGet('hsh_alarm_sound', 'true') === 'true';
     let lastAlarmSoundTime = 0;
     let downtimeTicker = null;
+    let isAlarmBannerDismissed = false; // 人員是否點擊「我知道了」暫停警示
+    let lastOverdueMachineSignature = ''; // 紀錄上一次逾時機台清單
 
+    // 動態取得資料庫中實際有回報過的所有機台清單（不硬編碼任何不存在的機台）
     function getMachineFleetList(dataList) {
-      const set = new Set(DEFAULT_FLEET);
+      const set = new Set();
       (dataList || []).forEach(r => {
-        if (r.Machine_ID && String(r.Machine_ID).trim()) {
-          set.add(String(r.Machine_ID).trim());
-        }
+        const mId = r.Machine_ID ? String(r.Machine_ID).trim() : '';
+        if (mId) set.add(mId);
       });
       return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
     }
@@ -2009,8 +2088,16 @@
           : 'px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 transition-all';
       }
       if (btn2) {
-        btn2.textContent = ALARM_SOUND_ENABLED ? '🔊 警報音效: 開' : '🔇 警報音效: 關';
+        btn2.textContent = ALARM_SOUND_ENABLED ? '🔊 音效: 開' : '🔇 音效: 關';
       }
+    }
+
+    // 手動暫停/收合停機警示列
+    function dismissAlarmBanner() {
+      isAlarmBannerDismissed = true;
+      const banner = document.getElementById('downtimeAlarmBanner');
+      if (banner) banner.classList.add('hidden');
+      setStatus('🔕 停機逾時警報已由人員手動暫停。');
     }
 
     // Web Audio 雙頻警報蜂鳴音
@@ -2061,6 +2148,23 @@
 
       const fleet = getMachineFleetList(dataList);
       let countRun = 0, countStop = 0, countMaint = 0, countIdle = 0;
+
+      // 如果完全沒有回報紀錄，提示使用者而非顯示硬編碼假機台
+      if (fleet.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-12 text-center font-mono text-xs bg-black/40 rounded-xl border border-slate-800 p-6">
+            <div class="text-3xl mb-2">🏭</div>
+            <div class="text-slate-300 font-bold mb-1 text-sm">目前試算表尚無任何機台回報紀錄</div>
+            <div class="text-slate-500">現場人員透過手機報工送出後，系統將自動在此動態呈現該機台的即時狀態看板。</div>
+          </div>
+        `;
+        document.getElementById('tabCountAll').textContent = 0;
+        document.getElementById('tabCountRun').textContent = 0;
+        document.getElementById('tabCountStop').textContent = 0;
+        document.getElementById('tabCountMaint').textContent = 0;
+        document.getElementById('tabCountIdle').textContent = 0;
+        return;
+      }
 
       // 按機台分組資料
       const machineMap = {};
@@ -2217,11 +2321,16 @@
             </div>
 
             ${m.statusCode === 'STOP' ? `
-              <div class="mt-2.5 pt-2 border-t border-rose-900/60 flex items-center justify-between text-[10.5px]">
-                <span class="text-rose-400 font-bold">⏱️ 停機時長</span>
-                <span class="downtime-counter font-bold ${isAlarmOverdue ? 'text-rose-300 animate-pulse' : 'text-rose-200'}" data-machine="${escHtml(mId)}" data-ts="${escHtml(m.lastTimestamp || '')}">
-                  計算中…
-                </span>
+              <div class="mt-2.5 pt-2 border-t border-rose-900/60 flex items-center justify-between gap-1">
+                <div class="flex flex-col">
+                  <span class="text-[9.5px] text-rose-400 font-bold">已停機</span>
+                  <span class="downtime-counter font-bold text-xs ${isAlarmOverdue ? 'text-rose-300 animate-pulse' : 'text-rose-200'}" data-machine="${escHtml(mId)}" data-ts="${escHtml(m.lastTimestamp || '')}">
+                    計算中…
+                  </span>
+                </div>
+                <button type="button" onclick="event.stopPropagation(); openQuickRecoverModal('${escHtml(mId)}')" class="px-2 py-1 rounded bg-emerald-600/90 hover:bg-emerald-500 text-black text-[10.5px] font-bold flex items-center gap-1 shadow-[0_0_8px_rgba(0,255,157,0.35)] transition-all" title="故障排除，直接改狀態為正常運轉">
+                  🟢 回復正常
+                </button>
               </div>
             ` : `
               <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
@@ -2263,23 +2372,44 @@
         }
       });
 
+      // 檢查逾時機台名單是否有變動（若有新機台逾時或舊機台排除，重新啟用提醒）
+      const currentSig = overdueMachines.map(m => m.id).sort().join(',');
+      if (currentSig !== lastOverdueMachineSignature) {
+        lastOverdueMachineSignature = currentSig;
+        isAlarmBannerDismissed = false; // 名單有變動時解除靜音暫停
+      }
+
       // 頂部逾時警報列控制
       const banner = document.getElementById('downtimeAlarmBanner');
       const textEl = document.getElementById('downtimeAlarmText');
+      const quickBtns = document.getElementById('downtimeQuickRecoverBtns');
 
       if (banner && textEl) {
         if (overdueMachines.length > 0) {
-          banner.classList.remove('hidden');
-          const detail = overdueMachines.map(m => `機台【${m.id}】停機已達 ${m.mins} 分鐘`).join('、');
-          textEl.textContent = `${detail}（門檻：${DOWNTIME_THRESHOLD_MINUTES} 分鐘），請幹部或生技維修人員立即排查排除！`;
+          if (!isAlarmBannerDismissed) {
+            banner.classList.remove('hidden');
+            const detail = overdueMachines.map(m => `機台【${m.id}】停機已達 ${m.mins} 分鐘`).join('、');
+            textEl.textContent = `${detail}（門檻：${DOWNTIME_THRESHOLD_MINUTES} 分鐘），請幹部或生技維修人員立即排查排除！`;
 
-          // 每 25 秒若警報音開啟則警示一次
-          if (ALARM_SOUND_ENABLED && (now - lastAlarmSoundTime > 25000)) {
-            lastAlarmSoundTime = now;
-            playAlarmSiren();
+            // 動態產生快速回復按鈕
+            if (quickBtns) {
+              quickBtns.innerHTML = overdueMachines.map(m => `
+                <button type="button" onclick="openQuickRecoverModal('${escHtml(m.id)}')" class="px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-bold flex items-center gap-1 shadow-[0_0_8px_rgba(0,255,157,0.4)] transition-all">
+                  🟢【${escHtml(m.id)}】回復正常
+                </button>
+              `).join('');
+            }
+
+            // 每 25 秒若警報音開啟則警示一次
+            if (ALARM_SOUND_ENABLED && (now - lastAlarmSoundTime > 25000)) {
+              lastAlarmSoundTime = now;
+              playAlarmSiren();
+            }
           }
         } else {
           banner.classList.add('hidden');
+          isAlarmBannerDismissed = false;
+          lastOverdueMachineSignature = '';
         }
       }
     }
@@ -2585,12 +2715,16 @@
 
       const latest = records[0];
       const curStatusEl = document.getElementById('mtCurrentStatus');
+      const btnRecover = document.getElementById('mtBtnRecover');
       if (latest) {
         const s = String(latest.Status || '');
         const timeAgo = formatTimestamp(latest.Timestamp);
-        curStatusEl.innerHTML = `最新狀態：<b class="${s.includes('故障') ? 'text-rose-400' : s.includes('保養') ? 'text-amber-400' : 'text-emerald-400'}">${escHtml(s)}</b>（最後回報：${timeAgo} 由 ${escHtml(latest.Operator || '未註明')}）`;
+        const isStop = s.includes('故障') || s.includes('🔴');
+        curStatusEl.innerHTML = `最新狀態：<b class="${isStop ? 'text-rose-400' : s.includes('保養') ? 'text-amber-400' : 'text-emerald-400'}">${escHtml(s)}</b>（最後回報：${timeAgo} 由 ${escHtml(latest.Operator || '未註明')}）`;
+        if (btnRecover) btnRecover.classList.toggle('hidden', !isStop);
       } else {
         curStatusEl.textContent = '此機台目前無歷史回報紀錄';
+        if (btnRecover) btnRecover.classList.add('hidden');
       }
 
       const timelineBody = document.getElementById('mtTimelineBody');
@@ -2660,6 +2794,90 @@
       if (modal) {
         modal.classList.add('hidden');
         document.getElementById('photoLightboxImg').src = '';
+      }
+    }
+
+    // ==========================================
+    // 🟢 快速回復正常（故障排除）
+    // ==========================================
+    function openQuickRecoverModal(machineId) {
+      const modal = document.getElementById('quickRecoverModal');
+      if (!modal) return;
+      const mId = String(machineId || '').trim();
+      document.getElementById('qrMachineId').value = mId;
+
+      // 自動從該機台最後一筆紀錄帶入操作人員與部門
+      const lastRec = (LAST_DATA || []).find(r => String(r.Machine_ID || '').trim() === mId);
+      const defaultOperator = (lastRec && lastRec.Operator) ? lastRec.Operator : (ADMIN.unlocked ? ADMIN.name : '現場幹部');
+      const defaultDept = (lastRec && lastRec.Dept) ? lastRec.Dept : '現場廠務';
+
+      document.getElementById('qrOperator').value = defaultOperator;
+      document.getElementById('qrDept').value = defaultDept;
+      document.getElementById('qrProducedQty').value = 0;
+      document.getElementById('qrNotes').value = '故障已排除，機台恢復正常運轉';
+      document.getElementById('qrErrMsg').classList.add('hidden');
+      modal.classList.remove('hidden');
+    }
+
+    function closeQuickRecoverModal() {
+      const modal = document.getElementById('quickRecoverModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function submitQuickRecover() {
+      const machineId = document.getElementById('qrMachineId').value.trim();
+      const operator = document.getElementById('qrOperator').value.trim() || '現場人員';
+      const dept = document.getElementById('qrDept').value.trim() || '現場廠務';
+      const qty = Number(document.getElementById('qrProducedQty').value) || 0;
+      const notes = document.getElementById('qrNotes').value.trim() || '故障已排除，機台恢復正常運轉';
+      const errEl = document.getElementById('qrErrMsg');
+      const btn = document.getElementById('qrSubmitBtn');
+
+      if (!machineId) {
+        errEl.textContent = '❌ 機台編號不可為空';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '回復中…';
+      errEl.classList.add('hidden');
+
+      const payload = {
+        action: 'report',
+        Machine_ID: machineId,
+        Operator: operator,
+        Dept: dept,
+        Status: '正常報工',
+        Produced_Qty: qty,
+        Error_Code: '無',
+        Notes: notes,
+        IP: ENV.ip,
+        Device_ID: MY_DEVICE_ID,
+        Browser: ENV.browser,
+        OS: ENV.os,
+        Device_Type: ENV.deviceType,
+        pageUrl: /^https?:/.test(location.protocol) ? location.href : ''
+      };
+
+      try {
+        const res = await apiPost(payload).catch(() => { throw new Error('連不到雲端 API'); });
+        if (res && res.status === 'error') {
+          throw new Error(res.message || '後端驗證失敗');
+        }
+        closeQuickRecoverModal();
+        closeMachineTimeline();
+        isAlarmBannerDismissed = false; // 重置警示狀態
+        setStatus(`✅ 機台【${machineId}】已成功改為【正常報工】（故障已排除）！`);
+        // 立即觸發數據重新同步，機台將即時變為綠燈
+        fetchTelemetryData();
+      } catch (err) {
+        console.error('快速回復正常失敗：', err);
+        errEl.textContent = '❌ 送出失敗：' + err.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🟢 確認恢復運轉';
       }
     }
 
