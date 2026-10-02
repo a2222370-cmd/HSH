@@ -543,7 +543,7 @@
   <div id="adminLoginModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="relative w-full max-w-sm bg-slate-900 border border-amber-500 rounded-lg p-6 font-mono shadow-[0_0_20px_rgba(245,158,11,0.3)]">
       <h3 class="text-base font-bold text-amber-300 mb-1">🔑 管理員解鎖</h3>
-      <p class="text-[11px] text-slate-400 mb-4">解鎖後可編輯、刪除回報資料。密碼由後端驗證；同一台電腦連續輸錯 5 次會暫時鎖住 15 分鐘。解鎖 15 分鐘沒有操作會自動上鎖。</p>
+      <p class="text-[11px] text-slate-400 mb-4">解鎖後可編輯、刪除回報資料。密碼由後端驗證；同一台電腦連續輸錯 5 次會暫時鎖住 15 分鐘。解鎖 30 分鐘沒有操作會自動上鎖。</p>
       <div class="text-xs text-slate-300 mb-3">管理員：<b class="text-amber-300">資訊課-Kenny</b></div>
       <label class="block text-xs text-slate-300 mb-1">管理員密碼</label>
       <input id="adminPwInput" type="password" autocomplete="off" oncontextmenu="return false;" oncopy="return false;" oncut="return false;" onkeydown="if(event.key==='Enter') adminUnlock();" class="w-full bg-black/70 border border-slate-700 rounded px-3 py-2 text-amber-200 text-sm mb-2 focus:outline-none focus:border-amber-400">
@@ -1272,7 +1272,7 @@
     // 管理員：只在記憶體保存後端發的臨時通行證（不保存密碼）；名稱固定
     const ADMIN_FIXED_NAME = '資訊課-Kenny';
     const ADMIN = { unlocked: false, token: '', name: ADMIN_FIXED_NAME, timer: null };
-    const ADMIN_IDLE_MS = 15 * 60 * 1000;
+    const ADMIN_IDLE_MS = 30 * 60 * 1000; // 閒置 30 分鐘自動登出（跟圖面查詢系統一致）
     const ADMIN_PAGE_SIZE = 20;
     let adminPage = 1;
     let adminSelected = {};
@@ -1307,7 +1307,8 @@
             closeAdminLogin();
             document.getElementById('adminSection').classList.remove('hidden');
             document.getElementById('adminBtnText').textContent = '管理中：' + name;
-            document.getElementById('adminWhoTag').textContent = 'ADMIN · ' + name;
+            document.getElementById('adminWhoTag').textContent = 'ADMIN · ' + name + ' · 閒置 30 分鐘自動登出';
+            adminLastPing = Date.now();
             adminTouch();
             renderAdminTable();
             pingPresence();
@@ -1319,13 +1320,30 @@
         .catch(() => adminLoginError('連不到雲端 API'))
         .finally(() => { btn.disabled = false; btn.textContent = '解鎖'; document.getElementById('adminPwInput').value = ''; });
     }
+    // 閒置計時：有操作（點擊、鍵盤、移動滑鼠、捲動、觸控）就重新計時；每 5 秒檢查一次，剩 5 分鐘顯示倒數
+    let adminLastAct = Date.now(), adminLastPing = Date.now();
     function adminTouch() {
-      clearTimeout(ADMIN.timer);
-      ADMIN.timer = setTimeout(() => { if (ADMIN.unlocked) { adminLock(); setStatus('管理員閒置 15 分鐘，已自動上鎖。'); } }, ADMIN_IDLE_MS);
+      adminLastAct = Date.now();
+      if (ADMIN.unlocked && Date.now() - adminLastPing > 60000) {
+        adminLastPing = Date.now();
+        // 每分鐘最多一次，順便延長後端通行證；後端說已失效就上鎖
+        apiPost({ action: 'adminPing', adminToken: ADMIN.token, sid: MY_DEVICE_ID }).then(d => {
+          if (d && d.expired && ADMIN.unlocked) { adminLock(); setStatus('管理員登入已失效，請重新解鎖。', true); }
+        }).catch(() => {});
+      }
     }
+    setInterval(() => {
+      if (!ADMIN.unlocked) return;
+      const left = ADMIN_IDLE_MS - (Date.now() - adminLastAct);
+      if (left <= 0) { adminLock(); setStatus('管理員閒置 30 分鐘，已自動登出。'); document.getElementById('adminBtnText').textContent = '管理員（閒置已自動登出）'; return; }
+      const m = Math.ceil(left / 60000);
+      const tip = m <= 5 ? `（閒置中，${m} 分鐘後自動登出）` : '';
+      document.getElementById('adminBtnText').textContent = '管理中：' + ADMIN.name + tip;
+      document.getElementById('adminWhoTag').textContent = 'ADMIN · ' + ADMIN.name + (m <= 5 ? ` · ${m} 分鐘後自動登出` : ' · 閒置 30 分鐘自動登出');
+    }, 5000);
     function adminLock() {
       if (ADMIN.token) apiPost({ action: 'logoutAdmin', adminToken: ADMIN.token }).catch(() => {});
-      ADMIN.unlocked = false; ADMIN.token = ''; clearTimeout(ADMIN.timer);
+      ADMIN.unlocked = false; ADMIN.token = '';
       adminSelected = {};
       document.getElementById('adminSection').classList.add('hidden');
       document.getElementById('adminBtnText').textContent = '管理員';
@@ -1558,7 +1576,7 @@
       window.addEventListener('pagehide', () => {
         try { navigator.sendBeacon && navigator.sendBeacon(getStoredGasUrl(), JSON.stringify({ token: getStoredToken(), action: 'presence', sid: MY_DEVICE_ID, leave: true })); } catch (e) {}
       });
-      ['click', 'keydown'].forEach(ev => document.addEventListener(ev, () => { if (ADMIN.unlocked) adminTouch(); }, { passive: true }));
+      ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { if (ADMIN.unlocked) adminTouch(); }, { passive: true }));
       fetchTelemetryData();
 
       // 每 30 秒自動排程重新擷取，維持戰情室即時性

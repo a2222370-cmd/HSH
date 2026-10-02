@@ -405,15 +405,19 @@
     // ==========================================
     // 版本與改版記錄
     // ==========================================
-    const APP_VERSION = 'v2.2.0';
-    const BACKEND_MIN_VERSION = 'v2.2.0';
+    const APP_VERSION = 'v2.3.0';
+    const BACKEND_MIN_VERSION = 'v2.3.0';
     const CHANGELOG = [
+      { v: 'v2.3.0', date: '2026-10-02', notes: [
+        '管理員閒置自動登出改為 30 分鐘（跟圖面查詢系統一致）：點擊、鍵盤、移動滑鼠、捲動、觸控都算有操作；剩 5 分鐘時顯示倒數提醒',
+        '戰情室管理員區塊標示「閒置 30 分鐘自動登出」，時間到自動登出並提示（需搭配後端 Code.gs v2.3.0）'
+      ] },
       { v: 'v2.2.0', date: '2026-10-02', notes: [
         '「管理歷史選單」改成只有管理員可以新增、編輯、刪除、批次刪除與重新掃描；一般使用者只能查看與點選（回報時打的新機台、新異常代碼仍會自動加入）',
         '「GAS 接收端點設定」改成只有管理員能修改：要輸入管理員密碼，後端驗證通過才會儲存',
         'HSH Logo 拿掉白色底，直接顯示在標題列上',
         '管理員名稱固定為「資訊課-Kenny」，只需要輸入密碼',
-        '密碼安全：網頁原始碼裡沒有管理員密碼，密碼只在解鎖時送到後端驗證一次；之後改用後端發的臨時通行證（15 分鐘沒操作自動失效），瀏覽器不保存密碼（需搭配後端 Code.gs v2.2.0）'
+        '密碼安全：網頁原始碼裡沒有管理員密碼，密碼只在解鎖時送到後端驗證一次；之後改用後端發的臨時通行證（30 分鐘沒操作自動失效），瀏覽器不保存密碼（需搭配後端 Code.gs v2.2.0）'
       ] },
       { v: 'v2.1.0', date: '2026-10-02', notes: [
         '戰情室管理員新增「🧹 一鍵清除數據」：可清除全部、只清今天，或指定日期範圍，方便上課／測試後快速刪除測試數據',
@@ -681,11 +685,28 @@
     // 🔑 管理員（只放記憶體：後端發的臨時通行證；密碼不保存）
     // ==========================================
     const RADMIN = { token: '', timer: null, pending: null };
-    const RADMIN_IDLE_MS = 14 * 60 * 1000;
-    function adminTouch_() { clearTimeout(RADMIN.timer); RADMIN.timer = setTimeout(adminLock_, RADMIN_IDLE_MS); }
+    const RADMIN_IDLE_MS = 30 * 60 * 1000; // 閒置 30 分鐘自動登出
+    let radminLastAct = Date.now(), radminLastPing = Date.now();
+    function adminTouch_() {
+      radminLastAct = Date.now();
+      if (RADMIN.token && Date.now() - radminLastPing > 60000) {
+        radminLastPing = Date.now();
+        apiPost({ action: 'adminPing', adminToken: RADMIN.token, sid: MY_DEVICE_ID }).then(d => {
+          if (d && d.expired && RADMIN.token) { RADMIN.token = ''; renderDropdownAdminBar(); renderDropdownManageList(); }
+        }).catch(() => {});
+      }
+    }
+    setInterval(() => {
+      if (!RADMIN.token) return;
+      const left = RADMIN_IDLE_MS - (Date.now() - radminLastAct);
+      if (left <= 0) { adminLock_(); setDropdownMsg('管理員閒置 30 分鐘，已自動登出。', true); return; }
+      const el = document.getElementById('ddIdleTip');
+      if (el) { const m = Math.ceil(left / 60000); el.textContent = m <= 5 ? `（${m} 分鐘後自動登出）` : '（閒置 30 分鐘自動登出）'; }
+    }, 5000);
+    ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { if (RADMIN.token) adminTouch_(); }, { passive: true }));
     function adminLock_() {
       if (RADMIN.token) apiPost({ action: 'logoutAdmin', adminToken: RADMIN.token }).catch(() => {});
-      RADMIN.token = ''; clearTimeout(RADMIN.timer);
+      RADMIN.token = '';
       renderDropdownAdminBar(); renderDropdownManageList();
     }
     function requireAdmin(fn) {
@@ -715,7 +736,7 @@
       btn.disabled = true; btn.textContent = '驗證中…';
       verifyAdminPw_(pw).then(tok => {
         if (!tok) throw new Error('後端還是舊版（沒有通行證功能），請更新 Code.gs 到 ' + BACKEND_MIN_VERSION + ' 並重新部署');
-        RADMIN.token = tok; adminTouch_();
+        RADMIN.token = tok; radminLastPing = Date.now(); adminTouch_();
         const fn = RADMIN.pending; closeAdminModal();
         renderDropdownAdminBar(); renderDropdownManageList();
         if (fn) fn();
@@ -726,7 +747,7 @@
       const bar = document.getElementById('ddAdminBar');
       if (!bar) return;
       bar.innerHTML = RADMIN.token
-        ? '<div class="flex items-center justify-between gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 text-[12px] text-emerald-800 font-bold"><span>🔓 管理員：資訊課-Kenny（可編輯）</span><button type="button" onclick="adminLock_()" class="px-2 py-0.5 rounded bg-white border border-emerald-300">上鎖</button></div>'
+        ? '<div class="flex items-center justify-between gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 text-[12px] text-emerald-800 font-bold"><span>🔓 管理員：資訊課-Kenny（可編輯）<span id="ddIdleTip" class="font-normal">（閒置 30 分鐘自動登出）</span></span><button type="button" onclick="adminLock_()" class="px-2 py-0.5 rounded bg-white border border-emerald-300">上鎖</button></div>'
         : '<div class="flex items-center justify-between gap-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-[12px] text-amber-800 font-bold"><span>🔒 一般使用者只能查看；新增／編輯／刪除需管理員</span><button type="button" onclick="requireAdmin(function(){})" class="px-2 py-0.5 rounded bg-amber-500 text-white">🔑 解鎖</button></div>';
       document.getElementById('ddSelectBar').style.display = RADMIN.token ? '' : 'none';
     }
@@ -989,7 +1010,7 @@
       btn.disabled = true; btn.textContent = '驗證中…';
       verifyAdminPw_(pwEl.value, val).then(tok => {
         if (val === DEFAULT_GAS_URL) lsDel('GAS_POST_URL'); else lsSet('GAS_POST_URL', val);
-        RADMIN.token = tok || ''; if (tok) adminTouch_();
+        RADMIN.token = tok || ''; if (tok) { radminLastPing = Date.now(); adminTouch_(); }
         toggleConfigModal();
         refreshEndpointDisplay();
         loadDropdownFromCloud();
