@@ -418,62 +418,6 @@
     </section>
 
     <!-- --------------------------------- -->
-    <!-- 全廠機台數位雙生矩陣 (Digital Twin Matrix) -->
-    <!-- --------------------------------- -->
-    <section id="digitalTwinSection" class="lg:col-span-12 flex flex-col">
-      <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md">
-        <div class="cyber-corner-tl"></div>
-        <div class="cyber-corner-tr"></div>
-        <div class="cyber-corner-bl"></div>
-        <div class="cyber-corner-br"></div>
-
-        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-cyan-900/60 mb-4">
-          <div class="flex items-center gap-2">
-            <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
-            <h2 class="text-base font-bold tracking-wider text-cyan-200">全廠設備數位雙生矩陣看板 (Digital Twin Matrix)</h2>
-            <span id="matrixDateBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-300">
-              🟢 本日
-            </span>
-          </div>
-
-          <!-- 篩選標籤與設定選項 -->
-          <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
-            <!-- 狀態篩選 Tab -->
-            <div id="matrixFilterTabs" class="flex items-center bg-black/60 p-1 rounded-lg border border-slate-800 gap-1">
-              <button type="button" onclick="setMatrixFilter('ALL')" class="matrix-tab active px-2.5 py-1 rounded text-cyan-300 font-bold bg-cyan-900/60 border border-cyan-500/40 transition-all">全部 (<span id="tabCountAll">0</span>)</button>
-              <button type="button" onclick="setMatrixFilter('RUN')" class="matrix-tab px-2.5 py-1 rounded text-emerald-400 font-bold hover:bg-slate-800 transition-all">🟢 運轉 (<span id="tabCountRun">0</span>)</button>
-              <button type="button" onclick="setMatrixFilter('STOP')" class="matrix-tab px-2.5 py-1 rounded text-rose-400 font-bold hover:bg-slate-800 transition-all">🔴 故障 (<span id="tabCountStop">0</span>)</button>
-              <button type="button" onclick="setMatrixFilter('MAINT')" class="matrix-tab px-2.5 py-1 rounded text-amber-400 font-bold hover:bg-slate-800 transition-all">🟡 保養 (<span id="tabCountMaint">0</span>)</button>
-              <button type="button" onclick="setMatrixFilter('IDLE')" class="matrix-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">⚪ 未報工 (<span id="tabCountIdle">0</span>)</button>
-            </div>
-
-            <!-- 逾時告警設定選單 -->
-            <div class="flex items-center gap-1.5 pl-2 border-l border-slate-800">
-              <span class="text-[11px] text-slate-400">⏱️ 停機告警:</span>
-              <select id="downtimeThresholdSelect" onchange="onDowntimeThresholdChange(this.value)" class="bg-black/60 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-cyan-400">
-                <option value="15">15 分鐘</option>
-                <option value="30" selected>30 分鐘 (預設)</option>
-                <option value="60">60 分鐘</option>
-              </select>
-            </div>
-
-            <button type="button" id="btnSoundToggle" onclick="toggleAlarmAudio()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 transition-all" title="點擊切換停機逾時蜂鳴警報音">
-              🔊 警報音效
-            </button>
-          </div>
-        </div>
-
-        <p id="matrixDescTip" class="text-xs text-slate-400 font-mono mb-4">
-          點擊任一機台卡片，可展開檢視該機台的「本日生產明細、停機記錄時間軸與現場故障照片」：
-        </p>
-
-        <!-- 機台格子網格容器 -->
-        <div id="machineMatrixGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-          <!-- 動態生成機台卡片 -->
-        </div>
-      </div>
-    </section>
-
     <!-- --------------------------------- -->
     <!-- 區塊三：最新回報紀錄 (表格) -->
     <!-- --------------------------------- -->
@@ -526,6 +470,63 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- --------------------------------- -->
+    <!-- 全廠設備數位雙生矩陣看板 (Digital Twin Matrix) -->
+    <!-- --------------------------------- -->
+    <section id="digitalTwinSection" class="lg:col-span-12 flex flex-col">
+      <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md">
+        <div class="cyber-corner-tl"></div>
+        <div class="cyber-corner-tr"></div>
+        <div class="cyber-corner-bl"></div>
+        <div class="cyber-corner-br"></div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-cyan-900/60 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
+            <h2 class="text-base font-bold tracking-wider text-cyan-200">全廠設備數位雙生矩陣看板 (Digital Twin Matrix)</h2>
+            <span id="matrixDateBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-300">
+              🟢 本日
+            </span>
+          </div>
+
+          <!-- 篩選標籤與設定選項 -->
+          <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+            <!-- 狀態篩選 Tab -->
+            <div id="matrixFilterTabs" class="flex items-center bg-black/60 p-1 rounded-lg border border-slate-800 gap-1">
+              <button type="button" onclick="setMatrixFilter('ALL')" class="matrix-tab active px-2.5 py-1 rounded text-cyan-300 font-bold bg-cyan-900/60 border border-cyan-500/40 transition-all">全部 (<span id="tabCountAll">0</span>)</button>
+              <button type="button" onclick="setMatrixFilter('RUN')" class="matrix-tab px-2.5 py-1 rounded text-emerald-400 font-bold hover:bg-slate-800 transition-all">🟢 運轉 (<span id="tabCountRun">0</span>)</button>
+              <button type="button" onclick="setMatrixFilter('STOP')" class="matrix-tab px-2.5 py-1 rounded text-rose-400 font-bold hover:bg-slate-800 transition-all">🔴 故障 (<span id="tabCountStop">0</span>)</button>
+              <button type="button" onclick="setMatrixFilter('MAINT')" class="matrix-tab px-2.5 py-1 rounded text-amber-400 font-bold hover:bg-slate-800 transition-all">🟡 保養 (<span id="tabCountMaint">0</span>)</button>
+              <button type="button" onclick="setMatrixFilter('IDLE')" class="matrix-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">⚪ 未報工 (<span id="tabCountIdle">0</span>)</button>
+            </div>
+
+            <!-- 逾時告警設定選單 -->
+            <div class="flex items-center gap-1.5 pl-2 border-l border-slate-800">
+              <span class="text-[11px] text-slate-400">⏱️ 停機告警:</span>
+              <select id="downtimeThresholdSelect" onchange="onDowntimeThresholdChange(this.value)" class="bg-black/60 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-cyan-400">
+                <option value="15">15 分鐘</option>
+                <option value="30" selected>30 分鐘 (預設)</option>
+                <option value="60">60 分鐘</option>
+              </select>
+            </div>
+
+            <button type="button" id="btnSoundToggle" onclick="toggleAlarmAudio()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 transition-all" title="點擊切換停機逾時蜂鳴警報音">
+              🔊 警報音效
+            </button>
+          </div>
+        </div>
+
+        <p id="matrixDescTip" class="text-xs text-slate-400 font-mono mb-4">
+          點擊任一機台卡片，可展開檢視該機台的「本日生產明細、停機記錄時間軸與現場故障照片」：
+        </p>
+
+        <!-- 機台格子網格容器 -->
+        <div id="machineMatrixGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+          <!-- 動態生成機台卡片 -->
         </div>
       </div>
     </section>
@@ -1112,6 +1113,24 @@
     }
 
     // ==========================================
+    // ==========================================
+    // 數值與產量解析防呆函式 (去除逗號、PCS、非數字字串容錯)
+    // ==========================================
+    function parseQty(val) {
+      if (val == null) return 0;
+      if (typeof val === 'number') return isNaN(val) ? 0 : val;
+      const str = String(val).replace(/,/g, '').replace(/pcs/gi, '').trim();
+      const num = parseFloat(str);
+      return isNaN(num) ? 0 : num;
+    }
+
+    function getRecordQty(r) {
+      if (!r) return 0;
+      const val = r.Produced_Qty ?? r.produced_qty ?? r.producedQty ?? r['Produced Qty'] ?? r['生產數量'] ?? r['生產產量'] ?? r['產量'] ?? r['數量'] ?? r.Qty ?? r.qty;
+      return parseQty(val);
+    }
+
+    // ==========================================
     // 📅 戰情室統計日期控制（預設本日，隔日 00:00 自動歸零重新計算）
     // ==========================================
     function taipeiDay(v) {
@@ -1156,6 +1175,7 @@
     let currentDashboardMode = 'TODAY'; // 'TODAY' | 'YESTERDAY' | 'CUSTOM' | 'ALL'
     let currentCustomDate = '';         // 當 mode === 'CUSTOM' 時之 YYYY-MM-DD
     let lastObservedDate = taipeiDay(Date.now()); // 用於跨日偵測（午夜 00:00 自動重置）
+    let userSelectedDateExplicitly = false;       // 記錄使用者是否主動點擊切換日期標籤
 
     function getYesterdayTaipei() {
       const d = new Date(Date.now() - 24 * 3600 * 1000);
@@ -1233,22 +1253,29 @@
       if (telemBadge) telemBadge.textContent = `LATEST LOGS · ${prefix}`;
     }
 
-    function setDashboardDateMode(mode) {
-      currentDashboardMode = mode;
-      
+    function updateDateTabButtons(mode) {
       const tabs = document.querySelectorAll('#dateModeTabs .date-tab');
-      const customInput = document.getElementById('customDateInput');
-      
-      tabs.forEach(tab => {
-        tab.classList.remove('active', 'text-cyan-300', 'bg-cyan-900/60', 'border-cyan-500/40');
-        tab.classList.add('text-slate-400');
+      const modeIndex = { 'TODAY': 0, 'YESTERDAY': 1, 'CUSTOM': 2, 'ALL': 3 }[mode] ?? 0;
+      tabs.forEach((tab, idx) => {
+        if (idx === modeIndex) {
+          tab.classList.add('active', 'text-cyan-300', 'bg-cyan-900/60', 'border-cyan-500/40');
+          tab.classList.remove('text-slate-400');
+        } else {
+          tab.classList.remove('active', 'text-cyan-300', 'bg-cyan-900/60', 'border-cyan-500/40');
+          tab.classList.add('text-slate-400');
+        }
       });
+    }
 
-      if (window.event && window.event.currentTarget) {
-        window.event.currentTarget.classList.add('active', 'text-cyan-300', 'bg-cyan-900/60', 'border-cyan-500/40');
-        window.event.currentTarget.classList.remove('text-slate-400');
+    function setDashboardDateMode(mode, isUserClick = true) {
+      currentDashboardMode = mode;
+      if (isUserClick) {
+        userSelectedDateExplicitly = true;
       }
+      
+      updateDateTabButtons(mode);
 
+      const customInput = document.getElementById('customDateInput');
       if (mode === 'CUSTOM') {
         if (customInput) {
           customInput.classList.remove('hidden');
@@ -1270,6 +1297,7 @@
     }
 
     function onCustomDateChange(val) {
+      userSelectedDateExplicitly = true;
       currentCustomDate = val;
       updateDateBadges();
       if (LAST_DATA && LAST_DATA.length > 0) {
@@ -1513,10 +1541,23 @@
           }
 
           let dateHint = '';
-          if (telemetryData.length > 0 && currentDashboardMode === 'TODAY') {
+          const todayStr = taipeiDay(Date.now());
+          const todayCount = telemetryData.filter(r => taipeiDay(r.Timestamp) === todayStr).length;
+
+          // 智能日期預設錨定：
+          // 若使用者尚未手動指定日期，且本日現場尚無任何回報（例如剛過午夜換日、早班剛上工）
+          if (!userSelectedDateExplicitly && todayCount === 0 && telemetryData.length > 0) {
+            // 自動錨定至「🌐 全期歷史」，讓主管與現場人員立即看見所有機台累積產量與即時數據，數值與回報紀錄 100% 吻合！
+            currentDashboardMode = 'ALL';
+            updateDateTabButtons('ALL');
+            updateDateBadges();
+            dateHint = `（🔔 本日 ${todayStr} 現場尚無新報工，系統已自動為您展示【全期歷史】累積產能；今日一旦有新報工將自動切回【本日】）`;
+          } else if (currentDashboardMode === 'TODAY' && todayCount > 0) {
+            updateDateTabButtons('TODAY');
+            updateDateBadges();
+          } else if (currentDashboardMode === 'TODAY' && todayCount === 0) {
             const sortedByTime = [...telemetryData].sort((a,b) => (new Date(b.Timestamp).getTime()||0) - (new Date(a.Timestamp).getTime()||0));
-            const latestDay = taipeiDay(sortedByTime[0].Timestamp);
-            const todayStr = taipeiDay(Date.now());
+            const latestDay = taipeiDay(sortedByTime[0]?.Timestamp);
             if (latestDay && latestDay !== todayStr) {
               dateHint = `（最新回報為 ${latestDay}，目前為【本日】模式，可點上方切換「昨天」或「全期」對照）`;
             }
@@ -1571,8 +1612,8 @@
       let maintenanceCount = 0;
 
       dateFilteredData.forEach(item => {
-        // 安全轉換 Produced_Qty 為數值
-        const qty = Number(item.Produced_Qty) || 0;
+        // 安全轉換 Produced_Qty 為數值（去除逗號、PCS、非數字字串容錯）
+        const qty = getRecordQty(item);
         totalQty += qty;
 
         // 狀態比對統計 (支援「正常報工」、「故障停機」、「例行保養」)
@@ -1604,6 +1645,13 @@
       renderPieChart(normalCount, failureCount, maintenanceCount);
 
       // ----------------------------------------
+      // 區塊三：用表格列出最新回報紀錄
+      // ----------------------------------------
+      const isDateEmpty = dateFilteredData.length === 0 && currentDashboardMode !== 'ALL';
+      const tableData = isDateEmpty ? dataList : dateFilteredData;
+      renderLatestRecordsTable(tableData, isDateEmpty);
+
+      // ----------------------------------------
       // 全廠設備數位雙生矩陣看板 (Digital Twin Matrix)
       // ----------------------------------------
       renderDigitalTwinMatrix(dataList);
@@ -1612,13 +1660,6 @@
       // 異常代碼 Pareto 柏拉圖分析 (80/20 法則)
       // ----------------------------------------
       renderParetoChart(dataList);
-
-      // ----------------------------------------
-      // 區塊三：用表格列出最新回報紀錄
-      // ----------------------------------------
-      const isDateEmpty = dateFilteredData.length === 0 && currentDashboardMode !== 'ALL';
-      const tableData = isDateEmpty ? dataList : dateFilteredData;
-      renderLatestRecordsTable(tableData, isDateEmpty);
     }
 
     // ==========================================
@@ -1855,7 +1896,7 @@
              </span>`;
         }
 
-        const qtyNum = Number(row.Produced_Qty) || 0;
+        const qtyNum = getRecordQty(row);
         const qtyFormatted = qtyNum.toLocaleString('en-US');
         const formattedTime = formatTimestamp(row.Timestamp);
         const errCode = String(row.Error_Code || '');
@@ -2136,7 +2177,7 @@
             <td class="py-2 px-2 whitespace-nowrap text-sky-300 font-bold">${escHtml(r.Machine_ID || '')}</td>
             <td class="py-2 px-2 whitespace-nowrap text-slate-300">${personText(r)}</td>
             <td class="py-2 px-2 whitespace-nowrap ${sc}">${escHtml(s)}</td>
-            <td class="py-2 px-2 text-right text-cyan-300">${(Number(r.Produced_Qty) || 0).toLocaleString('en-US')}</td>
+            <td class="py-2 px-2 text-right text-cyan-300">${getRecordQty(r).toLocaleString('en-US')}</td>
             <td class="py-2 px-2 whitespace-nowrap text-slate-300">${escHtml(r.Error_Code || '')}</td>
             <td class="py-2 px-2 text-slate-400 max-w-[180px] truncate" title="${escHtml(r.Notes || '')}">${escHtml(r.Notes || '')}</td>
             <td class="py-2 px-2 text-center whitespace-nowrap">
@@ -2498,7 +2539,7 @@
 
         const m = machineMap[mId];
         m.allRecords.push(r);
-        const qty = Number(r.Produced_Qty) || 0;
+        const qty = getRecordQty(r);
         m.totalQtyAll += qty;
 
         const rDay = taipeiDay(r.Timestamp);
@@ -2641,10 +2682,32 @@
                 <span>人員</span>
                 <span class="text-slate-200 font-semibold truncate max-w-[90px] text-right" title="${escHtml(m.operator)}">${escHtml(m.operator)}</span>
               </div>
-              <div class="flex items-center justify-between text-slate-400">
-                <span>${qtyLabel}</span>
-                <span class="text-cyan-300 font-bold">${m.targetDayQty.toLocaleString('en-US')} <span class="text-[9px] text-slate-500">PCS</span></span>
-              </div>
+              ${isAll ? `
+                <div class="flex items-center justify-between text-slate-400">
+                  <span>累計總產量</span>
+                  <span class="text-cyan-300 font-bold">${m.totalQtyAll.toLocaleString('en-US')} <span class="text-[9px] text-slate-500 font-normal">PCS</span></span>
+                </div>
+              ` : isToday ? `
+                <div class="flex items-center justify-between text-slate-400">
+                  <span>本日產量</span>
+                  <span class="${m.targetDayQty > 0 ? 'text-emerald-300 font-bold' : 'text-slate-400 font-medium'}">
+                    ${m.targetDayQty.toLocaleString('en-US')} <span class="text-[9px] text-slate-500 font-normal">PCS</span>
+                  </span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/40">
+                  <span>歷史累計</span>
+                  <span class="text-cyan-300 font-bold">${m.totalQtyAll.toLocaleString('en-US')} <span class="text-[9px] text-slate-500 font-normal">PCS</span></span>
+                </div>
+              ` : `
+                <div class="flex items-center justify-between text-slate-400">
+                  <span>${qtyLabel}</span>
+                  <span class="text-amber-300 font-bold">${m.targetDayQty.toLocaleString('en-US')} <span class="text-[9px] text-slate-500 font-normal">PCS</span></span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/40">
+                  <span>全期累計</span>
+                  <span class="text-slate-300 font-semibold">${m.totalQtyAll.toLocaleString('en-US')} <span class="text-[9px] text-slate-500 font-normal">PCS</span></span>
+                </div>
+              `}
             </div>
 
             ${m.statusCode === 'STOP' && isToday ? `
@@ -2992,7 +3055,7 @@
           csvEscape(r.Dept),
           csvEscape(r.Operator),
           csvEscape(r.Status),
-          csvEscape(r.Produced_Qty || 0),
+          csvEscape(getRecordQty(r)),
           csvEscape(r.Error_Code),
           csvEscape(r.Notes),
           csvEscape(r.Photo_URL),
@@ -3042,16 +3105,19 @@
       records.sort((a, b) => (new Date(b.Timestamp).getTime() || 0) - (new Date(a.Timestamp).getTime() || 0));
 
       let totalQty = 0;
+      let totalQtyAll = 0;
       let failureCount = 0;
       const targetDate = getTargetDateStr();
       const isAll = currentDashboardMode === 'ALL';
       const isToday = currentDashboardMode === 'TODAY';
 
       records.forEach(r => {
+        const qty = getRecordQty(r);
+        totalQtyAll += qty;
         const rDay = taipeiDay(r.Timestamp);
         const matchDate = isAll || rDay === targetDate || (DATA_IS_DEMO && isToday);
         if (matchDate) {
-          totalQty += (Number(r.Produced_Qty) || 0);
+          totalQty += qty;
         }
         const s = String(r.Status || '');
         if (s.includes('故障') || s.includes('🔴')) failureCount++;
@@ -3059,9 +3125,13 @@
 
       const qtyLbl = document.getElementById('mtTotalQtyLabel');
       if (qtyLbl) {
-        qtyLbl.textContent = isAll ? '全期累計產量' : isToday ? '本日累計產量' : '該日累計產量';
+        qtyLbl.textContent = isAll ? '全期累計產量' : isToday ? '本日產量 (歷史累計)' : '該日產量 (歷史累計)';
       }
-      document.getElementById('mtTotalQty').textContent = `${totalQty.toLocaleString('en-US')} PCS`;
+      if (isAll) {
+        document.getElementById('mtTotalQty').textContent = `${totalQtyAll.toLocaleString('en-US')} PCS`;
+      } else {
+        document.getElementById('mtTotalQty').innerHTML = `${totalQty.toLocaleString('en-US')} <span class="text-xs font-normal text-slate-400">PCS</span> <span class="text-xs font-normal text-slate-500">(累計: <b class="text-cyan-300 font-bold">${totalQtyAll.toLocaleString('en-US')}</b> PCS)</span>`;
+      }
       document.getElementById('mtReportCount').textContent = records.length;
       document.getElementById('mtFailureCount').textContent = failureCount;
 
@@ -3107,7 +3177,7 @@
                 </div>
                 <div class="text-[11.5px] text-slate-300 space-y-0.5">
                   <div>回報人員：<span class="text-white font-semibold">${escHtml(r.Operator || '--')}</span> ${r.Dept ? `<span class="text-slate-500">(${escHtml(r.Dept)})</span>` : ''}</div>
-                  <div>生產產量：<span class="text-cyan-300 font-bold">${(Number(r.Produced_Qty) || 0).toLocaleString('en-US')} PCS</span></div>
+                  <div>生產產量：<span class="text-cyan-300 font-bold">${getRecordQty(r).toLocaleString('en-US')} PCS</span></div>
                   ${r.Error_Code && r.Error_Code !== '無' ? `<div>異常代碼：<span class="text-rose-300 font-bold">${escHtml(r.Error_Code)}</span></div>` : ''}
                   ${r.Notes ? `<div>備註說明：<span class="text-amber-100/90">${escHtml(r.Notes)}</span></div>` : ''}
                 </div>
