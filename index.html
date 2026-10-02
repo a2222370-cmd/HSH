@@ -686,6 +686,7 @@
   var CLOUD_URL_KEY = 'lottery_cloud_api_url';
   var CLOUD_TOKEN_KEY = 'lottery_cloud_api_token';
   // 預設雲端 API：新電腦第一次打開就自動使用，不用每台手動設定（管理者仍可在「雲端同步設定」改掉）
+  var BACKEND_MIN_VERSION = 'v1.10.4'; // 搭配的後端 Code.gs 版本
   var DEFAULT_CLOUD_API_URL = 'https://script.google.com/macros/s/AKfycbwzJhYBVkOoho6i5XDnPhe_Jc66dbpYY-L0GYZI2TDZDx7rUyV88FFGAmCBdViUTFjZjA/exec';
   var DEFAULT_CLOUD_API_TOKEN = 'CHANGE_ME_TO_A_SECRET'; // 要跟 Code.gs 的 API_TOKEN 一致
   var CLOUD_API_URL = '';
@@ -695,8 +696,12 @@
   var CLOUD_ADMIN_UNLOCKED = false;
   var CLOUD_ADMIN_TIMER = null;
   var CLOUD_ADMIN_TIMEOUT_MS = 10 * 60 * 1000; // 解鎖 10 分鐘後自動上鎖
-  var APP_VERSION = 'v1.10.3';
+  var APP_VERSION = 'v1.10.4';
   var CHANGELOG = [
+    { v: 'v1.10.4', date: '2026-10-02', notes: [
+      '管理者解鎖失敗時會自動檢查雲端後端版本，部署的不是最新版就直接提示要重新部署',
+      '管理者密碼比對會忽略前後空白；瀏覽器打開「API 網址?action=ping」可看到後端版本'
+    ] },
     { v: 'v1.10.3', date: '2026-10-02', notes: [
       '內建公司的雲端 API 網址與驗證碼，新電腦打開就會自動同步、顯示線上人數，不用每台各自設定'
     ] },
@@ -1628,6 +1633,14 @@
         updateCloudStatus();
       } else {
         cloudSetStatus_('❌ 解鎖失敗：' + err, true);
+        // 順便檢查後端版本，部署的若不是最新版就直接提示（舊版後端的管理者密碼可能還是預設值）
+        fetch(CLOUD_API_URL + (CLOUD_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=ping')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (d && d.ok && d.version !== BACKEND_MIN_VERSION) {
+              cloudSetStatus_('❌ 解鎖失敗：' + err + '｜⚠️ 雲端後端目前是 ' + (d.version || '舊版') + '，不是最新的 ' + BACKEND_MIN_VERSION + '，請把最新 Code.gs 貼上後「部署 → 管理部署作業 → 編輯 → 新版本」再試', true);
+            }
+          })['catch'](function() {});
       }
     });
   }
