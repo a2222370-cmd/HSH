@@ -215,6 +215,39 @@
       <div id="lastSyncTime" class="text-[11px] text-slate-500">最後更新：尚未更新</div>
     </div>
 
+    <!-- 📅 看板統計日期切換列 (預設本日，隔日 00:00 自動歸零重新計算) -->
+    <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-cyan-300 font-bold flex items-center gap-1.5 text-[12px]">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span>📅 看板日期模式：</span>
+        </span>
+        <div id="dateModeTabs" class="flex items-center bg-black/60 p-1 rounded-lg border border-slate-800 gap-1">
+          <button type="button" onclick="setDashboardDateMode('TODAY')" class="date-tab active px-3 py-1 rounded text-cyan-300 font-bold bg-cyan-900/60 border border-cyan-500/40 transition-all">
+            🟢 本日 (今日)
+          </button>
+          <button type="button" onclick="setDashboardDateMode('YESTERDAY')" class="date-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">
+            昨天
+          </button>
+          <button type="button" onclick="setDashboardDateMode('CUSTOM')" class="date-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all flex items-center gap-1">
+            指定日期 ▾
+          </button>
+          <button type="button" onclick="setDashboardDateMode('ALL')" class="date-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">
+            🌐 全期歷史
+          </button>
+        </div>
+        <input type="date" id="customDateInput" onchange="onCustomDateChange(this.value)" class="hidden bg-black/70 border border-cyan-500/60 rounded px-2 py-1 text-cyan-300 text-xs focus:outline-none focus:border-cyan-400">
+      </div>
+
+      <div class="flex items-center gap-2 text-slate-400 text-[11px]">
+        <span>當前統計：</span>
+        <span id="activeDateBadge" class="px-2.5 py-0.5 rounded font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-500/40">
+          本日 (今日)
+        </span>
+        <span class="text-slate-500 hidden sm:inline">（隔日 00:00 自動歸零迎接新一天）</span>
+      </div>
+    </div>
+
     <!-- 線上清單（展開） -->
     <div id="onlineList" class="hidden mt-3 p-3 rounded bg-black/50 border border-emerald-700/50 text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto"></div>
 
@@ -267,6 +300,7 @@
             <div class="flex items-center gap-2">
               <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
               <h2 class="text-base font-bold tracking-wider text-cyan-200">區塊一 ｜ 全廠總生產量</h2>
+              <span id="outputDateScopeBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-300">本日 (今日)</span>
             </div>
             <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
               TOTAL OUTPUT
@@ -284,26 +318,26 @@
               </span>
               <span class="text-lg font-mono text-cyan-400 font-semibold">PCS</span>
             </div>
-            <p class="text-xs text-slate-400 font-mono mt-2">全廠即時加總累計生產總件數</p>
+            <p id="totalOutputDateTip" class="text-xs text-slate-400 font-mono mt-2">本日累計生產總件數（隔日 00:00 自動歸零重新計算）</p>
           </div>
         </div>
 
         <!-- 輔助指標微型儀表 -->
         <div class="grid grid-cols-4 gap-2 pt-4 border-t border-slate-800/80 font-mono text-center">
           <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
-            <div class="text-[10px] text-slate-400">總回報筆數</div>
+            <div id="statLabelRecords" class="text-[10px] text-slate-400">本日回報</div>
             <div id="statTotalRecords" class="text-base font-bold text-slate-200 mt-0.5">0</div>
           </div>
           <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
-            <div class="text-[10px] text-emerald-400">正常報工</div>
+            <div id="statLabelNormal" class="text-[10px] text-emerald-400">本日正常</div>
             <div id="statNormalCount" class="text-base font-bold text-emerald-400 mt-0.5">0</div>
           </div>
           <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
-            <div class="text-[10px] text-rose-400">故障停機</div>
+            <div id="statLabelFailure" class="text-[10px] text-rose-400">本日故障</div>
             <div id="statFailureCount" class="text-base font-bold text-rose-400 mt-0.5">0</div>
           </div>
           <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
-            <div class="text-[10px] text-amber-400">例行保養</div>
+            <div id="statLabelMaint" class="text-[10px] text-amber-400">本日保養</div>
             <div id="statMaintenanceCount" class="text-base font-bold text-amber-400 mt-0.5">0</div>
           </div>
         </div>
@@ -336,13 +370,13 @@
             <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
             <h2 class="text-base font-bold tracking-wider text-cyan-200">區塊二 ｜ 機台狀態分析 (圓餅圖)</h2>
           </div>
-          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
-            STATUS RATIO
+          <span id="pieDateScopeBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-300">
+            STATUS RATIO · 本日
           </span>
         </div>
 
-        <p class="text-xs text-slate-400 font-mono mt-2">
-          統計全廠機台「正常報工」、「故障停機」與「例行保養」運轉分佈比例
+        <p id="pieDescTip" class="text-xs text-slate-400 font-mono mt-2">
+          統計本日機台「正常報工」、「故障停機」與「例行保養」運轉分佈比例
         </p>
 
         <!-- 圖表容器 -->
@@ -397,8 +431,8 @@
           <div class="flex items-center gap-2">
             <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
             <h2 class="text-base font-bold tracking-wider text-cyan-200">全廠設備數位雙生矩陣看板 (Digital Twin Matrix)</h2>
-            <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
-              MACHINE FLEET
+            <span id="matrixDateBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-300">
+              🟢 本日
             </span>
           </div>
 
@@ -429,7 +463,7 @@
           </div>
         </div>
 
-        <p class="text-xs text-slate-400 font-mono mb-4">
+        <p id="matrixDescTip" class="text-xs text-slate-400 font-mono mb-4">
           點擊任一機台卡片，可展開檢視該機台的「本日生產明細、停機記錄時間軸與現場故障照片」：
         </p>
 
@@ -441,54 +475,7 @@
     </section>
 
     <!-- --------------------------------- -->
-    <!-- 異常代碼 Pareto 柏拉圖分析 (80/20 法則) -->
-    <!-- --------------------------------- -->
-    <section class="lg:col-span-12 flex flex-col">
-      <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md">
-        <div class="cyber-corner-tl"></div>
-        <div class="cyber-corner-tr"></div>
-        <div class="cyber-corner-bl"></div>
-        <div class="cyber-corner-br"></div>
-
-        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-cyan-900/60 mb-4">
-          <div class="flex items-center gap-2">
-            <span class="inline-block w-2.5 h-2.5 bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
-            <h2 class="text-base font-bold tracking-wider text-amber-200">異常代碼 Pareto 柏拉圖分析 (80/20 法則)</h2>
-            <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/30 text-amber-300">
-              TPM DEFECT PARETO
-            </span>
-          </div>
-
-          <!-- 時間範圍篩選 -->
-          <div class="flex items-center gap-2 font-mono text-xs">
-            <div id="paretoRangeTabs" class="flex items-center bg-black/60 p-1 rounded-lg border border-slate-800 gap-1">
-              <button type="button" onclick="setParetoRange('ALL')" class="pareto-tab active px-2.5 py-1 rounded text-cyan-300 font-bold bg-cyan-900/60 border border-cyan-500/40 transition-all">全期資料</button>
-              <button type="button" onclick="setParetoRange('WEEK')" class="pareto-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">近 7 天</button>
-              <button type="button" onclick="setParetoRange('MONTH')" class="pareto-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">近 30 天</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          <div class="lg:col-span-8 relative min-h-[300px]">
-            <canvas id="paretoChart" class="max-h-[320px]"></canvas>
-          </div>
-          <div class="lg:col-span-4 flex flex-col gap-3 font-mono text-xs">
-            <div class="p-3.5 rounded-lg bg-black/50 border border-slate-800">
-              <div class="text-[11px] text-amber-400 font-bold mb-1">🎯 柏拉圖 (80/20) 核心洞察：</div>
-              <div id="paretoInsight" class="text-slate-300 leading-relaxed text-[12px]">分析數據計算中…</div>
-            </div>
-            <div class="p-3.5 rounded-lg bg-black/50 border border-slate-800">
-              <div class="text-[11px] text-cyan-400 font-bold mb-1.5">📊 關鍵異常要因 (Vital Few)：</div>
-              <div id="paretoTopList" class="space-y-1.5 text-[11.5px]"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- --------------------------------- -->
-    <!-- 區塊三：最新 5 筆回報紀錄 (表格) -->
+    <!-- 區塊三：最新回報紀錄 (表格) -->
     <!-- --------------------------------- -->
     <section class="lg:col-span-12">
       <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md">
@@ -500,10 +487,13 @@
         <div class="flex items-center justify-between pb-3 border-b border-cyan-900/60 mb-4">
           <div class="flex items-center gap-2">
             <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
-            <h2 class="text-base font-bold tracking-wider text-cyan-200">區塊三 ｜ 最新 5 筆回報紀錄</h2>
+            <h2 class="text-base font-bold tracking-wider text-cyan-200">區塊三 ｜ 最新回報紀錄</h2>
+            <span id="telemetryDateBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-300">
+              LATEST LOGS · 本日
+            </span>
           </div>
           <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
-            LATEST 5 TELEMETRY LOGS
+            LATEST TELEMETRY LOGS
           </span>
         </div>
 
@@ -536,6 +526,54 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- --------------------------------- -->
+    <!-- 異常代碼 Pareto 柏拉圖分析 (80/20 法則) -->
+    <!-- --------------------------------- -->
+    <section class="lg:col-span-12 flex flex-col">
+      <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md">
+        <div class="cyber-corner-tl"></div>
+        <div class="cyber-corner-tr"></div>
+        <div class="cyber-corner-bl"></div>
+        <div class="cyber-corner-br"></div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-cyan-900/60 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+            <h2 class="text-base font-bold tracking-wider text-amber-200">異常代碼 Pareto 柏拉圖分析 (80/20 法則)</h2>
+            <span id="paretoScopeBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/30 text-amber-300">
+              🟢 本日
+            </span>
+          </div>
+
+          <!-- 時間範圍篩選 -->
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <div id="paretoRangeTabs" class="flex items-center bg-black/60 p-1 rounded-lg border border-slate-800 gap-1">
+              <button type="button" onclick="setParetoRange('TODAY')" class="pareto-tab active px-2.5 py-1 rounded text-cyan-300 font-bold bg-cyan-900/60 border border-cyan-500/40 transition-all">🟢 本日</button>
+              <button type="button" onclick="setParetoRange('WEEK')" class="pareto-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">近 7 天</button>
+              <button type="button" onclick="setParetoRange('MONTH')" class="pareto-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">近 30 天</button>
+              <button type="button" onclick="setParetoRange('ALL')" class="pareto-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">全期歷史</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div class="lg:col-span-8 relative min-h-[300px]">
+            <canvas id="paretoChart" class="max-h-[320px]"></canvas>
+          </div>
+          <div class="lg:col-span-4 flex flex-col gap-3 font-mono text-xs">
+            <div class="p-3.5 rounded-lg bg-black/50 border border-slate-800">
+              <div class="text-[11px] text-amber-400 font-bold mb-1">🎯 柏拉圖 (80/20) 核心洞察：</div>
+              <div id="paretoInsight" class="text-slate-300 leading-relaxed text-[12px]">分析數據計算中…</div>
+            </div>
+            <div class="p-3.5 rounded-lg bg-black/50 border border-slate-800">
+              <div class="text-[11px] text-cyan-400 font-bold mb-1.5">📊 關鍵異常要因 (Vital Few)：</div>
+              <div id="paretoTopList" class="space-y-1.5 text-[11.5px]"></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -845,7 +883,7 @@
       <!-- 統計摘要小儀表 -->
       <div class="grid grid-cols-3 gap-3 mb-4 flex-shrink-0 font-mono text-center text-xs">
         <div class="p-2.5 rounded bg-black/60 border border-slate-800">
-          <div class="text-[10px] text-slate-400">本日累計產量</div>
+          <div id="mtTotalQtyLabel" class="text-[10px] text-slate-400">本日累計產量</div>
           <div id="mtTotalQty" class="text-base font-bold text-cyan-300 mt-0.5">0 PCS</div>
         </div>
         <div class="p-2.5 rounded bg-black/60 border border-slate-800">
@@ -978,7 +1016,7 @@
     const FALLBACK_MOCK_DATA = [
       { Record_ID: "DEMO1", Timestamp: "2026-09-15 10:28:15", Machine_ID: "CNC-001", Dept: "現場廠務", Operator: "張師傅", Status: "正常報工", Produced_Qty: 180, Error_Code: "無", Device_Type: "手機", Browser: "Chrome 129", OS: "Android 14", IP: "61.220.1.2 (內:192.168.1.51)", Device_ID: "DK3F9A2M1X" },
       { Record_ID: "DEMO2", Timestamp: "2026-09-15 10:26:40", Machine_ID: "CNC-002", Dept: "現場廠務", Operator: "李組長", Status: "正常報工", Produced_Qty: 320, Error_Code: "無", Device_Type: "手機", Browser: "Safari 17", OS: "iOS 17", IP: "61.220.1.2", Device_ID: "DQ7P2L0B4C" },
-      { Record_ID: "DEMO3", Timestamp: "2026-09-15 10:24:10", Machine_ID: "CNC-003", Dept: "生技課", Operator: "王工程師", Status: "故障停機", Produced_Qty: 0, Error_Code: "E03刀具", Device_Type: "電腦", Browser: "Edge 129", OS: "Windows 11", IP: "61.220.1.2 (內:192.168.1.23)", Device_ID: "DZ1M8N6V3T" },
+      { Record_ID: "DEMO3", Timestamp: "2026-09-15 10:24:10", Machine_ID: "CNC-003", Dept: "工務課", Operator: "王工程師", Status: "故障停機", Produced_Qty: 0, Error_Code: "E03刀具", Device_Type: "電腦", Browser: "Edge 129", OS: "Windows 11", IP: "61.220.1.2 (內:192.168.1.23)", Device_ID: "DZ1M8N6V3T" },
       { Record_ID: "DEMO4", Timestamp: "2026-09-15 10:21:05", Machine_ID: "CNC-001", Dept: "現場廠務", Operator: "陳技術員", Status: "例行保養", Produced_Qty: 50, Error_Code: "無", Device_Type: "平板", Browser: "Chrome 129", OS: "Android 13", IP: "61.220.1.2", Device_ID: "DH5R4W9E2Y" },
       { Record_ID: "DEMO5", Timestamp: "2026-09-15 10:18:22", Machine_ID: "CNC-002", Dept: "品管課", Operator: "林技師", Status: "正常報工", Produced_Qty: 145, Error_Code: "無", Device_Type: "電腦", Browser: "Chrome 129", OS: "Windows 10", IP: "61.220.1.2 (內:192.168.1.40)", Device_ID: "DA0S6D2F8G" }
     ];
@@ -1074,7 +1112,193 @@
     }
 
     // ==========================================
-    // 初始化時鐘
+    // 📅 戰情室統計日期控制（預設本日，隔日 00:00 自動歸零重新計算）
+    // ==========================================
+    function taipeiDay(v) {
+      if (!v && v !== 0) return '';
+
+      // 1. 若已經是 YYYY-MM-DD 純日期字串
+      if (typeof v === 'string') {
+        const str = v.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+        // 2. 若是標準回報字串 "2026-10-03 00:15:30" 或 "2026/10/03 00:15:30"（無時區偏移標記）
+        // 直接從字串提取 YYYY-MM-DD，絕不因瀏覽器本機時區而產生二次位移！
+        const hasTz = str.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(str);
+        if (!hasTz) {
+          const m = str.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+          if (m) {
+            return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+          }
+        }
+      }
+
+      // 3. 若是 Date 物件或數字 timestamp 或帶時區的 ISO 字串
+      try {
+        let d = (v instanceof Date) ? v : new Date(v);
+        if (isNaN(d.getTime()) && typeof v === 'string') {
+          d = new Date(v.trim().replace(/\//g, '-').replace(' ', 'T'));
+        }
+        if (isNaN(d.getTime())) return '';
+
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Taipei',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+        return formatter.format(d);
+      } catch (e) {
+        return '';
+      }
+    }
+
+    let currentDashboardMode = 'TODAY'; // 'TODAY' | 'YESTERDAY' | 'CUSTOM' | 'ALL'
+    let currentCustomDate = '';         // 當 mode === 'CUSTOM' 時之 YYYY-MM-DD
+    let lastObservedDate = taipeiDay(Date.now()); // 用於跨日偵測（午夜 00:00 自動重置）
+
+    function getYesterdayTaipei() {
+      const d = new Date(Date.now() - 24 * 3600 * 1000);
+      return taipeiDay(d);
+    }
+
+    function getTargetDateStr() {
+      if (currentDashboardMode === 'TODAY') return taipeiDay(Date.now());
+      if (currentDashboardMode === 'YESTERDAY') return getYesterdayTaipei();
+      if (currentDashboardMode === 'CUSTOM') return currentCustomDate || taipeiDay(Date.now());
+      return ''; // 'ALL' 全期歷史
+    }
+
+    function getDateModeLabel() {
+      if (currentDashboardMode === 'TODAY') return '本日 (今日)';
+      if (currentDashboardMode === 'YESTERDAY') return `昨天 (${getYesterdayTaipei()})`;
+      if (currentDashboardMode === 'CUSTOM') return `指定日期 (${currentCustomDate || '未指定'})`;
+      if (currentDashboardMode === 'ALL') return '🌐 全期歷史';
+      return '本日 (今日)';
+    }
+
+    function updateDateBadges() {
+      const label = getDateModeLabel();
+      const isToday = currentDashboardMode === 'TODAY';
+      const isAll = currentDashboardMode === 'ALL';
+
+      // 頂部看板統計日期 Badge
+      const activeBadge = document.getElementById('activeDateBadge');
+      if (activeBadge) {
+        activeBadge.textContent = label;
+        activeBadge.className = isToday
+          ? 'px-2.5 py-0.5 rounded font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-500/40'
+          : isAll
+          ? 'px-2.5 py-0.5 rounded font-bold text-slate-300 bg-slate-900 border border-slate-700'
+          : 'px-2.5 py-0.5 rounded font-bold text-amber-300 bg-amber-950/80 border border-amber-500/40';
+      }
+
+      // 區塊一：產量範圍 Badge 與提示
+      const outBadge = document.getElementById('outputDateScopeBadge');
+      if (outBadge) outBadge.textContent = label;
+      const outTip = document.getElementById('totalOutputDateTip');
+      if (outTip) {
+        outTip.textContent = isToday
+          ? '本日累計生產總件數（隔日 00:00 自動歸零重新計算）'
+          : isAll
+          ? '全期歷史累計生產總件數'
+          : `${label} 累計生產總件數`;
+      }
+      const lblRecords = document.getElementById('statLabelRecords');
+      const lblNormal = document.getElementById('statLabelNormal');
+      const lblFailure = document.getElementById('statLabelFailure');
+      const lblMaint = document.getElementById('statLabelMaint');
+      const prefix = isToday ? '本日' : isAll ? '全期' : '該日';
+      if (lblRecords) lblRecords.textContent = `${prefix}回報`;
+      if (lblNormal) lblNormal.textContent = `${prefix}正常`;
+      if (lblFailure) lblFailure.textContent = `${prefix}故障`;
+      if (lblMaint) lblMaint.textContent = `${prefix}保養`;
+
+      // 區塊二：圓餅圖範圍 Badge 與提示
+      const pieBadge = document.getElementById('pieDateScopeBadge');
+      if (pieBadge) pieBadge.textContent = `STATUS RATIO · ${prefix}`;
+      const pieTip = document.getElementById('pieDescTip');
+      if (pieTip) pieTip.textContent = `統計${label}機台「正常報工」、「故障停機」與「例行保養」運轉分佈比例`;
+
+      // 數位雙生矩陣看板日期 Badge 與提示
+      const matrixBadge = document.getElementById('matrixDateBadge');
+      if (matrixBadge) matrixBadge.textContent = label;
+      const matrixTip = document.getElementById('matrixDescTip');
+      if (matrixTip) {
+        matrixTip.textContent = `點擊任一機台卡片，可展開檢視該機台的「${prefix}生產明細、停機記錄時間軸與現場故障照片」：`;
+      }
+
+      // 區塊三：最新回報表格日期 Badge
+      const telemBadge = document.getElementById('telemetryDateBadge');
+      if (telemBadge) telemBadge.textContent = `LATEST LOGS · ${prefix}`;
+    }
+
+    function setDashboardDateMode(mode) {
+      currentDashboardMode = mode;
+      
+      const tabs = document.querySelectorAll('#dateModeTabs .date-tab');
+      const customInput = document.getElementById('customDateInput');
+      
+      tabs.forEach(tab => {
+        tab.classList.remove('active', 'text-cyan-300', 'bg-cyan-900/60', 'border-cyan-500/40');
+        tab.classList.add('text-slate-400');
+      });
+
+      if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('active', 'text-cyan-300', 'bg-cyan-900/60', 'border-cyan-500/40');
+        window.event.currentTarget.classList.remove('text-slate-400');
+      }
+
+      if (mode === 'CUSTOM') {
+        if (customInput) {
+          customInput.classList.remove('hidden');
+          if (!customInput.value) {
+            customInput.value = taipeiDay(Date.now());
+            currentCustomDate = customInput.value;
+          }
+          try { customInput.showPicker(); } catch (e) { customInput.focus(); }
+        }
+      } else {
+        if (customInput) customInput.classList.add('hidden');
+      }
+
+      updateDateBadges();
+
+      if (LAST_DATA && LAST_DATA.length > 0) {
+        processAndRenderData(LAST_DATA);
+      }
+    }
+
+    function onCustomDateChange(val) {
+      currentCustomDate = val;
+      updateDateBadges();
+      if (LAST_DATA && LAST_DATA.length > 0) {
+        processAndRenderData(LAST_DATA);
+      }
+    }
+
+    function filterDataByDashboardDate(dataList) {
+      if (!Array.isArray(dataList)) return [];
+      if (currentDashboardMode === 'ALL') return dataList;
+
+      const targetDate = getTargetDateStr();
+      if (!targetDate) return dataList;
+
+      const filtered = dataList.filter(item => {
+        const itemDay = taipeiDay(item.Timestamp);
+        return itemDay === targetDate;
+      });
+
+      // 示範模式相容：若剛開啟頁面且在 DEMO 模式下本日完全無資料，允許展示 DEMO 避免空白
+      if (filtered.length === 0 && DATA_IS_DEMO && currentDashboardMode === 'TODAY') {
+        return dataList;
+      }
+
+      return filtered;
+    }
+
+    // ==========================================
+    // 初始化時鐘與午夜跨日自動換日檢查
     // ==========================================
     function updateClock() {
       const now = new Date();
@@ -1083,6 +1307,19 @@
                       `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
       const el = document.getElementById('liveClock');
       if (el) el.textContent = timeStr;
+
+      // 跨日自動換日檢查（隔日午夜 00:00 自動迎接新的一天）
+      const todayTaipei = taipeiDay(Date.now());
+      if (lastObservedDate && todayTaipei !== lastObservedDate) {
+        console.log('[戰情室] 偵測到跨日換日：', lastObservedDate, '->', todayTaipei);
+        lastObservedDate = todayTaipei;
+        if (currentDashboardMode === 'TODAY') {
+          updateDateBadges();
+          if (LAST_DATA && LAST_DATA.length > 0) {
+            processAndRenderData(LAST_DATA);
+          }
+        }
+      }
     }
     setInterval(updateClock, 1000);
     updateClock();
@@ -1275,7 +1512,17 @@
             return;
           }
 
-          setStatus(`數據同步成功！已成功載入 Google 試算表最新 ${telemetryData.length} 筆生產紀錄。` +
+          let dateHint = '';
+          if (telemetryData.length > 0 && currentDashboardMode === 'TODAY') {
+            const sortedByTime = [...telemetryData].sort((a,b) => (new Date(b.Timestamp).getTime()||0) - (new Date(a.Timestamp).getTime()||0));
+            const latestDay = taipeiDay(sortedByTime[0].Timestamp);
+            const todayStr = taipeiDay(Date.now());
+            if (latestDay && latestDay !== todayStr) {
+              dateHint = `（最新回報為 ${latestDay}，目前為【本日】模式，可點上方切換「昨天」或「全期」對照）`;
+            }
+          }
+
+          setStatus(`數據同步成功！已成功載入 Google 試算表最新 ${telemetryData.length} 筆生產紀錄。${dateHint}` +
             (json.version ? '' : '（後端是舊版，請更新 Code.gs 才看得到 IP／裝置資訊與管理功能）'));
           DATA_IS_DEMO = false;
         }
@@ -1312,6 +1559,9 @@
         return;
       }
 
+      // 依當前看板統計日期篩選資料（預設本日，隔日 00:00 自動歸零重新計算）
+      const dateFilteredData = filterDataByDashboardDate(dataList);
+
       // ----------------------------------------
       // 區塊一：計算全廠總生產量 (Produced_Qty 加總)
       // ----------------------------------------
@@ -1320,7 +1570,7 @@
       let failureCount = 0;
       let maintenanceCount = 0;
 
-      dataList.forEach(item => {
+      dateFilteredData.forEach(item => {
         // 安全轉換 Produced_Qty 為數值
         const qty = Number(item.Produced_Qty) || 0;
         totalQty += qty;
@@ -1342,7 +1592,7 @@
       animateNumber('totalProducedQty', totalQty);
 
       // 渲染輔助指標
-      document.getElementById('statTotalRecords').textContent = dataList.length;
+      document.getElementById('statTotalRecords').textContent = dateFilteredData.length;
       document.getElementById('statNormalCount').textContent = normalCount;
       document.getElementById('statFailureCount').textContent = failureCount;
       const maintCountEl = document.getElementById('statMaintenanceCount');
@@ -1364,9 +1614,11 @@
       renderParetoChart(dataList);
 
       // ----------------------------------------
-      // 區塊三：用表格列出最新的 5 筆回報紀錄
+      // 區塊三：用表格列出最新回報紀錄
       // ----------------------------------------
-      renderLatestRecordsTable(dataList);
+      const isDateEmpty = dateFilteredData.length === 0 && currentDashboardMode !== 'ALL';
+      const tableData = isDateEmpty ? dataList : dateFilteredData;
+      renderLatestRecordsTable(tableData, isDateEmpty);
     }
 
     // ==========================================
@@ -1404,6 +1656,51 @@
     function renderPieChart(normalCount, failureCount, maintenanceCount = 0) {
       const ctx = document.getElementById('statusPieChart').getContext('2d');
       const total = normalCount + failureCount + maintenanceCount;
+
+      const maintPctEl = document.getElementById('maintenancePercent');
+      const centerEl = document.getElementById('chartCenterText');
+
+      // 若目前所選日期尚無任何回報（例如本日開工前），優雅呈現待機底圖
+      if (total === 0) {
+        if (chartInstance) chartInstance.destroy();
+        document.getElementById('normalPercent').textContent = '0% (0)';
+        document.getElementById('failurePercent').textContent = '0% (0)';
+        if (maintPctEl) maintPctEl.textContent = '0% (0)';
+        if (centerEl) {
+          centerEl.classList.remove('hidden');
+          document.getElementById('availabilityRate').textContent = '--';
+        }
+        chartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: ['⚪ 尚無回報 / 待機'],
+            datasets: [{
+              data: [1],
+              backgroundColor: ['rgba(51, 65, 85, 0.45)'],
+              borderColor: ['#334155'],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: '#64748B',
+                  font: { family: '"Chakra Petch", sans-serif', size: 12 },
+                  usePointStyle: true,
+                  pointStyle: 'rectRounded'
+                }
+              },
+              tooltip: { enabled: false }
+            }
+          }
+        });
+        return;
+      }
       
       const normalPercent = total > 0 ? ((normalCount / total) * 100).toFixed(1) : 0;
       const failurePercent = total > 0 ? ((failureCount / total) * 100).toFixed(1) : 0;
@@ -1412,10 +1709,8 @@
       // 更新指標說明文字
       document.getElementById('normalPercent').textContent = `${normalPercent}% (${normalCount})`;
       document.getElementById('failurePercent').textContent = `${failurePercent}% (${failureCount})`;
-      const maintPctEl = document.getElementById('maintenancePercent');
       if (maintPctEl) maintPctEl.textContent = `${maintenancePercent}% (${maintenanceCount})`;
       
-      const centerEl = document.getElementById('chartCenterText');
       if (centerEl) {
         centerEl.classList.remove('hidden');
         document.getElementById('availabilityRate').textContent = `${normalPercent}%`;
@@ -1509,12 +1804,12 @@
     // ==========================================
     // 區塊三：渲染最新 5 筆紀錄表格
     // ==========================================
-    function renderLatestRecordsTable(dataList) {
+    function renderLatestRecordsTable(dataList, isFallbackHistory = false) {
       const tbody = document.getElementById('telemetryTableBody');
       if (!tbody) return;
 
       // 複製一份陣列並根據時間戳記排序 (由新到舊)
-      const sorted = [...dataList].sort((a, b) => {
+      const sorted = [...(dataList || [])].sort((a, b) => {
         const timeA = new Date(a.Timestamp).getTime() || 0;
         const timeB = new Date(b.Timestamp).getTime() || 0;
         return timeB - timeA;
@@ -1524,11 +1819,22 @@
       const latest5 = sorted.slice(0, 5);
 
       if (latest5.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="12" class="py-6 text-center text-slate-500">無任何回報資料</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="py-8 text-center text-slate-500 font-mono text-xs">【${getDateModeLabel()}】尚無回報紀錄，等待現場手機報工…</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = latest5.map((row, index) => {
+      let fallbackNoticeHtml = '';
+      if (isFallbackHistory) {
+        fallbackNoticeHtml = `
+          <tr class="bg-cyan-950/40 border-b border-cyan-800/60">
+            <td colspan="13" class="py-2.5 px-3 text-cyan-300 font-mono text-xs text-center tracking-wide">
+              ℹ️ 【${getDateModeLabel()}】現場尚未送出新回報，以下優先呈現<b>全廠最近 5 筆歷史回報</b>供對照：
+            </td>
+          </tr>
+        `;
+      }
+
+      tbody.innerHTML = fallbackNoticeHtml + latest5.map((row, index) => {
         const statusStr = String(row.Status || '');
         let statusBadge = '';
 
@@ -1879,12 +2185,6 @@
     // ==========================================
     // 🧹 一鍵清除數據（測試數據快速刪除）
     // ==========================================
-    function taipeiDay(v) {
-      const d = new Date(v);
-      if (isNaN(d.getTime())) return '';
-      const t = new Date(d.getTime() + 8 * 3600 * 1000); // 換算台灣日期，跟後端判斷一致
-      return t.toISOString().slice(0, 10);
-    }
     function getClearRange() {
       const scope = (document.querySelector('input[name=clearScope]:checked') || {}).value || 'all';
       if (scope === 'today') { const d = taipeiDay(Date.now()); return { scope, from: d, to: d }; }
@@ -2166,15 +2466,22 @@
         return;
       }
 
-      // 按機台分組資料
+      const targetDate = getTargetDateStr();
+      const isToday = currentDashboardMode === 'TODAY';
+      const isAll = currentDashboardMode === 'ALL';
+
+      // 建立機台資料模型
       const machineMap = {};
-      fleet.forEach(m => {
-        machineMap[m] = {
-          id: m,
-          records: [],
-          latest: null,
-          statusCode: 'IDLE', // RUN, STOP, MAINT, IDLE
-          todayQty: 0,
+      fleet.forEach(mId => {
+        machineMap[mId] = {
+          id: mId,
+          allRecords: [],       // 該機台所有歷史回報紀錄
+          targetRecords: [],    // 該機台在當選日期（本日）的回報紀錄
+          latestAll: null,      // 歷史最新一筆紀錄（保留負責人、最後時間、照片等實體資訊）
+          latestTarget: null,   // 當選日期的最新一筆紀錄
+          statusCode: 'IDLE',   // RUN, STOP, MAINT, IDLE
+          targetDayQty: 0,      // 當選日期累計產能
+          totalQtyAll: 0,       // 全期累計產能
           operator: '--',
           dept: '',
           errorCode: '',
@@ -2184,44 +2491,52 @@
         };
       });
 
-      const todayStr = taipeiDay(Date.now());
-
+      // 遍歷所有紀錄，精準分組
       (dataList || []).forEach(r => {
         const mId = String(r.Machine_ID || '').trim();
-        if (!machineMap[mId]) {
-          machineMap[mId] = {
-            id: mId,
-            records: [],
-            latest: null,
-            statusCode: 'IDLE',
-            todayQty: 0,
-            operator: '--',
-            dept: '',
-            errorCode: '',
-            notes: '',
-            photoUrl: '',
-            lastTimestamp: null
-          };
-        }
-        machineMap[mId].records.push(r);
+        if (!machineMap[mId]) return;
 
-        // 累計當天產量
+        const m = machineMap[mId];
+        m.allRecords.push(r);
+        const qty = Number(r.Produced_Qty) || 0;
+        m.totalQtyAll += qty;
+
         const rDay = taipeiDay(r.Timestamp);
-        if (rDay === todayStr || DATA_IS_DEMO) {
-          machineMap[mId].todayQty += (Number(r.Produced_Qty) || 0);
+        const match = isAll || rDay === targetDate || (DATA_IS_DEMO && isToday);
+        if (match) {
+          m.targetRecords.push(r);
+          m.targetDayQty += qty;
         }
       });
 
-      // 分析每個機台的最新狀態
+      // 分析每個機台的狀態與人員（確保歷史負責人與紀錄永不丟失）
       Object.keys(machineMap).forEach(mId => {
         const m = machineMap[mId];
-        if (m.records.length > 0) {
-          // 由新到舊排序
-          m.records.sort((a, b) => (new Date(b.Timestamp).getTime() || 0) - (new Date(a.Timestamp).getTime() || 0));
-          const latest = m.records[0];
-          m.latest = latest;
-          m.operator = latest.Operator || '--';
-          m.dept = latest.Dept || '';
+
+        // 歷史所有紀錄按時間由新到舊排序
+        m.allRecords.sort((a, b) => (new Date(b.Timestamp).getTime() || 0) - (new Date(a.Timestamp).getTime() || 0));
+        m.latestAll = m.allRecords[0] || null;
+
+        // 當選日期紀錄按時間由新到舊排序
+        m.targetRecords.sort((a, b) => (new Date(b.Timestamp).getTime() || 0) - (new Date(a.Timestamp).getTime() || 0));
+        m.latestTarget = m.targetRecords[0] || null;
+
+        // 基礎實體屬性：優先使用歷史最新紀錄，確保操作員與最後紀錄不變成空白 --
+        if (m.latestAll) {
+          m.operator = m.latestAll.Operator || '--';
+          m.dept = m.latestAll.Dept || '';
+          m.errorCode = m.latestAll.Error_Code || '';
+          m.notes = m.latestAll.Notes || '';
+          m.photoUrl = m.latestAll.Photo_URL || '';
+          m.lastTimestamp = m.latestAll.Timestamp;
+        }
+
+        // 狀態與當日屬性判斷：
+        if (m.targetRecords.length > 0) {
+          // 當選日期有報工紀錄：狀態由當日最新一筆決定
+          const latest = m.latestTarget;
+          m.operator = latest.Operator || m.operator;
+          m.dept = latest.Dept || m.dept;
           m.errorCode = latest.Error_Code || '';
           m.notes = latest.Notes || '';
           m.photoUrl = latest.Photo_URL || '';
@@ -2239,6 +2554,8 @@
             countRun++;
           }
         } else {
+          // 當選日期（本日）尚無報工：標記為待機/今日未報工
+          // 但人員與最後紀錄仍保留歷史最後回報者與時間，與回報紀錄完美連貫！
           m.statusCode = 'IDLE';
           countIdle++;
         }
@@ -2283,7 +2600,7 @@
           cardBg = 'bg-rose-950/30 border-rose-500 hover:border-rose-400 shadow-[0_0_15px_rgba(255,46,84,0.3)]';
           statusGlow = 'bg-rose-500 shadow-[0_0_8px_#ff2e54]';
           statusBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950/90 border border-rose-500 text-rose-300 animate-pulse">🔴 故障</span>`;
-          if (m.lastTimestamp) {
+          if (isToday && m.lastTimestamp) {
             downtimeSec = Math.max(0, Math.floor((Date.now() - new Date(m.lastTimestamp).getTime()) / 1000));
             isAlarmOverdue = downtimeSec >= DOWNTIME_THRESHOLD_MINUTES * 60;
           }
@@ -2294,10 +2611,20 @@
         } else {
           cardBg = 'bg-slate-950/40 border-slate-800 hover:border-slate-600';
           statusGlow = 'bg-slate-600';
-          statusBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-900 border border-slate-700 text-slate-400">⚪ 閒置</span>`;
+          const idleText = isToday ? '⚪ 今日未報工' : isAll ? '⚪ 閒置待機' : '⚪ 該日未報工';
+          statusBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-900 border border-slate-700 text-slate-400">${idleText}</span>`;
         }
 
         const alarmClass = isAlarmOverdue ? 'ring-2 ring-rose-500 animate-pulse shadow-[0_0_20px_rgba(255,46,84,0.6)]' : '';
+        const qtyLabel = isAll ? '累計產量' : isToday ? '本日產量' : '該日產量';
+
+        // 最後紀錄時間格式化（若是今天只顯示時分秒，若是歷史顯示日期）
+        let formattedTimeText = '--';
+        if (m.lastTimestamp) {
+          const tDay = taipeiDay(m.lastTimestamp);
+          const tNow = taipeiDay(Date.now());
+          formattedTimeText = (tDay === tNow) ? m.lastTimestamp.slice(11, 19) : formatTimestamp(m.lastTimestamp).slice(5, 16);
+        }
 
         return `
           <div onclick="openMachineTimeline('${escHtml(mId)}')" class="relative group cursor-pointer rounded-lg border p-3 font-mono transition-all duration-200 ${cardBg} ${alarmClass}">
@@ -2312,15 +2639,15 @@
             <div class="space-y-1 text-[11px] text-slate-300">
               <div class="flex items-center justify-between text-slate-400">
                 <span>人員</span>
-                <span class="text-slate-200 font-semibold truncate max-w-[90px] text-right">${escHtml(m.operator)}</span>
+                <span class="text-slate-200 font-semibold truncate max-w-[90px] text-right" title="${escHtml(m.operator)}">${escHtml(m.operator)}</span>
               </div>
               <div class="flex items-center justify-between text-slate-400">
-                <span>本日產量</span>
-                <span class="text-cyan-300 font-bold">${m.todayQty.toLocaleString('en-US')} <span class="text-[9px] text-slate-500">PCS</span></span>
+                <span>${qtyLabel}</span>
+                <span class="text-cyan-300 font-bold">${m.targetDayQty.toLocaleString('en-US')} <span class="text-[9px] text-slate-500">PCS</span></span>
               </div>
             </div>
 
-            ${m.statusCode === 'STOP' ? `
+            ${m.statusCode === 'STOP' && isToday ? `
               <div class="mt-2.5 pt-2 border-t border-rose-900/60 flex items-center justify-between gap-1">
                 <div class="flex flex-col">
                   <span class="text-[9.5px] text-rose-400 font-bold">已停機</span>
@@ -2335,7 +2662,7 @@
             ` : `
               <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
                 <span>最後紀錄</span>
-                <span class="truncate max-w-[80px]">${m.lastTimestamp ? m.lastTimestamp.slice(11, 19) : '--'}</span>
+                <span class="truncate max-w-[90px]" title="${escHtml(m.lastTimestamp || '')}">${formattedTimeText}</span>
               </div>
             `}
 
@@ -2351,6 +2678,13 @@
 
     // 每秒跳秒更新停機時間計數器與檢查逾時警報
     function tickDowntimeCounters() {
+      // 若不是本日模式（例如瀏覽昨天或歷史），直接隱藏即時警報橫幅，不發出聲音干擾
+      if (currentDashboardMode !== 'TODAY') {
+        const banner = document.getElementById('downtimeAlarmBanner');
+        if (banner) banner.classList.add('hidden');
+        return;
+      }
+
       const counters = document.querySelectorAll('.downtime-counter');
       const now = Date.now();
       const overdueMachines = [];
@@ -2389,7 +2723,7 @@
           if (!isAlarmBannerDismissed) {
             banner.classList.remove('hidden');
             const detail = overdueMachines.map(m => `機台【${m.id}】停機已達 ${m.mins} 分鐘`).join('、');
-            textEl.textContent = `${detail}（門檻：${DOWNTIME_THRESHOLD_MINUTES} 分鐘），請幹部或生技維修人員立即排查排除！`;
+            textEl.textContent = `${detail}（門檻：${DOWNTIME_THRESHOLD_MINUTES} 分鐘），請幹部或工務維修人員立即排查排除！`;
 
             // 動態產生快速回復按鈕
             if (quickBtns) {
@@ -2422,7 +2756,7 @@
     // ==========================================
     // 🏷️ 異常代碼 Pareto 柏拉圖分析 (80/20 法則)
     // ==========================================
-    let currentParetoRange = 'ALL';
+    let currentParetoRange = 'TODAY';
     let paretoChartInstance = null;
 
     function setParetoRange(range) {
@@ -2434,6 +2768,11 @@
       if (window.event && window.event.currentTarget) {
         window.event.currentTarget.classList.add('bg-cyan-900/60', 'border-cyan-500/40', 'text-cyan-300');
         window.event.currentTarget.classList.remove('text-slate-400');
+      }
+      const badge = document.getElementById('paretoScopeBadge');
+      if (badge) {
+        const lbl = range === 'TODAY' ? '🟢 本日' : range === 'WEEK' ? '近 7 天' : range === 'MONTH' ? '近 30 天' : '全期歷史';
+        badge.textContent = lbl;
       }
       renderParetoChart(LAST_DATA);
     }
@@ -2447,20 +2786,24 @@
 
       // 根據範圍過濾資料
       const now = Date.now();
+      const todayStr = taipeiDay(now);
+
       const filtered = (dataList || []).filter(r => {
         const s = String(r.Status || '');
         const err = String(r.Error_Code || '').trim();
         const isStop = s.includes('故障') || s.includes('🔴') || (err && err !== '無');
         if (!isStop) return false;
 
-        if (currentParetoRange === 'WEEK') {
+        if (currentParetoRange === 'TODAY') {
+          return taipeiDay(r.Timestamp) === todayStr || (DATA_IS_DEMO && dataList.length <= 5);
+        } else if (currentParetoRange === 'WEEK') {
           const t = new Date(r.Timestamp).getTime();
           return t && (now - t <= 7 * 86400 * 1000);
         } else if (currentParetoRange === 'MONTH') {
           const t = new Date(r.Timestamp).getTime();
           return t && (now - t <= 30 * 86400 * 1000);
         }
-        return true;
+        return true; // 'ALL' 全期
       });
 
       // 統計異常代碼發生頻率
@@ -2477,7 +2820,8 @@
 
       if (sortedKeys.length === 0) {
         if (paretoChartInstance) paretoChartInstance.destroy();
-        insightEl.innerHTML = '統計範圍內無任何故障停機或異常紀錄，設備運作極佳！';
+        const rangeLabel = currentParetoRange === 'TODAY' ? '本日' : currentParetoRange === 'WEEK' ? '近 7 天' : currentParetoRange === 'MONTH' ? '近 30 天' : '全期歷史';
+        insightEl.innerHTML = `統計範圍【${rangeLabel}】內無任何故障停機或異常紀錄，設備運作極佳！`;
         listEl.innerHTML = '<span class="text-slate-500">無異常數據</span>';
         return;
       }
@@ -2507,7 +2851,7 @@
         統計共 <b class="text-amber-300 font-bold">${totalEvents}</b> 次異常停機事件。<br>
         前 <b class="text-cyan-300 font-bold">${vitalFew.length}</b> 項主要原因（佔全部代碼之 ${vitalRatio}%）共導致了 
         <b class="text-rose-400 font-bold">${cum}%</b> 的停機損失。<br>
-        建議生技維修與現場幹部優先鎖定前幾大項目進行 TPM 改善！
+        建議工務維修與現場幹部優先鎖定前幾大項目進行 TPM 改善！
       `;
 
       listEl.innerHTML = sortedKeys.slice(0, 4).map((k, idx) => {
@@ -2699,16 +3043,24 @@
 
       let totalQty = 0;
       let failureCount = 0;
-      const todayStr = taipeiDay(Date.now());
+      const targetDate = getTargetDateStr();
+      const isAll = currentDashboardMode === 'ALL';
+      const isToday = currentDashboardMode === 'TODAY';
 
       records.forEach(r => {
-        if (taipeiDay(r.Timestamp) === todayStr || DATA_IS_DEMO) {
+        const rDay = taipeiDay(r.Timestamp);
+        const matchDate = isAll || rDay === targetDate || (DATA_IS_DEMO && isToday);
+        if (matchDate) {
           totalQty += (Number(r.Produced_Qty) || 0);
         }
         const s = String(r.Status || '');
         if (s.includes('故障') || s.includes('🔴')) failureCount++;
       });
 
+      const qtyLbl = document.getElementById('mtTotalQtyLabel');
+      if (qtyLbl) {
+        qtyLbl.textContent = isAll ? '全期累計產量' : isToday ? '本日累計產量' : '該日累計產量';
+      }
       document.getElementById('mtTotalQty').textContent = `${totalQty.toLocaleString('en-US')} PCS`;
       document.getElementById('mtReportCount').textContent = records.length;
       document.getElementById('mtFailureCount').textContent = failureCount;
@@ -2887,6 +3239,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       loadTelegramInfo();
       document.getElementById('versionTag').textContent = APP_VERSION;
+      updateDateBadges();
       updateOnlineBadge_();
       updateAlarmAudioButton();
       const threshSelect = document.getElementById('downtimeThresholdSelect');
