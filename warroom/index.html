@@ -139,8 +139,11 @@
               LIVE CONNECTED
             </span>
           </div>
-          <p class="text-xs text-slate-400 font-mono mt-0.5 tracking-wide">
-            SMART FACTORY INDUSTRIAL TELEMETRY & OPERATIONS MONITORING
+          <p class="text-xs text-slate-400 font-mono mt-0.5 tracking-wide flex flex-wrap items-center gap-2">
+            <span>SMART FACTORY INDUSTRIAL TELEMETRY & OPERATIONS MONITORING</span>
+            <button type="button" onclick="openChangelog()" title="點擊查看歷史改版記錄" class="px-2 py-0.5 rounded-full border border-cyan-500/50 bg-cyan-950/50 text-cyan-300 hover:bg-cyan-900/60 hover:text-white transition-all">
+              <span id="versionTag">v—</span> · 改版記錄
+            </button>
           </p>
         </div>
       </div>
@@ -538,6 +541,20 @@
   </div>
 
   <!-- =============================== -->
+  <!-- 📜 歷史改版記錄 -->
+  <!-- =============================== -->
+  <div id="changelogModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden" onclick="if(event.target===this) closeChangelog()">
+    <div class="relative w-full max-w-2xl bg-slate-900 border border-cyan-500 rounded-lg shadow-glow-cyan font-mono flex flex-col" style="max-height:85vh">
+      <div class="cyber-corner-tl"></div><div class="cyber-corner-tr"></div><div class="cyber-corner-bl"></div><div class="cyber-corner-br"></div>
+      <div class="flex items-center justify-between px-6 py-4 border-b border-cyan-900/60">
+        <h3 class="text-base font-bold text-cyan-300">📜 系統歷史改版記錄（回報頁＋戰情室）</h3>
+        <button onclick="closeChangelog()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <div id="changelogBody" class="p-5 overflow-y-auto space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
   <!-- 🔑 管理員解鎖 -->
   <!-- =============================== -->
   <div id="adminLoginModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
@@ -642,6 +659,59 @@
       { Record_ID: "DEMO4", Timestamp: "2026-09-15 10:21:05", Machine_ID: "CNC-001", Dept: "現場廠務", Operator: "陳技術員", Status: "例行保養", Produced_Qty: 50, Error_Code: "無", Device_Type: "平板", Browser: "Chrome 129", OS: "Android 13", IP: "61.220.1.2", Device_ID: "DH5R4W9E2Y" },
       { Record_ID: "DEMO5", Timestamp: "2026-09-15 10:18:22", Machine_ID: "CNC-002", Dept: "品管課", Operator: "林技師", Status: "正常報工", Produced_Qty: 145, Error_Code: "無", Device_Type: "電腦", Browser: "Chrome 129", OS: "Windows 10", IP: "61.220.1.2 (內:192.168.1.40)", Device_ID: "DA0S6D2F8G" }
     ];
+
+    // ==========================================
+    // 版本與歷史改版記錄（與回報頁 report.html 共用同一份內容）
+    // ==========================================
+    const APP_VERSION = 'v2.3.0';
+    const CHANGELOG = [
+      { v: 'v2.3.0', date: '2026-10-02', notes: [
+        '【全系統】管理員閒置自動登出改為 30 分鐘（跟圖面查詢、訂單管理、電子簽核系統一致）：點擊、鍵盤、移動滑鼠、捲動、觸控都算有操作',
+        '【戰情室】管理員按鈕與管理區塊標示「閒置 30 分鐘自動登出」，剩 5 分鐘時顯示倒數，時間到自動登出',
+        '【回報頁】管理歷史選單解鎖後同樣 30 分鐘閒置自動登出，管理列顯示剩餘時間',
+        '【戰情室】新增版本號與「歷史改版記錄」：點標題下方版本號即可查看（與回報頁共用同一份改版記錄）',
+        '【後端】通行證效期改為 30 分鐘，網頁有操作時每分鐘自動延長一次（需搭配後端 Code.gs v2.3.0）'
+      ] },
+      { v: 'v2.2.0', date: '2026-10-02', notes: [
+        '【回報頁】「管理歷史選單」改成只有管理員可以新增、編輯、刪除、批次刪除與重新掃描；一般使用者只能查看與點選（回報時打的新機台、新異常代碼仍會自動加入）',
+        '【回報頁】「GAS 接收端點設定」改成只有管理員能修改：要輸入管理員密碼，後端驗證通過才會儲存',
+        '【回報頁】HSH Logo 拿掉白色底，直接顯示在標題列上',
+        '【戰情室】最新 5 筆回報表格新增「備註」欄',
+        '【戰情室】「GAS 連線設定」改成要輸入管理員密碼、驗證通過才會儲存',
+        '【全系統】管理員名稱固定為「資訊課-Kenny」，只需要輸入密碼',
+        '【安全】網頁原始碼裡沒有管理員密碼，密碼只在解鎖時送到後端驗證一次；之後改用後端發的臨時通行證，瀏覽器不保存密碼（需搭配後端 Code.gs v2.2.0）'
+      ] },
+      { v: 'v2.1.0', date: '2026-10-02', notes: [
+        '【戰情室】管理員新增「🧹 一鍵清除數據」：可清除全部、只清今天，或指定日期範圍，方便上課／測試後快速刪除測試數據',
+        '【戰情室】清除前要輸入「清除」兩個字並再次確認；後端會先自動把要刪的資料備份到新工作表「備份_日期時間」，清錯了可以還原；標題列、歷史選單與稽核紀錄都不會被清掉（需搭配後端 Code.gs v2.1.0）'
+      ] },
+      { v: 'v2.0.0', date: '2026-10-02', notes: [
+        '【回報頁】系統名稱改為「許瑞興機台狀態回報系統」，換上 HSH Logo ＋ SINCE 1960（跟圖面／標準文件查詢系統同樣的標誌）',
+        '【回報頁】新增「線上人數」：每 30 秒回報一次，點一下可展開目前在線的裝置清單（IP、手機／電腦、作業系統、瀏覽器、裝置 ID、連線時間）；同一台裝置開多個分頁只算一人',
+        '【回報頁】新增「歷史改版記錄」：點標題下方版本號或頁尾連結即可查看',
+        '【回報頁】「選擇機台」改成可選也可自訂；新增「⚙️ 管理歷史選單」，即時同步雲端（跟許瑞興訂單管理系統前台同樣做法）',
+        '【回報頁】「操作員姓名」改用「本機回報識別」：第一次使用必須設定使用部門與姓名，之後每次回報自動帶入',
+        '【回報頁】「異常代碼」可直接打字自訂，新代碼送出後自動加入歷史選單',
+        '【戰情室】最新回報表格新增回報人員的 IP、瀏覽器裝置 ID、瀏覽器／作業系統，以及是手機、平板還是電腦',
+        '【戰情室】右上角新增「線上人數」，可展開在線清單',
+        '【戰情室】新增「🔑 管理員」：解鎖後可搜尋、篩選、分頁瀏覽全部回報，編輯或刪除（含批次刪除）回報資料；每次修改都寫入試算表「AdminLog」（需搭配後端 Code.gs v2.0.0）'
+      ] },
+      { v: 'v1.0.0', date: '2026-09-15', notes: [
+        '機台狀態回報系統與智慧製造戰情室上線：手機填寫機台、操作員、狀態、生產數量、異常代碼與備註，透過 Google Apps Script 寫入試算表；戰情室顯示全廠總產量、機台狀態圓餅圖與最新 5 筆回報'
+      ] }
+    ];
+    function openChangelog() {
+      document.getElementById('changelogBody').innerHTML = CHANGELOG.map((c, i) =>
+        `<div class="rounded border ${i === 0 ? 'border-cyan-500/60 bg-cyan-950/30' : 'border-slate-700 bg-slate-950/50'} p-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+            <span class="text-xs font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 px-2 py-0.5 rounded">${c.v}${i === 0 ? ' · 目前版本' : ''}</span>
+            <span class="text-[11px] text-slate-500">${c.date}</span>
+          </div>
+          <ol class="list-decimal pl-5 space-y-1 text-[12.5px] text-slate-300 leading-relaxed">${c.notes.map(n => '<li>' + escHtml(n) + '</li>').join('')}</ol>
+        </div>`).join('');
+      document.getElementById('changelogModal').classList.remove('hidden');
+    }
+    function closeChangelog() { document.getElementById('changelogModal').classList.add('hidden'); }
 
     let chartInstance = null;
     let LAST_DATA = [];        // 最近一次同步到的全部回報資料
@@ -1569,6 +1639,7 @@
     // 頁面載入完成時立即發送請求
     // ==========================================
     window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('versionTag').textContent = APP_VERSION;
       updateOnlineBadge_();
       pingPresence();
       detectIp_().then(() => { presenceBusy = false; pingPresence(); });
