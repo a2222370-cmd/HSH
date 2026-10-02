@@ -36,7 +36,8 @@
 
     /* HSH Logo（跟圖面／標準文件查詢系統同樣：Logo + SINCE 1960） */
     .brand-logo { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
-    .brand-logo .logo-chip { background:#fff; border-radius:10px; padding:3px 6px; box-shadow:0 2px 6px rgba(0,0,0,.25); }
+    .brand-logo .logo-chip { background:transparent; padding:0; }
+    .brand-logo img { filter:drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
     .brand-logo img { height:30px; width:auto; display:block; }
     .brand-logo span { margin-top:2px; font-size:8.5px; font-weight:700; letter-spacing:1.5px; color:#bfdbfe; white-space:nowrap; }
 
@@ -291,19 +292,24 @@
         <button type="button" onclick="toggleConfigModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">&times;</button>
       </div>
       <div class="space-y-3 text-xs">
+        <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11.5px] font-bold">🔒 只有管理員可以修改端點設定（輸入管理員密碼，由後端驗證通過才會儲存）</div>
         <div>
           <label class="block font-bold text-slate-700 mb-1">Google Apps Script Web App 網址：</label>
           <input type="text" id="gasUrlSettingInput" placeholder="https://script.google.com/macros/s/.../exec"
             class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
-          <p class="text-[11px] text-slate-500 mt-1">發送 POST 請求時將固定附加 Token：<code class="text-blue-600 font-bold">ITRI_2026</code></p>
+          <button type="button" onclick="document.getElementById('gasUrlSettingInput').value=DEFAULT_GAS_URL" class="mt-1 text-[11px] text-sky-600 underline">填入系統預設網址</button>
         </div>
         <div id="backendVersionInfo" class="p-3 rounded-xl bg-slate-50 text-slate-600 text-[11px]">後端版本：檢查中…</div>
-        <div class="p-3 rounded-xl bg-blue-50 text-blue-800 text-[11px] leading-relaxed">
-          <p class="font-bold mb-0.5">📌 提示：</p>此設定會儲存於本機瀏覽器中。若未輸入將使用程式碼預設網址發送。
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">管理員密碼：</label>
+          <input type="password" id="cfgAdminPw" autocomplete="off" oncontextmenu="return false;" oncopy="return false;" oncut="return false;"
+            onkeydown="if(event.key==='Enter') saveGasSetting();" placeholder="一般使用者無法修改"
+            class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500" />
         </div>
-        <div class="flex justify-end gap-2 pt-2">
+        <div id="cfgErr" class="hidden text-[12px] font-bold text-rose-600"></div>
+        <div class="flex justify-end gap-2 pt-1">
           <button type="button" onclick="toggleConfigModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-medium hover:bg-slate-200">取消</button>
-          <button type="button" onclick="saveGasSetting()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/30">儲存設定</button>
+          <button type="button" id="cfgSaveBtn" onclick="saveGasSetting()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold">🔑 驗證並儲存</button>
         </div>
       </div>
     </div>
@@ -342,16 +348,17 @@
         <h3 class="font-bold text-slate-800 text-base">⚙️ 管理歷史選單資料庫</h3>
         <button type="button" onclick="closeDropdownManager()" class="text-slate-400 text-xl font-bold p-1">&times;</button>
       </div>
+      <div id="ddAdminBar" class="mb-2"></div>
       <div class="flex items-center gap-2 mb-2 flex-wrap">
         <select id="dropdownFieldSelect" onchange="renderDropdownManageList()" class="flex-1 h-9 px-2 border border-slate-300 rounded-lg text-[13px] bg-white">
           <option value="Machine_ID">機台編號</option>
           <option value="Error_Code">異常代碼</option>
           <option value="Dept">使用部門</option>
         </select>
-        <button type="button" onclick="addNewDropdownOption()" class="h-9 px-3 rounded-lg bg-emerald-600 text-white text-[12px] font-bold">➕ 新增</button>
-        <button type="button" onclick="reScanAllDropdownData()" class="h-9 px-3 rounded-lg bg-slate-500 text-white text-[12px] font-bold" title="從所有回報資料重新掃描">🔄 重新掃描</button>
+        <button type="button" onclick="requireAdmin(addNewDropdownOption)" class="h-9 px-3 rounded-lg bg-emerald-600 text-white text-[12px] font-bold">➕ 新增</button>
+        <button type="button" onclick="requireAdmin(reScanAllDropdownData)" class="h-9 px-3 rounded-lg bg-slate-500 text-white text-[12px] font-bold" title="從所有回報資料重新掃描">🔄 重新掃描</button>
       </div>
-      <div class="flex items-center justify-between bg-slate-100 rounded-lg px-2.5 py-1.5 mb-2 text-[12px]">
+      <div id="ddSelectBar" class="flex items-center justify-between bg-slate-100 rounded-lg px-2.5 py-1.5 mb-2 text-[12px]">
         <label class="flex items-center gap-2 font-bold text-slate-600"><input type="checkbox" id="selectAllDropdownCheckbox" onclick="toggleSelectAllDropdown(this)" class="w-4 h-4"> 全選</label>
         <button type="button" id="batchDeleteDropdownBtn" onclick="executeBatchDeleteDropdown()" class="hidden px-2.5 py-1 rounded-md bg-rose-600 text-white font-bold">🗑️ 批次刪除</button>
       </div>
@@ -359,6 +366,24 @@
       <div id="dropdownSyncMsg" class="text-[11.5px] text-slate-500 mt-2"></div>
       <div class="text-right mt-3">
         <button type="button" onclick="closeDropdownManager()" class="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 🔑 管理員解鎖（歷史選單管理用） -->
+  <!-- ========================================== -->
+  <div id="adminModal" class="modal-wrap" style="z-index:70;">
+    <div class="w-full max-w-xs bg-white rounded-2xl p-5 shadow-2xl">
+      <h3 class="font-bold text-[16px] text-slate-800 mb-1">🔑 管理員解鎖</h3>
+      <p class="text-[12px] text-slate-500 mb-3">管理員：<b>資訊課-Kenny</b>。密碼由後端驗證，同一台裝置連續輸錯 5 次會暫時鎖住 15 分鐘。</p>
+      <input type="password" id="adminPwInput" autocomplete="off" oncontextmenu="return false;" oncopy="return false;" oncut="return false;"
+        onkeydown="if(event.key==='Enter') submitAdminUnlock();" placeholder="請輸入管理員密碼"
+        class="w-full h-11 px-3 bg-slate-50 border border-slate-300 rounded-xl text-[15px] focus:outline-none focus:ring-2 focus:ring-amber-500 mb-2" />
+      <div id="adminErr" class="hidden text-[12.5px] font-bold text-rose-600 mb-2"></div>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeAdminModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-600">取消</button>
+        <button type="button" id="adminUnlockBtn" onclick="submitAdminUnlock()" class="px-5 py-2 rounded-xl bg-amber-500 text-white font-bold">解鎖</button>
       </div>
     </div>
   </div>
@@ -380,9 +405,16 @@
     // ==========================================
     // 版本與改版記錄
     // ==========================================
-    const APP_VERSION = 'v2.1.0';
-    const BACKEND_MIN_VERSION = 'v2.1.0';
+    const APP_VERSION = 'v2.2.0';
+    const BACKEND_MIN_VERSION = 'v2.2.0';
     const CHANGELOG = [
+      { v: 'v2.2.0', date: '2026-10-02', notes: [
+        '「管理歷史選單」改成只有管理員可以新增、編輯、刪除、批次刪除與重新掃描；一般使用者只能查看與點選（回報時打的新機台、新異常代碼仍會自動加入）',
+        '「GAS 接收端點設定」改成只有管理員能修改：要輸入管理員密碼，後端驗證通過才會儲存',
+        'HSH Logo 拿掉白色底，直接顯示在標題列上',
+        '管理員名稱固定為「資訊課-Kenny」，只需要輸入密碼',
+        '密碼安全：網頁原始碼裡沒有管理員密碼，密碼只在解鎖時送到後端驗證一次；之後改用後端發的臨時通行證（15 分鐘沒操作自動失效），瀏覽器不保存密碼（需搭配後端 Code.gs v2.2.0）'
+      ] },
       { v: 'v2.1.0', date: '2026-10-02', notes: [
         '戰情室管理員新增「🧹 一鍵清除數據」：可清除全部、只清今天，或指定日期範圍，方便上課／測試後快速刪除測試數據',
         '清除前要輸入「清除」兩個字並再次確認；後端會先自動把要刪的資料備份到新工作表「備份_日期時間」，清錯了可以還原；標題列、歷史選單與稽核紀錄都不會被清掉（需搭配後端 Code.gs v2.1.0）'
@@ -645,19 +677,77 @@
       el.textContent = t;
       el.className = 'text-[11.5px] mt-2 ' + (isErr ? 'text-rose-600 font-bold' : 'text-slate-500');
     }
+    // ==========================================
+    // 🔑 管理員（只放記憶體：後端發的臨時通行證；密碼不保存）
+    // ==========================================
+    const RADMIN = { token: '', timer: null, pending: null };
+    const RADMIN_IDLE_MS = 14 * 60 * 1000;
+    function adminTouch_() { clearTimeout(RADMIN.timer); RADMIN.timer = setTimeout(adminLock_, RADMIN_IDLE_MS); }
+    function adminLock_() {
+      if (RADMIN.token) apiPost({ action: 'logoutAdmin', adminToken: RADMIN.token }).catch(() => {});
+      RADMIN.token = ''; clearTimeout(RADMIN.timer);
+      renderDropdownAdminBar(); renderDropdownManageList();
+    }
+    function requireAdmin(fn) {
+      if (RADMIN.token) { adminTouch_(); fn(); return; }
+      RADMIN.pending = fn;
+      document.getElementById('adminPwInput').value = '';
+      document.getElementById('adminErr').classList.add('hidden');
+      document.getElementById('adminModal').classList.add('show');
+      setTimeout(() => document.getElementById('adminPwInput').focus(), 50);
+    }
+    function closeAdminModal() { RADMIN.pending = null; document.getElementById('adminPwInput').value = ''; document.getElementById('adminModal').classList.remove('show'); }
+    // 驗證管理員密碼：url 可指定要驗證的後端（端點設定用），回傳 Promise<通行證>
+    function verifyAdminPw_(pw, url) {
+      return fetch(url || getActiveGasUrl(), {
+        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ token: FIXED_TOKEN, action: 'verifyAdmin', adminPassword: pw, sid: MY_DEVICE_ID, ip: ENV.ip })
+      }).then(r => r.json(), () => { throw new Error('連不到這個 GAS 網址'); }).then(d => {
+        if (d && d.ok) return d.adminToken || '';
+        throw new Error((d && (d.message || d.error)) || '驗證失敗（後端可能還是舊版）');
+      });
+    }
+    function submitAdminUnlock() {
+      const pw = document.getElementById('adminPwInput').value;
+      const err = document.getElementById('adminErr');
+      if (!pw) { err.textContent = '❌ 請輸入管理員密碼'; err.classList.remove('hidden'); return; }
+      const btn = document.getElementById('adminUnlockBtn');
+      btn.disabled = true; btn.textContent = '驗證中…';
+      verifyAdminPw_(pw).then(tok => {
+        if (!tok) throw new Error('後端還是舊版（沒有通行證功能），請更新 Code.gs 到 ' + BACKEND_MIN_VERSION + ' 並重新部署');
+        RADMIN.token = tok; adminTouch_();
+        const fn = RADMIN.pending; closeAdminModal();
+        renderDropdownAdminBar(); renderDropdownManageList();
+        if (fn) fn();
+      }).catch(e => { err.textContent = '❌ ' + e.message; err.classList.remove('hidden'); })
+        .finally(() => { btn.disabled = false; btn.textContent = '解鎖'; document.getElementById('adminPwInput').value = ''; });
+    }
+    function renderDropdownAdminBar() {
+      const bar = document.getElementById('ddAdminBar');
+      if (!bar) return;
+      bar.innerHTML = RADMIN.token
+        ? '<div class="flex items-center justify-between gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 text-[12px] text-emerald-800 font-bold"><span>🔓 管理員：資訊課-Kenny（可編輯）</span><button type="button" onclick="adminLock_()" class="px-2 py-0.5 rounded bg-white border border-emerald-300">上鎖</button></div>'
+        : '<div class="flex items-center justify-between gap-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-[12px] text-amber-800 font-bold"><span>🔒 一般使用者只能查看；新增／編輯／刪除需管理員</span><button type="button" onclick="requireAdmin(function(){})" class="px-2 py-0.5 rounded bg-amber-500 text-white">🔑 解鎖</button></div>';
+      document.getElementById('ddSelectBar').style.display = RADMIN.token ? '' : 'none';
+    }
+
     function syncDropdownField(field) {
       cacheDropdown();
       renderDatalists();
       setDropdownMsg('☁️ 正在同步到雲端…');
-      apiPost({ action: 'saveDropdown', field: field, list: DROPDOWN[field] }).then(res => {
-        if (res && res.status === 'success') { if (Array.isArray(res.list)) DROPDOWN[field] = res.list; cacheDropdown(); setDropdownMsg('✅ 已同步到雲端（' + new Date().toLocaleTimeString() + '）'); }
-        else setDropdownMsg('⚠️ 雲端同步失敗：' + ((res && res.message) || '後端可能還是舊版，請更新 Code.gs 並重新部署') + '（目前只存在這台裝置）', true);
-      }).catch(() => setDropdownMsg('⚠️ 連不到雲端，變更目前只存在這台裝置', true));
+      adminTouch_();
+      apiPost({ action: 'saveDropdown', field: field, list: DROPDOWN[field], adminToken: RADMIN.token, sid: MY_DEVICE_ID, ip: ENV.ip }).then(res => {
+        if (res && res.status === 'success') { if (Array.isArray(res.list)) DROPDOWN[field] = res.list; cacheDropdown(); renderDropdownManageList(); setDropdownMsg('✅ 已同步到雲端（' + new Date().toLocaleTimeString() + '）'); return; }
+        if (res && (res.needAdmin || res.expired)) { RADMIN.token = ''; renderDropdownAdminBar(); }
+        setDropdownMsg('⚠️ 沒有儲存：' + ((res && res.message) || '後端可能還是舊版，請更新 Code.gs 並重新部署') + '（已還原為雲端內容）', true);
+        loadDropdownFromCloud().then(() => renderDropdownManageList());
+      }).catch(() => { setDropdownMsg('⚠️ 連不到雲端，沒有儲存（已還原）', true); loadDropdownFromCloud().then(() => renderDropdownManageList()); });
     }
 
     function openDropdownManager(field) {
       if (field) document.getElementById('dropdownFieldSelect').value = field;
-      setDropdownMsg('變更會即時同步到雲端，所有裝置共用同一份歷史選單。');
+      setDropdownMsg('所有裝置共用同一份歷史選單；管理員的變更會即時同步到雲端。');
+      renderDropdownAdminBar();
       document.getElementById('dropdownManageModal').classList.add('show');
       renderDropdownManageList();
       loadDropdownFromCloud().then(ok => { if (ok) renderDropdownManageList(); });
@@ -674,14 +764,15 @@
       updateBatchDeleteDropdownBtn();
       document.getElementById('selectAllDropdownCheckbox').checked = false;
       if (!list.length) { container.innerHTML = '<div class="text-center text-slate-400 py-5 text-[13px]">此欄位尚無歷史選項</div>'; return; }
+      const isAdmin = !!RADMIN.token;
       container.innerHTML = list.map((val, idx) =>
         '<div class="dropdown-manage-item">' +
-          '<label class="flex items-center gap-2 min-w-0"><input type="checkbox" class="dropdown-item-checkbox w-4 h-4" value="' + idx + '" onclick="toggleDropdownCheckbox(this,' + idx + ')">' +
+          '<label class="flex items-center gap-2 min-w-0">' + (isAdmin ? '<input type="checkbox" class="dropdown-item-checkbox w-4 h-4" value="' + idx + '" onclick="toggleDropdownCheckbox(this,' + idx + ')">' : '<span class="text-slate-300">•</span>') +
           '<span class="font-semibold text-slate-700 truncate">' + escHtml(val) + '</span></label>' +
-          '<div class="flex gap-1 flex-shrink-0">' +
-            '<button type="button" class="px-2 py-1 rounded-md bg-amber-500 text-white text-[11.5px] font-bold" onclick="editDropdownOption(\'' + field + '\',' + idx + ')">編輯</button>' +
-            '<button type="button" class="px-2 py-1 rounded-md bg-rose-600 text-white text-[11.5px] font-bold" onclick="deleteDropdownOption(\'' + field + '\',' + idx + ')">刪除</button>' +
-          '</div></div>').join('');
+          (isAdmin ? '<div class="flex gap-1 flex-shrink-0">' +
+            '<button type="button" class="px-2 py-1 rounded-md bg-amber-500 text-white text-[11.5px] font-bold" onclick="requireAdmin(function(){editDropdownOption(\'' + field + '\',' + idx + ')})">編輯</button>' +
+            '<button type="button" class="px-2 py-1 rounded-md bg-rose-600 text-white text-[11.5px] font-bold" onclick="requireAdmin(function(){deleteDropdownOption(\'' + field + '\',' + idx + ')})">刪除</button>' +
+          '</div>' : '') + '</div>').join('');
     }
     function toggleSelectAllDropdown(master) {
       selectedDropdownIndices = {};
@@ -703,6 +794,7 @@
       const field = document.getElementById('dropdownFieldSelect').value;
       const idxs = Object.keys(selectedDropdownIndices).map(Number).sort((a, b) => b - a);
       if (!idxs.length) return;
+      if (!RADMIN.token) { requireAdmin(executeBatchDeleteDropdown); return; }
       if (!confirm('確定批次刪除選取的 ' + idxs.length + ' 個歷史選項？（將即時同步至雲端）')) return;
       idxs.forEach(i => DROPDOWN[field].splice(i, 1));
       renderDropdownManageList();
@@ -740,7 +832,8 @@
     function reScanAllDropdownData() {
       if (!confirm('確定從所有回報資料重新掃描機台、異常代碼與部門，合併到歷史選單？（手動新增的選項會保留）')) return;
       setDropdownMsg('🔄 掃描中…');
-      apiPost({ action: 'rescanDropdown' }).then(res => {
+      apiPost({ action: 'rescanDropdown', adminToken: RADMIN.token, sid: MY_DEVICE_ID, ip: ENV.ip }).then(res => {
+        if (res && (res.needAdmin || res.expired)) { RADMIN.token = ''; renderDropdownAdminBar(); renderDropdownManageList(); }
         if (res && res.status === 'success' && res.dropdown) {
           Object.keys(DROPDOWN_DEFAULTS).forEach(f => { if (Array.isArray(res.dropdown[f])) DROPDOWN[f] = res.dropdown[f]; });
           cacheDropdown(); renderDropdownManageList(); renderDatalists();
@@ -878,17 +971,32 @@
       const modal = document.getElementById('configModal');
       if (!modal.classList.contains('show')) {
         document.getElementById('gasUrlSettingInput').value = getActiveGasUrl();
+        document.getElementById('cfgAdminPw').value = '';
+        document.getElementById('cfgErr').classList.add('hidden');
         modal.classList.add('show');
         checkBackendVersion();
       } else modal.classList.remove('show');
     }
+    // 端點設定：只有管理員能存。密碼送到「新網址」的後端驗證，通過才儲存（網址打錯也存不進去）
     function saveGasSetting() {
-      const val = document.getElementById('gasUrlSettingInput').value.trim();
-      if (val) lsSet('GAS_POST_URL', val); else lsDel('GAS_POST_URL');
-      toggleConfigModal();
-      refreshEndpointDisplay();
-      loadDropdownFromCloud();
-      pingPresence();
+      const val = document.getElementById('gasUrlSettingInput').value.trim() || DEFAULT_GAS_URL;
+      const pwEl = document.getElementById('cfgAdminPw');
+      const err = document.getElementById('cfgErr');
+      const showErr = m => { err.textContent = '❌ ' + m; err.classList.remove('hidden'); };
+      if (!/^https:\/\/script\.google\.com\/.+\/exec(\?.*)?$/.test(val)) return showErr('網址格式不正確，應該是 https://script.google.com/macros/s/.../exec');
+      if (!pwEl.value) return showErr('只有管理員可以修改，請輸入管理員密碼');
+      const btn = document.getElementById('cfgSaveBtn');
+      btn.disabled = true; btn.textContent = '驗證中…';
+      verifyAdminPw_(pwEl.value, val).then(tok => {
+        if (val === DEFAULT_GAS_URL) lsDel('GAS_POST_URL'); else lsSet('GAS_POST_URL', val);
+        RADMIN.token = tok || ''; if (tok) adminTouch_();
+        toggleConfigModal();
+        refreshEndpointDisplay();
+        loadDropdownFromCloud();
+        pingPresence();
+        alert('✅ 端點設定已儲存');
+      }).catch(e => showErr(e.message))
+        .finally(() => { btn.disabled = false; btn.textContent = '🔑 驗證並儲存'; pwEl.value = ''; });
     }
 
     // ==========================================
