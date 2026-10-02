@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智慧製造戰情室 | Smart Manufacturing War Room</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts: Orbitron & Rajdhani for Cyber/Tech UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['"Share Tech Mono"', 'monospace'],
+            tech: ['"Chakra Petch"', 'sans-serif'],
+          },
+          colors: {
+            tech: {
+              bg: '#060B18',
+              card: 'rgba(13, 22, 45, 0.75)',
+              border: '#1E3A8A',
+              glow: '#00F0FF',
+              neonGreen: '#00FF9D',
+              neonRed: '#FF2E54',
+            }
+          },
+          boxShadow: {
+            'glow-cyan': '0 0 20px rgba(0, 240, 255, 0.25)',
+            'glow-red': '0 0 20px rgba(255, 46, 84, 0.3)',
+            'glow-green': '0 0 20px rgba(0, 255, 157, 0.3)',
+            'inner-glow': 'inset 0 0 15px rgba(0, 240, 255, 0.1)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 網格背景與科幻掃描線效果 */
+    body {
+      background-color: #050814;
+      background-image: 
+        radial-gradient(circle at 50% 10%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+        linear-gradient(rgba(0, 180, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 180, 255, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 40px 40px, 40px 40px;
+    }
+
+    /* 戰情室邊角裝飾線條 */
+    .cyber-corner-tl {
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      width: 12px;
+      height: 12px;
+      border-top: 2px solid #00f0ff;
+      border-left: 2px solid #00f0ff;
+    }
+    .cyber-corner-tr {
+      position: absolute;
+      top: -1px;
+      right: -1px;
+      width: 12px;
+      height: 12px;
+      border-top: 2px solid #00f0ff;
+      border-right: 2px solid #00f0ff;
+    }
+    .cyber-corner-bl {
+      position: absolute;
+      bottom: -1px;
+      left: -1px;
+      width: 12px;
+      height: 12px;
+      border-bottom: 2px solid #00f0ff;
+      border-left: 2px solid #00f0ff;
+    }
+    .cyber-corner-br {
+      position: absolute;
+      bottom: -1px;
+      right: -1px;
+      width: 12px;
+      height: 12px;
+      border-bottom: 2px solid #00f0ff;
+      border-right: 2px solid #00f0ff;
+    }
+
+    /* 滾動條美化 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090e1a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e3a8a;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00f0ff;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-100 font-tech p-4 lg:p-6 flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+  <!-- =============================== -->
+  <!-- 頂部導航與狀態儀表列 -->
+  <!-- =============================== -->
+  <header class="relative mb-6 rounded-lg bg-slate-900/80 border border-cyan-500/40 p-4 lg:px-6 shadow-glow-cyan backdrop-blur-md">
+    <div class="cyber-corner-tl"></div>
+    <div class="cyber-corner-tr"></div>
+    <div class="cyber-corner-bl"></div>
+    <div class="cyber-corner-br"></div>
+
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <!-- 標題與副標 -->
+      <div class="flex items-center space-x-4">
+        <div class="relative flex items-center justify-center w-12 h-12 rounded-lg bg-cyan-950/60 border border-cyan-400 text-cyan-400 shadow-[0_0_15px_rgba(0,240,255,0.4)]">
+          <svg class="w-7 h-7 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-3">
+            <h1 class="text-2xl lg:text-3xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-200 to-blue-400 drop-shadow">
+              智慧製造戰情室
+            </h1>
+            <span class="px-2.5 py-0.5 text-xs font-mono rounded border border-emerald-400/50 bg-emerald-950/60 text-emerald-400 flex items-center gap-1.5 shadow-[0_0_10px_rgba(0,255,157,0.3)]">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              LIVE CONNECTED
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 font-mono mt-0.5 tracking-wide">
+            SMART FACTORY INDUSTRIAL TELEMETRY & OPERATIONS MONITORING
+          </p>
+        </div>
+      </div>
+
+      <!-- 右側工具列：時鐘、GAS 網址配置、手動重新整理 -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- 系統時鐘 -->
+        <div class="bg-black/50 border border-slate-700/80 px-4 py-1.5 rounded text-right font-mono">
+          <div class="text-[10px] text-cyan-400 tracking-wider">SYSTEM TIME</div>
+          <div id="liveClock" class="text-sm font-bold text-slate-200">2026-09-15 00:00:00</div>
+        </div>
+
+        <!-- 線上人數 -->
+        <button id="onlineBadge" onclick="toggleOnlineList()" class="px-3 py-2 text-xs font-mono rounded bg-emerald-950/50 border border-emerald-500/50 text-emerald-300 flex items-center gap-1.5" title="點擊查看目前在線的裝置">
+          <span id="onlineDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+          線上 <b id="onlineCount">—</b> 人 <span id="onlineArrow">▾</span>
+        </button>
+
+        <!-- 管理員 -->
+        <button id="adminBtn" onclick="onAdminBtn()" class="px-3 py-2 text-xs font-mono rounded bg-amber-900/30 hover:bg-amber-800/40 border border-amber-500/60 text-amber-300 transition-all flex items-center gap-1.5">
+          🔑 <span id="adminBtnText">管理員</span>
+        </button>
+
+        <!-- GAS 配置與重整按鈕 -->
+        <button onclick="toggleConfigModal()" class="px-3 py-2 text-xs font-mono rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-600 hover:border-cyan-400 text-cyan-300 transition-all flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          GAS 連線設定
+        </button>
+
+        <!-- 前往手機報工頁面 -->
+        <a href="report.html" class="px-3 py-2 text-xs font-mono rounded bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400 text-blue-300 transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(59,130,246,0.3)]">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          手機報工入口
+        </a>
+
+        <button id="refreshBtn" onclick="fetchTelemetryData()" class="px-4 py-2 text-xs font-mono rounded bg-cyan-600/30 hover:bg-cyan-500/40 border border-cyan-400 text-cyan-300 transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,240,255,0.2)]">
+          <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          同步數據
+        </button>
+      </div>
+    </div>
+
+    <!-- 即時狀態通知條 -->
+    <div id="statusBar" class="mt-3 pt-2 border-t border-slate-800 text-xs font-mono flex items-center justify-between text-slate-400">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+        <span id="statusMessage">系統初始化完畢，準備載入數據...</span>
+      </div>
+      <div id="lastSyncTime" class="text-[11px] text-slate-500">最後更新：尚未更新</div>
+    </div>
+
+    <!-- 線上清單（展開） -->
+    <div id="onlineList" class="hidden mt-3 p-3 rounded bg-black/50 border border-emerald-700/50 text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto"></div>
+  </header>
+
+  <!-- =============================== -->
+  <!-- 主數據面板網格 -->
+  <!-- =============================== -->
+  <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+
+    <!-- --------------------------------- -->
+    <!-- 區塊一：全廠總生產量 (KPI Card) -->
+    <!-- --------------------------------- -->
+    <section class="lg:col-span-5 flex flex-col gap-6">
+      <!-- 總產量核心卡片 -->
+      <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md flex-1 flex flex-col justify-between">
+        <div class="cyber-corner-tl"></div>
+        <div class="cyber-corner-tr"></div>
+        <div class="cyber-corner-bl"></div>
+        <div class="cyber-corner-br"></div>
+
+        <div>
+          <div class="flex items-center justify-between pb-3 border-b border-cyan-900/60">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
+              <h2 class="text-base font-bold tracking-wider text-cyan-200">區塊一 ｜ 全廠總生產量</h2>
+            </div>
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
+              TOTAL OUTPUT
+            </span>
+          </div>
+
+          <!-- 數字視覺化核心區塊 -->
+          <div class="my-8 text-center">
+            <p class="text-xs uppercase tracking-widest text-slate-400 font-mono mb-1">
+              AGGREGATED PRODUCED QUANTITY
+            </p>
+            <div class="flex items-baseline justify-center gap-2">
+              <span id="totalProducedQty" class="text-6xl sm:text-7xl font-mono font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-100 to-cyan-400 drop-shadow-[0_0_25px_rgba(0,240,255,0.6)]">
+                0
+              </span>
+              <span class="text-lg font-mono text-cyan-400 font-semibold">PCS</span>
+            </div>
+            <p class="text-xs text-slate-400 font-mono mt-2">全廠即時加總累計生產總件數</p>
+          </div>
+        </div>
+
+        <!-- 輔助指標微型儀表 -->
+        <div class="grid grid-cols-4 gap-2 pt-4 border-t border-slate-800/80 font-mono text-center">
+          <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
+            <div class="text-[10px] text-slate-400">總回報筆數</div>
+            <div id="statTotalRecords" class="text-base font-bold text-slate-200 mt-0.5">0</div>
+          </div>
+          <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
+            <div class="text-[10px] text-emerald-400">正常報工</div>
+            <div id="statNormalCount" class="text-base font-bold text-emerald-400 mt-0.5">0</div>
+          </div>
+          <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
+            <div class="text-[10px] text-rose-400">故障停機</div>
+            <div id="statFailureCount" class="text-base font-bold text-rose-400 mt-0.5">0</div>
+          </div>
+          <div class="p-2 rounded bg-slate-950/60 border border-slate-800">
+            <div class="text-[10px] text-amber-400">例行保養</div>
+            <div id="statMaintenanceCount" class="text-base font-bold text-amber-400 mt-0.5">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 產能健康狀態微卡片 -->
+      <div class="rounded-lg bg-slate-900/60 border border-slate-800 p-4 font-mono text-xs flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-3 h-3 rounded-full bg-cyan-400 animate-pulse"></div>
+          <span class="text-slate-300">數據來源端點驗證：</span>
+        </div>
+        <span id="endpointBadge" class="text-cyan-400 bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-800/60 truncate max-w-[200px]">
+          token=ITRI_2026
+        </span>
+      </div>
+    </section>
+
+    <!-- --------------------------------- -->
+    <!-- 區塊二：設備運作狀態佔比 (Chart.js 圓餅圖) -->
+    <!-- --------------------------------- -->
+    <section class="lg:col-span-7 flex flex-col">
+      <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md flex-1 flex flex-col">
+        <div class="cyber-corner-tl"></div>
+        <div class="cyber-corner-tr"></div>
+        <div class="cyber-corner-bl"></div>
+        <div class="cyber-corner-br"></div>
+
+        <div class="flex items-center justify-between pb-3 border-b border-cyan-900/60">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
+            <h2 class="text-base font-bold tracking-wider text-cyan-200">區塊二 ｜ 機台狀態分析 (圓餅圖)</h2>
+          </div>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
+            STATUS RATIO
+          </span>
+        </div>
+
+        <p class="text-xs text-slate-400 font-mono mt-2">
+          統計全廠機台「正常報工」、「故障停機」與「例行保養」運轉分佈比例
+        </p>
+
+        <!-- 圖表容器 -->
+        <div class="relative flex-grow flex items-center justify-center my-4 min-h-[280px]">
+          <canvas id="statusPieChart" class="max-h-[300px]"></canvas>
+
+          <!-- 圓心中央總結指示 (甜甜圈中央數據) -->
+          <div id="chartCenterText" class="absolute pointer-events-none text-center hidden">
+            <div class="text-xs font-mono text-slate-400">設備正常率</div>
+            <div id="availabilityRate" class="text-2xl font-mono font-bold text-emerald-400">100%</div>
+          </div>
+        </div>
+
+        <!-- 自訂圖例與比率條 -->
+        <div class="grid grid-cols-3 gap-2 pt-4 border-t border-slate-800/80 font-mono text-xs">
+          <div class="flex items-center justify-between p-2 rounded bg-emerald-950/30 border border-emerald-500/30">
+            <span class="flex items-center gap-1 text-emerald-400 text-[11px]">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#00ff9d]"></span>
+              正常
+            </span>
+            <span id="normalPercent" class="font-bold text-emerald-300 text-[11px]">0%</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded bg-rose-950/30 border border-rose-500/30">
+            <span class="flex items-center gap-1 text-rose-400 text-[11px]">
+              <span class="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#ff2e54]"></span>
+              故障
+            </span>
+            <span id="failurePercent" class="font-bold text-rose-300 text-[11px]">0%</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded bg-amber-950/30 border border-amber-500/30">
+            <span class="flex items-center gap-1 text-amber-400 text-[11px]">
+              <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#facc15]"></span>
+              保養
+            </span>
+            <span id="maintenancePercent" class="font-bold text-amber-300 text-[11px]">0%</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- --------------------------------- -->
+    <!-- 區塊三：最新 5 筆回報紀錄 (表格) -->
+    <!-- --------------------------------- -->
+    <section class="lg:col-span-12">
+      <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md">
+        <div class="cyber-corner-tl"></div>
+        <div class="cyber-corner-tr"></div>
+        <div class="cyber-corner-bl"></div>
+        <div class="cyber-corner-br"></div>
+
+        <div class="flex items-center justify-between pb-3 border-b border-cyan-900/60 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
+            <h2 class="text-base font-bold tracking-wider text-cyan-200">區塊三 ｜ 最新 5 筆回報紀錄</h2>
+          </div>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
+            LATEST 5 TELEMETRY LOGS
+          </span>
+        </div>
+
+        <!-- 科技感表格 -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left font-mono text-sm border-collapse">
+            <thead>
+              <tr class="bg-slate-950/80 text-cyan-400 border-b border-cyan-900/80 text-xs uppercase tracking-wider">
+                <th class="py-3 px-3 font-semibold">序號</th>
+                <th class="py-3 px-3 font-semibold">時間戳記</th>
+                <th class="py-3 px-3 font-semibold">設備編號</th>
+                <th class="py-3 px-3 font-semibold">回報人員</th>
+                <th class="py-3 px-3 font-semibold">運作狀態</th>
+                <th class="py-3 px-3 font-semibold">異常代碼</th>
+                <th class="py-3 px-3 font-semibold text-right">生產產量</th>
+                <th class="py-3 px-3 font-semibold">裝置</th>
+                <th class="py-3 px-3 font-semibold">瀏覽器 / 系統</th>
+                <th class="py-3 px-3 font-semibold">IP</th>
+                <th class="py-3 px-3 font-semibold">瀏覽器裝置 ID</th>
+              </tr>
+            </thead>
+            <tbody id="telemetryTableBody" class="divide-y divide-slate-800/80">
+              <!-- 動態生成 5 筆紀錄 -->
+              <tr>
+                <td colspan="11" class="py-8 text-center text-slate-500 text-xs">
+                  載入中，等待數據回應...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- --------------------------------- -->
+    <!-- 區塊四：回報資料管理（管理員解鎖後顯示） -->
+    <!-- --------------------------------- -->
+    <section id="adminSection" class="lg:col-span-12 hidden">
+      <div class="relative rounded-lg bg-slate-900/85 border border-amber-500/50 p-6 shadow-[0_0_20px_rgba(245,158,11,0.18)] backdrop-blur-md">
+        <div class="cyber-corner-tl" style="border-color:#f59e0b"></div>
+        <div class="cyber-corner-tr" style="border-color:#f59e0b"></div>
+        <div class="cyber-corner-bl" style="border-color:#f59e0b"></div>
+        <div class="cyber-corner-br" style="border-color:#f59e0b"></div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-amber-900/60 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+            <h2 class="text-base font-bold tracking-wider text-amber-200">區塊四 ｜ 回報資料管理（管理員）</h2>
+            <span id="adminWhoTag" class="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/30 text-amber-300"></span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+            <input id="adminSearch" oninput="adminPage=1; renderAdminTable()" placeholder="搜尋機台／人員／代碼／IP／裝置ID…" class="w-60 bg-black/60 border border-slate-700 rounded px-3 py-1.5 text-slate-200 focus:outline-none focus:border-amber-400">
+            <select id="adminStatusFilter" onchange="adminPage=1; renderAdminTable()" class="bg-black/60 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+              <option value="">全部狀態</option><option value="正常">正常報工</option><option value="故障">故障停機</option><option value="保養">例行保養</option>
+            </select>
+            <button id="adminBatchDelBtn" onclick="adminBatchDelete()" class="hidden px-3 py-1.5 rounded bg-rose-700/70 hover:bg-rose-600 border border-rose-400 text-white">🗑️ 刪除勾選 (0)</button>
+            <button onclick="adminLock()" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300">🔒 鎖定退出</button>
+          </div>
+        </div>
+        <div id="adminNotice" class="text-xs font-mono text-slate-400 mb-3"></div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left font-mono text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-950/80 text-amber-300 border-b border-amber-900/80 tracking-wider">
+                <th class="py-2.5 px-2"><input type="checkbox" id="adminCheckAll" onclick="adminToggleAll(this)"></th>
+                <th class="py-2.5 px-2">時間</th>
+                <th class="py-2.5 px-2">設備編號</th>
+                <th class="py-2.5 px-2">回報人員</th>
+                <th class="py-2.5 px-2">狀態</th>
+                <th class="py-2.5 px-2 text-right">產量</th>
+                <th class="py-2.5 px-2">異常代碼</th>
+                <th class="py-2.5 px-2">備註</th>
+                <th class="py-2.5 px-2">裝置 / 瀏覽器</th>
+                <th class="py-2.5 px-2">IP / 裝置ID</th>
+                <th class="py-2.5 px-2">最後修改</th>
+                <th class="py-2.5 px-2 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="adminTableBody" class="divide-y divide-slate-800/80"></tbody>
+          </table>
+        </div>
+        <div id="adminPager" class="flex flex-wrap items-center justify-between gap-2 mt-3 text-xs font-mono text-slate-400"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =============================== -->
+  <!-- 頁腳資訊 -->
+  <!-- =============================== -->
+  <footer class="mt-6 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 font-mono gap-2">
+    <div>
+      <span>SMART MANUFACTURING DASHBOARD</span>
+      <span class="mx-2">|</span>
+      <span>GOOGLE APPS SCRIPT API INTEGRATION</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span>TOKEN: <span class="text-cyan-400">ITRI_2026</span></span>
+      <span>SECURE SSL 256-BIT</span>
+    </div>
+  </footer>
+
+  <!-- =============================== -->
+  <!-- GAS 網址配置彈窗 (方便即時更換真實 GAS 網址) -->
+  <!-- =============================== -->
+  <div id="configModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="relative w-full max-w-lg bg-slate-900 border border-cyan-500 rounded-lg p-6 shadow-glow-cyan font-mono">
+      <div class="cyber-corner-tl"></div>
+      <div class="cyber-corner-tr"></div>
+      <div class="cyber-corner-bl"></div>
+      <div class="cyber-corner-br"></div>
+
+      <div class="flex items-center justify-between pb-3 border-b border-cyan-900/60 mb-4">
+        <h3 class="text-base font-bold text-cyan-300">GAS (Google Apps Script) API 端點設定</h3>
+        <button onclick="toggleConfigModal()" class="text-slate-400 hover:text-white">&times;</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold">Google Apps Script Web App 網址：</label>
+          <input 
+            type="text" 
+            id="gasUrlInput" 
+            oninput="updatePreviewUrl()"
+            placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+            class="w-full bg-black/70 border border-slate-700 rounded px-3 py-2 text-cyan-300 focus:outline-none focus:border-cyan-400 text-xs font-mono"
+          />
+        </div>
+
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold">授權驗證 Token：</label>
+          <div class="flex gap-2">
+            <input 
+              type="text" 
+              id="gasTokenInput" 
+              value="ITRI_2026"
+              placeholder="ITRI_2026"
+              oninput="updatePreviewUrl()"
+              class="flex-1 bg-black/70 border border-slate-700 rounded px-3 py-2 text-cyan-300 focus:outline-none focus:border-cyan-400 text-xs font-mono"
+            />
+            <button type="button" onclick="document.getElementById('gasTokenInput').value='ITRI_2026'; updatePreviewUrl();" class="px-3 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs">
+              重設
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">
+            完整發送路徑將自動正規化為：<code class="text-cyan-400 font-mono" id="urlPreview">?token=ITRI_2026</code>
+          </p>
+        </div>
+
+        <div class="p-3 rounded bg-blue-950/40 border border-blue-800/60 text-slate-300">
+          <p class="font-bold text-cyan-400 mb-1">💡 排除「Unauthorized: Token Invalid」說明：</p>
+          <ul class="list-disc list-inside space-y-1 text-[11px] text-slate-400">
+            <li>若在瀏覽器網址列直接打開，網址結尾必須加上 <code class="text-cyan-400">?token=ITRI_2026</code> 才能讀取。</li>
+            <li>請確認 GAS 程式碼中的 <code class="text-cyan-400">e.parameter.token</code> 與上方設定完全一致（區分大小寫、無空格）。</li>
+            <li>若剛在 GAS 修改程式碼，請務必點擊「部署 > <b>管理部署 > 編輯 > 建立新版本</b>」，修改才會生效。</li>
+          </ul>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button onclick="toggleConfigModal()" class="px-4 py-2 rounded bg-slate-800 text-slate-300 hover:bg-slate-700">
+            取消
+          </button>
+          <button onclick="saveGasUrlAndReload()" class="px-5 py-2 rounded bg-cyan-600 hover:bg-cyan-500 text-black font-bold shadow-[0_0_12px_rgba(0,240,255,0.5)]">
+            儲存並重新同步
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- 🔑 管理員解鎖 -->
+  <!-- =============================== -->
+  <div id="adminLoginModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="relative w-full max-w-sm bg-slate-900 border border-amber-500 rounded-lg p-6 font-mono shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+      <h3 class="text-base font-bold text-amber-300 mb-1">🔑 管理員解鎖</h3>
+      <p class="text-[11px] text-slate-400 mb-4">解鎖後可編輯、刪除回報資料。密碼由後端驗證；同一台電腦連續輸錯 5 次會暫時鎖住 15 分鐘。解鎖 15 分鐘沒有操作會自動上鎖。</p>
+      <label class="block text-xs text-slate-300 mb-1">管理員名稱（記錄在稽核紀錄）</label>
+      <input id="adminNameInput" maxlength="40" placeholder="例：資訊課-Kenny" class="w-full bg-black/70 border border-slate-700 rounded px-3 py-2 text-amber-200 text-sm mb-3 focus:outline-none focus:border-amber-400">
+      <label class="block text-xs text-slate-300 mb-1">管理員密碼</label>
+      <input id="adminPwInput" type="password" autocomplete="off" oncontextmenu="return false;" oncopy="return false;" oncut="return false;" onkeydown="if(event.key==='Enter') adminUnlock();" class="w-full bg-black/70 border border-slate-700 rounded px-3 py-2 text-amber-200 text-sm mb-2 focus:outline-none focus:border-amber-400">
+      <div id="adminLoginErr" class="hidden text-xs font-bold text-rose-400 mb-2"></div>
+      <div class="flex justify-end gap-2 mt-3">
+        <button onclick="closeAdminLogin()" class="px-4 py-2 rounded bg-slate-800 text-slate-300 text-xs">取消</button>
+        <button id="adminLoginBtn" onclick="adminUnlock()" class="px-5 py-2 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs">解鎖</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- ✏️ 編輯回報資料 -->
+  <!-- =============================== -->
+  <div id="editModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="relative w-full max-w-lg bg-slate-900 border border-amber-500 rounded-lg p-6 font-mono text-xs max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-amber-900/60 mb-4">
+        <h3 class="text-base font-bold text-amber-300">✏️ 編輯回報資料</h3>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+      <div id="editMeta" class="text-[11px] text-slate-400 mb-3 leading-relaxed"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-slate-300 mb-1">設備編號</label><input id="ed_Machine_ID" list="ed_dl_machine" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-2 text-cyan-200"><datalist id="ed_dl_machine"></datalist></div>
+        <div><label class="block text-slate-300 mb-1">運作狀態</label>
+          <select id="ed_Status" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-2 text-cyan-200">
+            <option>正常報工</option><option>故障停機</option><option>例行保養</option>
+          </select></div>
+        <div><label class="block text-slate-300 mb-1">部門</label><input id="ed_Dept" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-2 text-cyan-200"></div>
+        <div><label class="block text-slate-300 mb-1">操作員</label><input id="ed_Operator" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-2 text-cyan-200"></div>
+        <div><label class="block text-slate-300 mb-1">生產產量 (PCS)</label><input id="ed_Produced_Qty" type="number" min="0" step="1" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-2 text-cyan-200 text-right"></div>
+        <div><label class="block text-slate-300 mb-1">異常代碼</label><input id="ed_Error_Code" list="ed_dl_error" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-2 text-cyan-200"><datalist id="ed_dl_error"></datalist></div>
+        <div class="col-span-2"><label class="block text-slate-300 mb-1">備註</label><textarea id="ed_Notes" rows="3" class="w-full bg-black/70 border border-slate-700 rounded px-2.5 py-2 text-cyan-200"></textarea></div>
+      </div>
+      <p class="text-[11px] text-slate-500 mt-3">時間、IP、裝置等稽核欄位不可修改；每次修改都會寫入試算表「AdminLog」（修改前／後內容）。</p>
+      <div id="editErr" class="hidden text-xs font-bold text-rose-400 mt-2"></div>
+      <div class="flex justify-between gap-2 mt-4">
+        <button onclick="adminDeleteFromEdit()" class="px-4 py-2 rounded bg-rose-800/70 hover:bg-rose-700 border border-rose-500 text-white">🗑️ 刪除這筆</button>
+        <div class="flex gap-2">
+          <button onclick="closeEditModal()" class="px-4 py-2 rounded bg-slate-800 text-slate-300">取消</button>
+          <button id="editSaveBtn" onclick="saveEdit()" class="px-5 py-2 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold">儲存修改</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== -->
+  <!-- JavaScript 邏輯：Fetch API、Chart.js 與渲染 -->
+  <!-- =============================== -->
+  <script>
+    // ==========================================
+    // 預設與配置常數
+    // ==========================================
+    // 已自動配置您的實際 Google Apps Script 部署網址
+    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbyyVG_J4-FSNIZ4_A0RvSMkP2oRkT27nmCAMHdXw4BSGjbqQgoH19-Ro8yu2a1LV5XbZw/exec';
+    const API_TOKEN = 'ITRI_2026';
+
+    // 模擬測試數據 (僅在網路完全斷線時作為備援)
+    const FALLBACK_MOCK_DATA = [
+      { Record_ID: "DEMO1", Timestamp: "2026-09-15 10:28:15", Machine_ID: "CNC-001", Dept: "現場廠務", Operator: "張師傅", Status: "正常報工", Produced_Qty: 180, Error_Code: "無", Device_Type: "手機", Browser: "Chrome 129", OS: "Android 14", IP: "61.220.1.2 (內:192.168.1.51)", Device_ID: "DK3F9A2M1X" },
+      { Record_ID: "DEMO2", Timestamp: "2026-09-15 10:26:40", Machine_ID: "CNC-002", Dept: "現場廠務", Operator: "李組長", Status: "正常報工", Produced_Qty: 320, Error_Code: "無", Device_Type: "手機", Browser: "Safari 17", OS: "iOS 17", IP: "61.220.1.2", Device_ID: "DQ7P2L0B4C" },
+      { Record_ID: "DEMO3", Timestamp: "2026-09-15 10:24:10", Machine_ID: "CNC-003", Dept: "生技課", Operator: "王工程師", Status: "故障停機", Produced_Qty: 0, Error_Code: "E03刀具", Device_Type: "電腦", Browser: "Edge 129", OS: "Windows 11", IP: "61.220.1.2 (內:192.168.1.23)", Device_ID: "DZ1M8N6V3T" },
+      { Record_ID: "DEMO4", Timestamp: "2026-09-15 10:21:05", Machine_ID: "CNC-001", Dept: "現場廠務", Operator: "陳技術員", Status: "例行保養", Produced_Qty: 50, Error_Code: "無", Device_Type: "平板", Browser: "Chrome 129", OS: "Android 13", IP: "61.220.1.2", Device_ID: "DH5R4W9E2Y" },
+      { Record_ID: "DEMO5", Timestamp: "2026-09-15 10:18:22", Machine_ID: "CNC-002", Dept: "品管課", Operator: "林技師", Status: "正常報工", Produced_Qty: 145, Error_Code: "無", Device_Type: "電腦", Browser: "Chrome 129", OS: "Windows 10", IP: "61.220.1.2 (內:192.168.1.40)", Device_ID: "DA0S6D2F8G" }
+    ];
+
+    let chartInstance = null;
+    let LAST_DATA = [];        // 最近一次同步到的全部回報資料
+    let DATA_IS_DEMO = false;  // 目前畫面是否為示範資料（示範資料不能編輯／刪除）
+
+    function escHtml(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function lsGet(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+    function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+    // 裝置類型徽章（📱手機 / 📟平板 / 💻電腦）
+    function deviceBadge(t) {
+      const s = String(t || '');
+      if (!s) return '<span class="text-slate-600">--</span>';
+      const cfg = s.includes('手機') ? ['📱', 'border-fuchsia-500/50 text-fuchsia-300 bg-fuchsia-950/50']
+        : s.includes('平板') ? ['📟', 'border-violet-500/50 text-violet-300 bg-violet-950/50']
+        : ['💻', 'border-sky-500/50 text-sky-300 bg-sky-950/50'];
+      return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] whitespace-nowrap ${cfg[1]}">${cfg[0]} ${escHtml(s)}</span>`;
+    }
+    function personText(row) {
+      const op = row.Operator ? String(row.Operator) : '--';
+      return row.Dept ? `<span class="text-slate-500">[${escHtml(row.Dept)}]</span> ${escHtml(op)}` : escHtml(op);
+    }
+
+    // ==========================================
+    // 初始化時鐘
+    // ==========================================
+    function updateClock() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const timeStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
+                      `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      const el = document.getElementById('liveClock');
+      if (el) el.textContent = timeStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ==========================================
+    // GAS 設定視窗操作
+    // ==========================================
+    function getStoredGasUrl() {
+      const stored = localStorage.getItem('GAS_TELEMETRY_URL');
+      if (stored && !stored.includes('YOUR_GAS_SCRIPT_ID') && stored !== '[GAS網址]' && stored.trim() !== '') {
+        return stored.trim();
+      }
+      return DEFAULT_GAS_URL;
+    }
+
+    function getStoredToken() {
+      return localStorage.getItem('GAS_TELEMETRY_TOKEN') || API_TOKEN;
+    }
+
+    function updatePreviewUrl() {
+      const urlInput = document.getElementById('gasUrlInput');
+      const tokenInput = document.getElementById('gasTokenInput');
+      const previewEl = document.getElementById('urlPreview');
+      if (previewEl && urlInput && tokenInput) {
+        const fullUrl = buildApiUrl(urlInput.value || DEFAULT_GAS_URL, tokenInput.value || API_TOKEN);
+        previewEl.textContent = fullUrl;
+      }
+    }
+
+    function toggleConfigModal() {
+      const modal = document.getElementById('configModal');
+      const urlInput = document.getElementById('gasUrlInput');
+      const tokenInput = document.getElementById('gasTokenInput');
+      if (modal.classList.contains('hidden')) {
+        urlInput.value = getStoredGasUrl();
+        tokenInput.value = getStoredToken();
+        updatePreviewUrl();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function saveGasUrlAndReload() {
+      const urlInput = document.getElementById('gasUrlInput');
+      const tokenInput = document.getElementById('gasTokenInput');
+      const url = urlInput.value.trim();
+      const token = tokenInput.value.trim();
+      
+      if (url) localStorage.setItem('GAS_TELEMETRY_URL', url);
+      if (token) localStorage.setItem('GAS_TELEMETRY_TOKEN', token);
+
+      toggleConfigModal();
+      fetchTelemetryData();
+    }
+
+    // 乾淨組裝 API 網址 (防止重複附帶 ?token= 參數)
+    function buildApiUrl(baseUrl, token) {
+      if (!baseUrl || baseUrl === '[GAS網址]' || baseUrl.includes('YOUR_GAS_SCRIPT_ID')) {
+        return `${baseUrl}?token=${token}`;
+      }
+      try {
+        const parsed = new URL(baseUrl);
+        if (token) {
+          parsed.searchParams.set('token', token);
+        }
+        return parsed.toString();
+      } catch (e) {
+        const cleanBase = baseUrl.split('?')[0];
+        return `${cleanBase}?token=${encodeURIComponent(token)}`;
+      }
+    }
+
+    // ==========================================
+    // 狀態提示列更新
+    // ==========================================
+    function setStatus(message, isError = false) {
+      const msgEl = document.getElementById('statusMessage');
+      if (msgEl) {
+        msgEl.textContent = message;
+        msgEl.className = isError ? 'text-rose-400 font-bold tracking-wide' : 'text-cyan-300';
+      }
+    }
+
+    function updateLastSyncTime() {
+      const el = document.getElementById('lastSyncTime');
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      if (el) {
+        el.textContent = `最後更新：${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      }
+    }
+
+    // ==========================================
+    // 時間格式化輔助函數 (轉換 ISO 格式為易讀本地時間)
+    // ==========================================
+    function formatTimestamp(ts) {
+      if (!ts) return '--';
+      try {
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return ts;
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      } catch (e) {
+        return ts;
+      }
+    }
+
+    // ==========================================
+    // 資料擷取 (JavaScript Fetch API)
+    // ==========================================
+    async function fetchTelemetryData() {
+      const refreshBtn = document.getElementById('refreshBtn');
+      const refreshIcon = document.getElementById('refreshIcon');
+      refreshIcon.classList.add('animate-spin');
+      refreshBtn.disabled = true;
+
+      const baseGasUrl = getStoredGasUrl();
+      const activeToken = getStoredToken();
+
+      // 更新畫面上的 Token 標籤
+      const tokenBadge = document.getElementById('endpointBadge');
+      if (tokenBadge) {
+        tokenBadge.textContent = `token=${activeToken}`;
+      }
+
+      // 構建乾淨請求網址
+      const targetFetchUrl = buildApiUrl(baseGasUrl, activeToken);
+
+      setStatus(`正在向 GAS 端點同步數據 (Token: ${activeToken})...`);
+
+      try {
+        let telemetryData = null;
+
+        // 若為預設範例網址，直接啟用高品質展示資料並提示
+        if (baseGasUrl.includes('YOUR_GAS_SCRIPT_ID') || baseGasUrl === '[GAS網址]') {
+          console.warn('[戰情室] 目前尚未設定實際 GAS 網址，載入高品質預設示範數據。');
+          setStatus(`目前使用展示數據。請點擊右上角「GAS 連線設定」輸入您的部署網址。`);
+          telemetryData = FALLBACK_MOCK_DATA;
+          DATA_IS_DEMO = true;
+        } else {
+          // 使用標準 Fetch API 發送 GET 請求 (不帶自訂 Header，確保 302 跨域重定向順暢)
+          const response = await fetch(targetFetchUrl, {
+            method: 'GET'
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP 狀態碼 ${response.status} (${response.statusText || 'Error'})`);
+          }
+
+          const json = await response.json();
+
+          // 檢測 GAS 後端是否回傳了業務錯誤 (例如 Token Invalid)
+          if (json && (json.status === 'error' || json.error)) {
+            const errDetail = json.message || json.error || '後端拒絕存取';
+            throw new Error(`後端回傳：${errDetail}`);
+          }
+
+          // 若回傳為 { status: "success", data: [...] } 或直接為陣列
+          telemetryData = Array.isArray(json) ? json : (json.data || json.records || []);
+
+          if (!Array.isArray(telemetryData)) {
+            throw new Error('回傳資料格式錯誤');
+          }
+          if (telemetryData.length === 0) {
+            // 試算表沒有資料（例如管理員剛刪光測試資料）：顯示空的戰情室，不再改用示範資料
+            LAST_DATA = []; DATA_IS_DEMO = false;
+            renderEmptyDashboard();
+            renderAdminTable();
+            setStatus('試算表目前尚無回報紀錄。');
+            updateLastSyncTime();
+            return;
+          }
+
+          setStatus(`數據同步成功！已成功載入 Google 試算表最新 ${telemetryData.length} 筆生產紀錄。` +
+            (json.version ? '' : '（後端是舊版，請更新 Code.gs 才看得到 IP／裝置資訊與管理功能）'));
+          DATA_IS_DEMO = false;
+        }
+
+        // 進行資料解析與畫面渲染
+        LAST_DATA = telemetryData;
+        processAndRenderData(telemetryData);
+        renderAdminTable();
+        updateLastSyncTime();
+
+      } catch (err) {
+        console.error('[戰情室] 數據同步失敗：', err);
+        setStatus(`連線失敗 (${err.message})。已保留現有資料或示範數據。`, true);
+        if (!LAST_DATA.length || DATA_IS_DEMO) {
+          LAST_DATA = FALLBACK_MOCK_DATA; DATA_IS_DEMO = true;
+          processAndRenderData(FALLBACK_MOCK_DATA);
+          renderAdminTable();
+        }
+        updateLastSyncTime();
+      } finally {
+        setTimeout(() => {
+          refreshIcon.classList.remove('animate-spin');
+          refreshBtn.disabled = false;
+        }, 500);
+      }
+    }
+
+    // ==========================================
+    // 資料統計、運算與渲染
+    // ==========================================
+    function processAndRenderData(dataList) {
+      if (!Array.isArray(dataList) || dataList.length === 0) {
+        setStatus('回傳資料為空或格式錯誤', true);
+        return;
+      }
+
+      // ----------------------------------------
+      // 區塊一：計算全廠總生產量 (Produced_Qty 加總)
+      // ----------------------------------------
+      let totalQty = 0;
+      let normalCount = 0;
+      let failureCount = 0;
+      let maintenanceCount = 0;
+
+      dataList.forEach(item => {
+        // 安全轉換 Produced_Qty 為數值
+        const qty = Number(item.Produced_Qty) || 0;
+        totalQty += qty;
+
+        // 狀態比對統計 (支援「正常報工」、「故障停機」、「例行保養」)
+        const statusStr = String(item.Status || '');
+        if (statusStr.includes('正常') || statusStr.includes('🟢')) {
+          normalCount++;
+        } else if (statusStr.includes('故障') || statusStr.includes('停機') || statusStr.includes('🔴')) {
+          failureCount++;
+        } else if (statusStr.includes('保養') || statusStr.includes('🟡')) {
+          maintenanceCount++;
+        } else {
+          normalCount++;
+        }
+      });
+
+      // 渲染總生產量大字體 (加上千分位格式化與漸進跳號效果)
+      animateNumber('totalProducedQty', totalQty);
+
+      // 渲染輔助指標
+      document.getElementById('statTotalRecords').textContent = dataList.length;
+      document.getElementById('statNormalCount').textContent = normalCount;
+      document.getElementById('statFailureCount').textContent = failureCount;
+      const maintCountEl = document.getElementById('statMaintenanceCount');
+      if (maintCountEl) maintCountEl.textContent = maintenanceCount;
+
+      // ----------------------------------------
+      // 區塊二：繪製圓餅圖 (Chart.js)
+      // ----------------------------------------
+      renderPieChart(normalCount, failureCount, maintenanceCount);
+
+      // ----------------------------------------
+      // 區塊三：用表格列出最新的 5 筆回報紀錄
+      // ----------------------------------------
+      renderLatestRecordsTable(dataList);
+    }
+
+    // ==========================================
+    // 數字漸進跳號特效
+    // ==========================================
+    function animateNumber(elementId, targetValue) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      
+      const startValue = parseInt(el.textContent.replace(/,/g, '')) || 0;
+      const duration = 800; // ms
+      const startTime = performance.now();
+
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutQuad 緩動函數
+        const easeProgress = 1 - (1 - progress) * (1 - progress);
+        const currentNum = Math.floor(startValue + (targetValue - startValue) * easeProgress);
+
+        el.textContent = currentNum.toLocaleString('en-US');
+
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        } else {
+          el.textContent = targetValue.toLocaleString('en-US');
+        }
+      }
+      requestAnimationFrame(update);
+    }
+
+    // ==========================================
+    // 區塊二：Chart.js 圓餅圖/甜甜圈圖
+    // ==========================================
+    function renderPieChart(normalCount, failureCount, maintenanceCount = 0) {
+      const ctx = document.getElementById('statusPieChart').getContext('2d');
+      const total = normalCount + failureCount + maintenanceCount;
+      
+      const normalPercent = total > 0 ? ((normalCount / total) * 100).toFixed(1) : 0;
+      const failurePercent = total > 0 ? ((failureCount / total) * 100).toFixed(1) : 0;
+      const maintenancePercent = total > 0 ? ((maintenanceCount / total) * 100).toFixed(1) : 0;
+
+      // 更新指標說明文字
+      document.getElementById('normalPercent').textContent = `${normalPercent}% (${normalCount})`;
+      document.getElementById('failurePercent').textContent = `${failurePercent}% (${failureCount})`;
+      const maintPctEl = document.getElementById('maintenancePercent');
+      if (maintPctEl) maintPctEl.textContent = `${maintenancePercent}% (${maintenanceCount})`;
+      
+      const centerEl = document.getElementById('chartCenterText');
+      if (centerEl) {
+        centerEl.classList.remove('hidden');
+        document.getElementById('availabilityRate').textContent = `${normalPercent}%`;
+      }
+
+      // 如果已有舊圖表則銷毀重繪
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const chartLabels = ['🟢 正常報工', '🔴 故障停機'];
+      const chartData = [normalCount, failureCount];
+      const chartBgColors = [
+        'rgba(0, 255, 157, 0.85)', // 亮綠發光
+        'rgba(255, 46, 84, 0.85)'   // 霓虹鮮紅
+      ];
+      const chartBorderColors = ['#00FF9D', '#FF2E54'];
+
+      if (maintenanceCount > 0) {
+        chartLabels.push('🟡 例行保養');
+        chartData.push(maintenanceCount);
+        chartBgColors.push('rgba(250, 204, 21, 0.85)');
+        chartBorderColors.push('#FACC15');
+      }
+
+      // 建立圓餅圖 (使用 Doughnut 風格增添現代戰情室科技感)
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: chartLabels,
+          datasets: [{
+            data: chartData,
+            backgroundColor: chartBgColors,
+            borderColor: chartBorderColors,
+            borderWidth: 2,
+            hoverOffset: 12,
+            hoverBorderWidth: 3,
+            hoverBorderColor: '#FFFFFF',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%', // 甜甜圈內徑
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#94A3B8',
+                font: {
+                  family: '"Chakra Petch", sans-serif',
+                  size: 13,
+                  weight: '600'
+                },
+                padding: 16,
+                usePointStyle: true,
+                pointStyle: 'rectRounded'
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(5, 8, 20, 0.95)',
+              titleColor: '#00F0FF',
+              bodyColor: '#FFFFFF',
+              borderColor: '#00F0FF',
+              borderWidth: 1,
+              padding: 12,
+              displayColors: true,
+              bodyFont: {
+                family: '"Share Tech Mono", monospace',
+                size: 13
+              },
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.raw || 0;
+                  const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  return ` ${label} : ${value} 筆 (${pct}%)`;
+                }
+              }
+            }
+          },
+          animation: {
+            animateScale: true,
+            animateRotate: true,
+            duration: 1000
+          }
+        }
+      });
+    }
+
+    // ==========================================
+    // 區塊三：渲染最新 5 筆紀錄表格
+    // ==========================================
+    function renderLatestRecordsTable(dataList) {
+      const tbody = document.getElementById('telemetryTableBody');
+      if (!tbody) return;
+
+      // 複製一份陣列並根據時間戳記排序 (由新到舊)
+      const sorted = [...dataList].sort((a, b) => {
+        const timeA = new Date(a.Timestamp).getTime() || 0;
+        const timeB = new Date(b.Timestamp).getTime() || 0;
+        return timeB - timeA;
+      });
+
+      // 擷取前 5 筆最新紀錄
+      const latest5 = sorted.slice(0, 5);
+
+      if (latest5.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="py-6 text-center text-slate-500">無任何回報資料</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = latest5.map((row, index) => {
+        const statusStr = String(row.Status || '');
+        let statusBadge = '';
+
+        if (statusStr.includes('正常') || statusStr.includes('🟢')) {
+          statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-emerald-950/70 border border-emerald-400/50 text-emerald-400 shadow-[0_0_8px_rgba(0,255,157,0.3)]">
+               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+               ${escHtml(row.Status) || '正常報工'}
+             </span>`;
+        } else if (statusStr.includes('保養') || statusStr.includes('🟡')) {
+          statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-amber-950/70 border border-amber-400/50 text-amber-400 shadow-[0_0_8px_rgba(250,204,21,0.3)]">
+               <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+               ${escHtml(row.Status) || '例行保養'}
+             </span>`;
+        } else {
+          statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-rose-950/70 border border-rose-500/50 text-rose-400 shadow-[0_0_8px_rgba(255,46,84,0.3)] animate-pulse">
+               <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+               ${escHtml(row.Status) || '故障停機'}
+             </span>`;
+        }
+
+        const qtyNum = Number(row.Produced_Qty) || 0;
+        const qtyFormatted = qtyNum.toLocaleString('en-US');
+        const formattedTime = formatTimestamp(row.Timestamp);
+        const errCode = String(row.Error_Code || '');
+        const errHtml = (!errCode || errCode === '無') ? '<span class="text-slate-600">無</span>'
+          : `<span class="px-1.5 py-0.5 rounded bg-rose-950/60 border border-rose-500/40 text-rose-300 text-[11px] whitespace-nowrap">${escHtml(errCode)}</span>`;
+        const browserOs = (row.Browser || row.OS)
+          ? `<div class="text-slate-300">${escHtml(row.Browser || '--')}</div><div class="text-[10px] text-slate-500">${escHtml(row.OS || '')}</div>`
+          : '<span class="text-slate-600">--</span>';
+
+        return `
+          <tr class="hover:bg-cyan-950/30 transition-colors duration-150 border-b border-slate-800/60">
+            <td class="py-3 px-3 text-cyan-400/80 font-bold">#0${index + 1}</td>
+            <td class="py-3 px-3 text-slate-300 font-mono text-xs tracking-wider whitespace-nowrap">${formattedTime}</td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-sky-300 text-xs font-bold tracking-wide whitespace-nowrap">
+                ${escHtml(row.Machine_ID || 'N/A')}
+              </span>
+            </td>
+            <td class="py-3 px-3 text-slate-300 text-xs font-mono whitespace-nowrap">${personText(row)}</td>
+            <td class="py-3 px-3 whitespace-nowrap">${statusBadge}</td>
+            <td class="py-3 px-3 text-xs">${errHtml}</td>
+            <td class="py-3 px-3 text-right whitespace-nowrap">
+              <span class="text-sm font-bold ${qtyNum > 0 ? 'text-cyan-300 drop-shadow-[0_0_6px_rgba(0,240,255,0.4)]' : 'text-slate-500'}">
+                ${qtyFormatted}
+              </span>
+              <span class="text-[11px] text-slate-500 ml-1">PCS</span>
+            </td>
+            <td class="py-3 px-3">${deviceBadge(row.Device_Type)}</td>
+            <td class="py-3 px-3 text-xs whitespace-nowrap">${browserOs}</td>
+            <td class="py-3 px-3 text-xs text-emerald-300/90 whitespace-nowrap">${escHtml(row.IP || '--')}</td>
+            <td class="py-3 px-3 text-xs text-slate-400 whitespace-nowrap">${escHtml(row.Device_ID || '--')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderEmptyDashboard() {
+      animateNumber('totalProducedQty', 0);
+      ['statTotalRecords', 'statNormalCount', 'statFailureCount', 'statMaintenanceCount'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = 0; });
+      renderPieChart(0, 0, 0);
+      renderLatestRecordsTable([]);
+    }
+
+    // ==========================================
+    // POST 共用（text/plain 避免 CORS 預檢）
+    // ==========================================
+    function apiPost(payload) {
+      return fetch(getStoredGasUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(Object.assign({ token: getStoredToken() }, payload))
+      }).then(r => r.json());
+    }
+
+    // ==========================================
+    // 本機裝置 ID / IP（管理員鎖定與線上人數用；做法同許瑞興訂單管理系統）
+    // ==========================================
+    const MY_DEVICE_ID = (function () {
+      let id = lsGet('hsh_report_device_id', '');
+      if (!id) { id = 'D' + Math.random().toString(36).slice(2, 8).toUpperCase() + Date.now().toString(36).slice(-4).toUpperCase(); lsSet('hsh_report_device_id', id); }
+      return id;
+    })();
+    const ENV = { ip: '', os: '', browser: '', deviceType: '' };
+    (function detectEnv() {
+      const ua = navigator.userAgent;
+      ENV.deviceType = (/iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) ? '平板'
+        : /Mobi|iPhone|iPod|Android.*Mobile/i.test(ua) ? '手機' : '電腦';
+      ENV.os = /Windows NT 10/.test(ua) ? 'Windows 10/11' : /Windows/.test(ua) ? 'Windows' : /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
+      const m = ua.match(/Edg\/(\d+)/) ? ['Edge', ua.match(/Edg\/(\d+)/)[1]] : ua.match(/Firefox\/(\d+)/) ? ['Firefox', ua.match(/Firefox\/(\d+)/)[1]]
+        : ua.match(/Chrome\/(\d+)/) ? ['Chrome', ua.match(/Chrome\/(\d+)/)[1]] : ua.match(/Version\/(\d+).*Safari/) ? ['Safari', ua.match(/Version\/(\d+)/)[1]] : null;
+      if (m) ENV.browser = m.join(' ');
+    })();
+    function getLocalIp_() {
+      return new Promise(resolve => {
+        const RTCPeer = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+        if (!RTCPeer) return resolve('');
+        let pc;
+        try { pc = new RTCPeer({ iceServers: [] }); pc.createDataChannel(''); pc.createOffer().then(o => pc.setLocalDescription(o)).catch(() => {}); }
+        catch (e) { return resolve(''); }
+        const timer = setTimeout(() => { try { pc.close(); } catch (e) {} resolve(''); }, 800);
+        pc.onicecandidate = ice => {
+          if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+          const mm = ice.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
+          if (mm && mm[1] !== '0.0.0.0' && mm[1].indexOf('127.') !== 0) { clearTimeout(timer); try { pc.close(); } catch (e) {} resolve(mm[1]); }
+        };
+      });
+    }
+    function detectIp_() {
+      const extP = fetch('https://api.ipify.org?format=json', { cache: 'no-store' }).then(r => r.json()).then(d => (d && d.ip) || '').catch(() => '');
+      return Promise.all([getLocalIp_(), extP]).then(([local, ext]) => {
+        ENV.ip = ext && local ? ext + (/^(10|192|172)\./.test(local) ? ' (內:' + local + ')' : ' (' + local + ')') : (ext || (local ? '內:' + local : ''));
+      });
+    }
+
+    // ==========================================
+    // 線上人數（跟電腦挑人抽籤系統同樣做法：每 30 秒回報一次）
+    // ==========================================
+    let ONLINE = { ok: false, pending: true, count: null, users: [] };
+    let presenceBusy = false;
+    function updateOnlineBadge_() {
+      document.getElementById('onlineCount').textContent = ONLINE.ok ? ONLINE.count : ONLINE.pending ? '…' : '✕';
+      document.getElementById('onlineDot').className = 'w-2 h-2 rounded-full ' + (ONLINE.ok ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500');
+      document.getElementById('onlineBadge').title = ONLINE.ok ? '點擊查看目前在線的裝置' : (ONLINE.err || '連線中…');
+    }
+    function renderOnlineList_() {
+      const el = document.getElementById('onlineList');
+      if (!ONLINE.ok) { el.innerHTML = ONLINE.pending ? '正在向雲端取得線上人數…' : '<span class="text-rose-400">暫時無法取得線上人數：' + escHtml(ONLINE.err || '') + '</span>'; return; }
+      const ago = s => { const m = Math.floor(((ONLINE.now || Date.now() / 1000) - s) / 60); return m < 1 ? '剛連線' : m < 60 ? m + ' 分' : Math.floor(m / 60) + ' 時 ' + (m % 60) + ' 分'; };
+      el.innerHTML = '<table class="w-full min-w-[760px]"><thead><tr class="text-emerald-400 text-left"><th class="py-1 px-2">#</th><th class="px-2">IP</th><th class="px-2">身分</th><th class="px-2">頁面</th><th class="px-2">裝置</th><th class="px-2">作業系統</th><th class="px-2">瀏覽器</th><th class="px-2">裝置 ID</th><th class="px-2">連線</th></tr></thead><tbody>' +
+        ONLINE.users.map((u, i) => {
+          const me = u.device === MY_DEVICE_ID;
+          return `<tr class="border-t border-slate-800 ${me ? 'text-emerald-300 font-bold' : 'text-slate-300'}"><td class="py-1 px-2">${i + 1}</td><td class="px-2">${escHtml(u.ip || '未取得')}</td><td class="px-2">${me ? '本機 ' : ''}${escHtml(u.who || '—')}</td>` +
+            `<td class="px-2">${u.page === 'dashboard' ? '戰情室' : u.page === 'report' ? '回報頁' : '—'}</td><td class="px-2">${escHtml(u.deviceType || '—')}</td><td class="px-2">${escHtml(u.os || '—')}</td><td class="px-2">${escHtml(u.browser || '—')}</td><td class="px-2">${escHtml(u.device)}</td><td class="px-2">${ago(u.since)}</td></tr>`;
+        }).join('') + '</tbody></table><div class="text-slate-500 mt-2">每 30 秒更新；同一台裝置多分頁只算一人；超過 75 秒沒回應視為離線。</div>';
+    }
+    function toggleOnlineList() {
+      const el = document.getElementById('onlineList');
+      const show = el.classList.contains('hidden');
+      el.classList.toggle('hidden', !show);
+      document.getElementById('onlineArrow').textContent = show ? '▴' : '▾';
+      if (show) { renderOnlineList_(); pingPresence(); }
+    }
+    function pingPresence() {
+      if (presenceBusy) return;
+      presenceBusy = true;
+      let done = false;
+      const finish = r => { if (done) return; done = true; presenceBusy = false; ONLINE = r; updateOnlineBadge_(); if (!document.getElementById('onlineList').classList.contains('hidden')) renderOnlineList_(); };
+      const timer = setTimeout(() => finish({ ok: false, users: [], err: '雲端 API 超過 20 秒沒有回應' }), 20000);
+      apiPost({ action: 'presence', sid: MY_DEVICE_ID, ip: ENV.ip, os: ENV.os, browser: ENV.browser, deviceType: ENV.deviceType, page: 'dashboard', who: ADMIN.unlocked ? '管理員 ' + ADMIN.name : '戰情室看板' })
+        .then(d => { clearTimeout(timer); finish(d && d.ok ? { ok: true, count: d.count, users: d.users || [], now: d.now } : { ok: false, users: [], err: (d && d.message) || '後端尚未更新為 v2.0.0' }); })
+        .catch(() => { clearTimeout(timer); finish({ ok: false, users: [], err: '連不到雲端 API' }); });
+    }
+
+    // ==========================================
+    // 🔑 管理員：編輯／刪除回報資料（密碼由後端驗證，只放記憶體）
+    // ==========================================
+    const ADMIN = { unlocked: false, pw: '', name: '', timer: null };
+    const ADMIN_IDLE_MS = 15 * 60 * 1000;
+    const ADMIN_PAGE_SIZE = 20;
+    let adminPage = 1;
+    let adminSelected = {};
+
+    function onAdminBtn() {
+      if (ADMIN.unlocked) { document.getElementById('adminSection').scrollIntoView({ behavior: 'smooth' }); return; }
+      document.getElementById('adminNameInput').value = lsGet('hsh_dash_admin_name', '');
+      document.getElementById('adminPwInput').value = '';
+      document.getElementById('adminLoginErr').classList.add('hidden');
+      document.getElementById('adminLoginModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById(document.getElementById('adminNameInput').value ? 'adminPwInput' : 'adminNameInput').focus(), 50);
+    }
+    function closeAdminLogin() {
+      document.getElementById('adminPwInput').value = '';
+      document.getElementById('adminLoginModal').classList.add('hidden');
+    }
+    function adminLoginError(msg) {
+      const el = document.getElementById('adminLoginErr');
+      el.textContent = '❌ ' + msg;
+      el.classList.remove('hidden');
+    }
+    function adminUnlock() {
+      const name = document.getElementById('adminNameInput').value.trim();
+      const pw = document.getElementById('adminPwInput').value;
+      if (!name) return adminLoginError('請輸入管理員名稱');
+      if (!pw) return adminLoginError('請輸入管理員密碼');
+      const btn = document.getElementById('adminLoginBtn');
+      btn.disabled = true; btn.textContent = '驗證中…';
+      apiPost({ action: 'verifyAdmin', adminPassword: pw, sid: MY_DEVICE_ID, ip: ENV.ip })
+        .then(d => {
+          if (d && d.ok) {
+            ADMIN.unlocked = true; ADMIN.pw = pw; ADMIN.name = name;
+            lsSet('hsh_dash_admin_name', name);
+            closeAdminLogin();
+            document.getElementById('adminSection').classList.remove('hidden');
+            document.getElementById('adminBtnText').textContent = '管理中：' + name;
+            document.getElementById('adminWhoTag').textContent = 'ADMIN · ' + name;
+            adminTouch();
+            renderAdminTable();
+            pingPresence();
+            setTimeout(() => document.getElementById('adminSection').scrollIntoView({ behavior: 'smooth' }), 100);
+          } else {
+            adminLoginError((d && (d.error || d.message)) || '後端尚未更新為 v2.0.0，沒有管理員功能');
+          }
+        })
+        .catch(() => adminLoginError('連不到雲端 API'))
+        .finally(() => { btn.disabled = false; btn.textContent = '解鎖'; document.getElementById('adminPwInput').value = ''; });
+    }
+    function adminTouch() {
+      clearTimeout(ADMIN.timer);
+      ADMIN.timer = setTimeout(() => { if (ADMIN.unlocked) { adminLock(); setStatus('管理員閒置 15 分鐘，已自動上鎖。'); } }, ADMIN_IDLE_MS);
+    }
+    function adminLock() {
+      ADMIN.unlocked = false; ADMIN.pw = ''; clearTimeout(ADMIN.timer);
+      adminSelected = {};
+      document.getElementById('adminSection').classList.add('hidden');
+      document.getElementById('adminBtnText').textContent = '管理員';
+      closeEditModal();
+      pingPresence();
+    }
+    // 管理員操作共用：密碼錯誤或被鎖時自動上鎖
+    function adminCall(payload) {
+      adminTouch();
+      return apiPost(Object.assign({ adminPassword: ADMIN.pw, adminName: ADMIN.name, sid: MY_DEVICE_ID, ip: ENV.ip }, payload)).then(d => {
+        if (!d || d.status !== 'success') {
+          const msg = (d && d.message) || '操作失敗';
+          if (/密碼|鎖/.test(msg)) adminLock();
+          throw new Error(msg);
+        }
+        return d;
+      });
+    }
+
+    function sortedData() {
+      return [...LAST_DATA].sort((a, b) => (new Date(b.Timestamp).getTime() || 0) - (new Date(a.Timestamp).getTime() || 0));
+    }
+    function filteredAdminData() {
+      const q = (document.getElementById('adminSearch').value || '').trim().toLowerCase();
+      const st = document.getElementById('adminStatusFilter').value;
+      return sortedData().filter(r => {
+        if (st && !String(r.Status || '').includes(st)) return false;
+        if (!q) return true;
+        return ['Machine_ID', 'Operator', 'Dept', 'Status', 'Error_Code', 'Notes', 'IP', 'Device_ID', 'Browser', 'OS', 'Device_Type']
+          .some(k => String(r[k] || '').toLowerCase().includes(q));
+      });
+    }
+    function renderAdminTable() {
+      if (!ADMIN.unlocked) return;
+      const notice = document.getElementById('adminNotice');
+      const noId = LAST_DATA.length && !LAST_DATA[0].Record_ID;
+      notice.innerHTML = DATA_IS_DEMO ? '<span class="text-amber-400">⚠️ 目前顯示的是示範資料（沒連上試算表），無法編輯或刪除。</span>'
+        : noId ? '<span class="text-amber-400">⚠️ 後端還是舊版（資料沒有 Record_ID），請更新 Code.gs 並重新部署後才能編輯／刪除。</span>'
+        : `共 ${LAST_DATA.length} 筆回報；編輯／刪除會立即寫回 Google 試算表，並記錄在「AdminLog」工作表。`;
+      const canEdit = !DATA_IS_DEMO && !noId;
+      const list = filteredAdminData();
+      const pages = Math.max(1, Math.ceil(list.length / ADMIN_PAGE_SIZE));
+      adminPage = Math.min(Math.max(1, adminPage), pages);
+      const rows = list.slice((adminPage - 1) * ADMIN_PAGE_SIZE, adminPage * ADMIN_PAGE_SIZE);
+      const tbody = document.getElementById('adminTableBody');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="12" class="py-6 text-center text-slate-500">沒有符合的回報資料</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(r => {
+          const id = escHtml(r.Record_ID || '');
+          const s = String(r.Status || '');
+          const sc = s.includes('故障') ? 'text-rose-400' : s.includes('保養') ? 'text-amber-400' : 'text-emerald-400';
+          return `<tr class="hover:bg-amber-950/20">
+            <td class="py-2 px-2"><input type="checkbox" class="adm-chk" data-id="${id}" ${adminSelected[r.Record_ID] ? 'checked' : ''} ${canEdit ? '' : 'disabled'} onclick="adminToggleOne(this)"></td>
+            <td class="py-2 px-2 whitespace-nowrap text-slate-300">${formatTimestamp(r.Timestamp)}</td>
+            <td class="py-2 px-2 whitespace-nowrap text-sky-300 font-bold">${escHtml(r.Machine_ID || '')}</td>
+            <td class="py-2 px-2 whitespace-nowrap text-slate-300">${personText(r)}</td>
+            <td class="py-2 px-2 whitespace-nowrap ${sc}">${escHtml(s)}</td>
+            <td class="py-2 px-2 text-right text-cyan-300">${(Number(r.Produced_Qty) || 0).toLocaleString('en-US')}</td>
+            <td class="py-2 px-2 whitespace-nowrap text-slate-300">${escHtml(r.Error_Code || '')}</td>
+            <td class="py-2 px-2 text-slate-400 max-w-[180px] truncate" title="${escHtml(r.Notes || '')}">${escHtml(r.Notes || '')}</td>
+            <td class="py-2 px-2 whitespace-nowrap">${deviceBadge(r.Device_Type)} <span class="text-slate-400">${escHtml(r.Browser || '')}</span></td>
+            <td class="py-2 px-2 whitespace-nowrap"><div class="text-emerald-300/90">${escHtml(r.IP || '--')}</div><div class="text-[10px] text-slate-500">${escHtml(r.Device_ID || '')}</div></td>
+            <td class="py-2 px-2 whitespace-nowrap text-[10px] text-slate-500">${r.Updated_At ? escHtml(formatTimestamp(r.Updated_At)) + '<br>' + escHtml(r.Updated_By || '') : '—'}</td>
+            <td class="py-2 px-2 whitespace-nowrap text-center">
+              <button ${canEdit ? '' : 'disabled'} onclick="openEditModal('${id}')" class="px-2 py-1 rounded bg-amber-600/80 hover:bg-amber-500 text-black font-bold disabled:opacity-30">編輯</button>
+              <button ${canEdit ? '' : 'disabled'} onclick="adminDelete(['${id}'])" class="px-2 py-1 rounded bg-rose-700/80 hover:bg-rose-600 text-white font-bold disabled:opacity-30">刪除</button>
+            </td></tr>`;
+        }).join('');
+      }
+      document.getElementById('adminCheckAll').checked = rows.length > 0 && rows.every(r => adminSelected[r.Record_ID]);
+      document.getElementById('adminPager').innerHTML =
+        `<span>符合 ${list.length} 筆 · 第 ${adminPage} / ${pages} 頁</span>
+         <span class="flex gap-1">
+           <button onclick="adminPage=1; renderAdminTable()" class="px-2 py-1 rounded bg-slate-800 border border-slate-700" ${adminPage <= 1 ? 'disabled' : ''}>«</button>
+           <button onclick="adminPage--; renderAdminTable()" class="px-2 py-1 rounded bg-slate-800 border border-slate-700" ${adminPage <= 1 ? 'disabled' : ''}>上一頁</button>
+           <button onclick="adminPage++; renderAdminTable()" class="px-2 py-1 rounded bg-slate-800 border border-slate-700" ${adminPage >= pages ? 'disabled' : ''}>下一頁</button>
+           <button onclick="adminPage=${pages}; renderAdminTable()" class="px-2 py-1 rounded bg-slate-800 border border-slate-700" ${adminPage >= pages ? 'disabled' : ''}>»</button>
+         </span>`;
+      updateAdminBatchBtn();
+    }
+    function adminToggleOne(box) {
+      if (box.checked) adminSelected[box.dataset.id] = true; else delete adminSelected[box.dataset.id];
+      updateAdminBatchBtn();
+    }
+    function adminToggleAll(master) {
+      document.querySelectorAll('.adm-chk:not(:disabled)').forEach(b => { b.checked = master.checked; if (master.checked) adminSelected[b.dataset.id] = true; else delete adminSelected[b.dataset.id]; });
+      updateAdminBatchBtn();
+    }
+    function updateAdminBatchBtn() {
+      const n = Object.keys(adminSelected).length;
+      const btn = document.getElementById('adminBatchDelBtn');
+      btn.classList.toggle('hidden', n === 0);
+      btn.textContent = `🗑️ 刪除勾選 (${n})`;
+    }
+    function adminBatchDelete() { adminDelete(Object.keys(adminSelected)); }
+
+    function adminDelete(ids) {
+      if (!ADMIN.unlocked || !ids.length) return;
+      const recs = LAST_DATA.filter(r => ids.indexOf(String(r.Record_ID)) >= 0);
+      const preview = recs.slice(0, 5).map(r => `${formatTimestamp(r.Timestamp)}  ${r.Machine_ID}  ${r.Operator}  ${r.Status}  ${r.Produced_Qty} PCS`).join('\n');
+      if (!confirm(`確定要刪除 ${ids.length} 筆回報資料嗎？刪除後無法復原（AdminLog 會保留刪除前內容）。\n\n${preview}${recs.length > 5 ? '\n…' : ''}`)) return;
+      setStatus(`正在刪除 ${ids.length} 筆回報資料…`);
+      adminCall({ action: 'deleteRecord', recordIds: ids })
+        .then(d => { ids.forEach(id => delete adminSelected[id]); closeEditModal(); setStatus(`🗑️ 已刪除 ${d.deleted} 筆回報資料。`); fetchTelemetryData(); })
+        .catch(err => { setStatus('刪除失敗：' + err.message, true); alert('❌ 刪除失敗：' + err.message); });
+    }
+
+    let editingId = null;
+    const EDIT_FIELDS = ['Machine_ID', 'Status', 'Dept', 'Operator', 'Produced_Qty', 'Error_Code', 'Notes'];
+    function openEditModal(id) {
+      const r = LAST_DATA.find(x => String(x.Record_ID) === String(id));
+      if (!r || !ADMIN.unlocked) return;
+      adminTouch();
+      editingId = id;
+      EDIT_FIELDS.forEach(f => { document.getElementById('ed_' + f).value = r[f] == null ? '' : r[f]; });
+      if (![...document.getElementById('ed_Status').options].some(o => o.value === r.Status)) {
+        const o = document.createElement('option'); o.value = o.textContent = r.Status || ''; document.getElementById('ed_Status').appendChild(o);
+        document.getElementById('ed_Status').value = r.Status || '';
+      }
+      const uniq = k => [...new Set(LAST_DATA.map(x => x[k]).filter(Boolean))];
+      document.getElementById('ed_dl_machine').innerHTML = uniq('Machine_ID').map(v => `<option value="${escHtml(v)}">`).join('');
+      document.getElementById('ed_dl_error').innerHTML = uniq('Error_Code').map(v => `<option value="${escHtml(v)}">`).join('');
+      document.getElementById('editMeta').innerHTML =
+        `回報時間：<span class="text-slate-200">${formatTimestamp(r.Timestamp)}</span> · Record_ID：<span class="text-slate-200">${escHtml(r.Record_ID)}</span><br>` +
+        `回報裝置：${escHtml(r.Device_Type || '--')} · ${escHtml(r.Browser || '--')} · ${escHtml(r.OS || '--')} · IP ${escHtml(r.IP || '--')} · 裝置ID ${escHtml(r.Device_ID || '--')}` +
+        (r.Updated_At ? `<br>上次修改：${escHtml(formatTimestamp(r.Updated_At))} by ${escHtml(r.Updated_By || '')}` : '');
+      document.getElementById('editErr').classList.add('hidden');
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+    function closeEditModal() { editingId = null; document.getElementById('editModal').classList.add('hidden'); }
+    function adminDeleteFromEdit() { if (editingId) adminDelete([editingId]); }
+    function saveEdit() {
+      if (!editingId) return;
+      const r = LAST_DATA.find(x => String(x.Record_ID) === String(editingId)) || {};
+      const changes = {};
+      EDIT_FIELDS.forEach(f => {
+        let v = document.getElementById('ed_' + f).value;
+        v = f === 'Produced_Qty' ? (Number(v) || 0) : v.trim();
+        if (String(v) !== String(r[f] == null ? '' : r[f])) changes[f] = v;
+      });
+      const errEl = document.getElementById('editErr');
+      if (!document.getElementById('ed_Machine_ID').value.trim()) { errEl.textContent = '❌ 設備編號不可空白'; errEl.classList.remove('hidden'); return; }
+      if (Number(document.getElementById('ed_Produced_Qty').value) < 0) { errEl.textContent = '❌ 產量不可小於 0'; errEl.classList.remove('hidden'); return; }
+      if (!Object.keys(changes).length) { closeEditModal(); return; }
+      const btn = document.getElementById('editSaveBtn');
+      btn.disabled = true; btn.textContent = '儲存中…';
+      adminCall({ action: 'updateRecord', recordId: editingId, changes: changes })
+        .then(() => { closeEditModal(); setStatus('✏️ 回報資料已修改（' + Object.keys(changes).join('、') + '）。'); fetchTelemetryData(); })
+        .catch(err => { errEl.textContent = '❌ 儲存失敗：' + err.message; errEl.classList.remove('hidden'); })
+        .finally(() => { btn.disabled = false; btn.textContent = '儲存修改'; });
+    }
+
+    // ==========================================
+    // 頁面載入完成時立即發送請求
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      updateOnlineBadge_();
+      pingPresence();
+      detectIp_().then(() => { presenceBusy = false; pingPresence(); });
+      setInterval(pingPresence, 30000);
+      window.addEventListener('pagehide', () => {
+        try { navigator.sendBeacon && navigator.sendBeacon(getStoredGasUrl(), JSON.stringify({ token: getStoredToken(), action: 'presence', sid: MY_DEVICE_ID, leave: true })); } catch (e) {}
+      });
+      ['click', 'keydown'].forEach(ev => document.addEventListener(ev, () => { if (ADMIN.unlocked) adminTouch(); }, { passive: true }));
+      fetchTelemetryData();
+
+      // 每 30 秒自動排程重新擷取，維持戰情室即時性
+      setInterval(() => {
+        fetchTelemetryData();
+      }, 30000);
+    });
+  </script>
+</body>
+</html>
