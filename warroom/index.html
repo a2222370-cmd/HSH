@@ -189,6 +189,14 @@
           手機報工入口
         </a>
 
+        <!-- 匯出 Excel / CSV -->
+        <button onclick="exportDataToCsv()" class="px-3 py-2 text-xs font-mono rounded bg-emerald-600/30 hover:bg-emerald-500/40 border border-emerald-400 text-emerald-300 transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.25)]" title="匯出全部回報紀錄為 Excel / CSV 檔案">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          匯出 Excel/CSV
+        </button>
+
         <button id="refreshBtn" onclick="fetchTelemetryData()" class="px-4 py-2 text-xs font-mono rounded bg-cyan-600/30 hover:bg-cyan-500/40 border border-cyan-400 text-cyan-300 transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,240,255,0.2)]">
           <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -209,6 +217,25 @@
 
     <!-- 線上清單（展開） -->
     <div id="onlineList" class="hidden mt-3 p-3 rounded bg-black/50 border border-emerald-700/50 text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto"></div>
+
+    <!-- 🚨 停機逾時嚴重警報列 (Downtime Alert Banner) -->
+    <div id="downtimeAlarmBanner" class="hidden mt-3 p-3 rounded-lg bg-rose-950/90 border-2 border-rose-500 shadow-glow-red text-rose-200 text-xs font-mono flex flex-wrap items-center justify-between gap-3 animate-pulse">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">🚨</span>
+        <div>
+          <span class="font-bold text-rose-300 tracking-wide">停機逾時嚴重警示：</span>
+          <span id="downtimeAlarmText" class="text-white font-bold"></span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" id="btnAlarmMute" onclick="toggleAlarmAudio()" class="px-2.5 py-1 rounded bg-rose-900 hover:bg-rose-800 border border-rose-400 text-white text-[11px] font-bold">
+          🔊 警報音效: 開
+        </button>
+        <button type="button" onclick="scrollToDigitalTwin()" class="px-2.5 py-1 rounded bg-white text-rose-900 text-[11px] font-bold hover:bg-rose-100">
+          立即查看機台
+        </button>
+      </div>
+    </div>
   </header>
 
   <!-- =============================== -->
@@ -349,6 +376,110 @@
     </section>
 
     <!-- --------------------------------- -->
+    <!-- 全廠機台數位雙生矩陣 (Digital Twin Matrix) -->
+    <!-- --------------------------------- -->
+    <section id="digitalTwinSection" class="lg:col-span-12 flex flex-col">
+      <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md">
+        <div class="cyber-corner-tl"></div>
+        <div class="cyber-corner-tr"></div>
+        <div class="cyber-corner-bl"></div>
+        <div class="cyber-corner-br"></div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-cyan-900/60 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
+            <h2 class="text-base font-bold tracking-wider text-cyan-200">全廠設備數位雙生矩陣看板 (Digital Twin Matrix)</h2>
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
+              MACHINE FLEET
+            </span>
+          </div>
+
+          <!-- 篩選標籤與設定選項 -->
+          <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+            <!-- 狀態篩選 Tab -->
+            <div id="matrixFilterTabs" class="flex items-center bg-black/60 p-1 rounded-lg border border-slate-800 gap-1">
+              <button type="button" onclick="setMatrixFilter('ALL')" class="matrix-tab active px-2.5 py-1 rounded text-cyan-300 font-bold bg-cyan-900/60 border border-cyan-500/40 transition-all">全部 (<span id="tabCountAll">0</span>)</button>
+              <button type="button" onclick="setMatrixFilter('RUN')" class="matrix-tab px-2.5 py-1 rounded text-emerald-400 font-bold hover:bg-slate-800 transition-all">🟢 運轉 (<span id="tabCountRun">0</span>)</button>
+              <button type="button" onclick="setMatrixFilter('STOP')" class="matrix-tab px-2.5 py-1 rounded text-rose-400 font-bold hover:bg-slate-800 transition-all">🔴 故障 (<span id="tabCountStop">0</span>)</button>
+              <button type="button" onclick="setMatrixFilter('MAINT')" class="matrix-tab px-2.5 py-1 rounded text-amber-400 font-bold hover:bg-slate-800 transition-all">🟡 保養 (<span id="tabCountMaint">0</span>)</button>
+              <button type="button" onclick="setMatrixFilter('IDLE')" class="matrix-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">⚪ 未報工 (<span id="tabCountIdle">0</span>)</button>
+            </div>
+
+            <!-- 逾時告警設定選單 -->
+            <div class="flex items-center gap-1.5 pl-2 border-l border-slate-800">
+              <span class="text-[11px] text-slate-400">⏱️ 停機告警:</span>
+              <select id="downtimeThresholdSelect" onchange="onDowntimeThresholdChange(this.value)" class="bg-black/60 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-cyan-400">
+                <option value="15">15 分鐘</option>
+                <option value="30" selected>30 分鐘 (預設)</option>
+                <option value="60">60 分鐘</option>
+              </select>
+            </div>
+
+            <button type="button" id="btnSoundToggle" onclick="toggleAlarmAudio()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 transition-all" title="點擊切換停機逾時蜂鳴警報音">
+              🔊 警報音效
+            </button>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-400 font-mono mb-4">
+          點擊任一機台卡片，可展開檢視該機台的「本日生產明細、停機記錄時間軸與現場故障照片」：
+        </p>
+
+        <!-- 機台格子網格容器 -->
+        <div id="machineMatrixGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+          <!-- 動態生成機台卡片 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- --------------------------------- -->
+    <!-- 異常代碼 Pareto 柏拉圖分析 (80/20 法則) -->
+    <!-- --------------------------------- -->
+    <section class="lg:col-span-12 flex flex-col">
+      <div class="relative rounded-lg bg-slate-900/80 border border-cyan-500/40 p-6 shadow-glow-cyan backdrop-blur-md">
+        <div class="cyber-corner-tl"></div>
+        <div class="cyber-corner-tr"></div>
+        <div class="cyber-corner-bl"></div>
+        <div class="cyber-corner-br"></div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-cyan-900/60 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+            <h2 class="text-base font-bold tracking-wider text-amber-200">異常代碼 Pareto 柏拉圖分析 (80/20 法則)</h2>
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/30 text-amber-300">
+              TPM DEFECT PARETO
+            </span>
+          </div>
+
+          <!-- 時間範圍篩選 -->
+          <div class="flex items-center gap-2 font-mono text-xs">
+            <div id="paretoRangeTabs" class="flex items-center bg-black/60 p-1 rounded-lg border border-slate-800 gap-1">
+              <button type="button" onclick="setParetoRange('ALL')" class="pareto-tab active px-2.5 py-1 rounded text-cyan-300 font-bold bg-cyan-900/60 border border-cyan-500/40 transition-all">全期資料</button>
+              <button type="button" onclick="setParetoRange('WEEK')" class="pareto-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">近 7 天</button>
+              <button type="button" onclick="setParetoRange('MONTH')" class="pareto-tab px-2.5 py-1 rounded text-slate-400 font-bold hover:bg-slate-800 transition-all">近 30 天</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div class="lg:col-span-8 relative min-h-[300px]">
+            <canvas id="paretoChart" class="max-h-[320px]"></canvas>
+          </div>
+          <div class="lg:col-span-4 flex flex-col gap-3 font-mono text-xs">
+            <div class="p-3.5 rounded-lg bg-black/50 border border-slate-800">
+              <div class="text-[11px] text-amber-400 font-bold mb-1">🎯 柏拉圖 (80/20) 核心洞察：</div>
+              <div id="paretoInsight" class="text-slate-300 leading-relaxed text-[12px]">分析數據計算中…</div>
+            </div>
+            <div class="p-3.5 rounded-lg bg-black/50 border border-slate-800">
+              <div class="text-[11px] text-cyan-400 font-bold mb-1.5">📊 關鍵異常要因 (Vital Few)：</div>
+              <div id="paretoTopList" class="space-y-1.5 text-[11.5px]"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- --------------------------------- -->
     <!-- 區塊三：最新 5 筆回報紀錄 (表格) -->
     <!-- --------------------------------- -->
     <section class="lg:col-span-12">
@@ -381,6 +512,7 @@
                 <th class="py-3 px-3 font-semibold">異常代碼</th>
                 <th class="py-3 px-3 font-semibold text-right">生產產量</th>
                 <th class="py-3 px-3 font-semibold">備註</th>
+                <th class="py-3 px-3 font-semibold text-center">現場照片</th>
                 <th class="py-3 px-3 font-semibold">裝置</th>
                 <th class="py-3 px-3 font-semibold">瀏覽器 / 系統</th>
                 <th class="py-3 px-3 font-semibold">IP</th>
@@ -390,7 +522,7 @@
             <tbody id="telemetryTableBody" class="divide-y divide-slate-800/80">
               <!-- 動態生成 5 筆紀錄 -->
               <tr>
-                <td colspan="12" class="py-8 text-center text-slate-500 text-xs">
+                <td colspan="13" class="py-8 text-center text-slate-500 text-xs">
                   載入中，等待數據回應...
                 </td>
               </tr>
@@ -422,6 +554,7 @@
               <option value="">全部狀態</option><option value="正常">正常報工</option><option value="故障">故障停機</option><option value="保養">例行保養</option>
             </select>
             <button id="adminBatchDelBtn" onclick="adminBatchDelete()" class="hidden px-3 py-1.5 rounded bg-rose-700/70 hover:bg-rose-600 border border-rose-400 text-white">🗑️ 刪除勾選 (0)</button>
+            <button onclick="exportDataToCsv(true)" class="px-3 py-1.5 rounded bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/70 text-emerald-300 font-bold" title="匯出當前搜尋篩選結果為 CSV 檔案">📥 匯出篩選</button>
             <button onclick="openClearModal()" class="px-3 py-1.5 rounded bg-rose-950/70 hover:bg-rose-900 border border-rose-500/70 text-rose-300">🧹 一鍵清除數據</button>
             <button onclick="adminLock()" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300">🔒 鎖定退出</button>
           </div>
@@ -440,6 +573,7 @@
                 <th class="py-2.5 px-2 text-right">產量</th>
                 <th class="py-2.5 px-2">異常代碼</th>
                 <th class="py-2.5 px-2">備註</th>
+                <th class="py-2.5 px-2 text-center">現場照片</th>
                 <th class="py-2.5 px-2">裝置 / 瀏覽器</th>
                 <th class="py-2.5 px-2">IP / 裝置ID</th>
                 <th class="py-2.5 px-2">最後修改</th>
@@ -682,6 +816,75 @@
     </div>
   </div>
 
+  <!-- ========================================== -->
+  <!-- 🏭 機台生產明細與歷史時間軸彈窗 -->
+  <!-- ========================================== -->
+  <div id="machineDetailModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden" onclick="if(event.target===this) closeMachineTimeline()">
+    <div class="relative w-full max-w-2xl bg-slate-900 border border-cyan-500/50 rounded-xl p-6 shadow-glow-cyan flex flex-col max-h-[90vh] overflow-hidden" onclick="event.stopPropagation()">
+      <div class="cyber-corner-tl"></div><div class="cyber-corner-tr"></div><div class="cyber-corner-bl"></div><div class="cyber-corner-br"></div>
+
+      <div class="flex items-center justify-between pb-3 border-b border-cyan-900/60 mb-4 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">🏭</span>
+          <div>
+            <h3 id="mtMachineId" class="text-xl font-mono font-bold text-cyan-200 tracking-wide">CNC-001</h3>
+            <div id="mtCurrentStatus" class="text-xs font-mono text-slate-400 mt-0.5">狀態讀取中…</div>
+          </div>
+        </div>
+        <button type="button" onclick="closeMachineTimeline()" class="text-slate-400 hover:text-white text-2xl font-bold p-1">&times;</button>
+      </div>
+
+      <!-- 統計摘要小儀表 -->
+      <div class="grid grid-cols-3 gap-3 mb-4 flex-shrink-0 font-mono text-center text-xs">
+        <div class="p-2.5 rounded bg-black/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400">本日累計產量</div>
+          <div id="mtTotalQty" class="text-base font-bold text-cyan-300 mt-0.5">0 PCS</div>
+        </div>
+        <div class="p-2.5 rounded bg-black/60 border border-slate-800">
+          <div class="text-[10px] text-slate-400">總回報筆數</div>
+          <div id="mtReportCount" class="text-base font-bold text-slate-200 mt-0.5">0</div>
+        </div>
+        <div class="p-2.5 rounded bg-black/60 border border-slate-800">
+          <div class="text-[10px] text-rose-400">故障停機次數</div>
+          <div id="mtFailureCount" class="text-base font-bold text-rose-400 mt-0.5">0</div>
+        </div>
+      </div>
+
+      <!-- 時間軸列表 -->
+      <div class="text-xs font-mono font-bold text-slate-300 mb-2 flex items-center gap-1.5 flex-shrink-0">
+        <span>⏱️</span> 回報歷史時間軸（由新到舊）：
+      </div>
+      <div id="mtTimelineBody" class="flex-grow overflow-y-auto space-y-2.5 pr-1 font-mono text-xs">
+        <!-- 動態時間軸項目 -->
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end flex-shrink-0 mt-3">
+        <button type="button" onclick="closeMachineTimeline()" class="px-5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 📸 照片 Lightbox 大圖彈窗 -->
+  <!-- ========================================== -->
+  <div id="photoLightboxModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden" onclick="if(event.target===this) closePhotoModal()">
+    <div class="relative bg-slate-900 border border-cyan-500/60 rounded-xl p-4 max-w-2xl w-full max-h-[92vh] flex flex-col items-center shadow-glow-cyan" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between w-full pb-2 mb-2 border-b border-slate-800 flex-shrink-0">
+        <h4 id="photoLightboxTitle" class="text-sm font-bold font-mono text-cyan-300">📸 現場故障照片</h4>
+        <button type="button" onclick="closePhotoModal()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
+      </div>
+      <div class="flex-grow flex items-center justify-center overflow-hidden my-2 max-h-[75vh]">
+        <img id="photoLightboxImg" class="max-w-full max-h-[70vh] object-contain rounded border border-slate-800">
+      </div>
+      <div class="flex items-center justify-between w-full pt-2 border-t border-slate-800 flex-shrink-0">
+        <a id="photoLightboxDriveLink" href="#" target="_blank" class="text-xs text-sky-400 hover:underline flex items-center gap-1">
+          🔗 在 Google Drive 開啟原圖
+        </a>
+        <button type="button" onclick="closePhotoModal()" class="px-4 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs">關閉</button>
+      </div>
+    </div>
+  </div>
+
   <!-- =============================== -->
   <!-- JavaScript 邏輯：Fetch API、Chart.js 與渲染 -->
   <!-- =============================== -->
@@ -705,8 +908,17 @@
     // ==========================================
     // 版本與歷史改版記錄（與回報頁 report.html 共用同一份內容）
     // ==========================================
-    const APP_VERSION = 'v2.4.0';
+    const APP_VERSION = 'v2.5.0';
     const CHANGELOG = [
+      { v: 'v2.5.0', date: '2026-10-02', notes: [
+        '【全系統】新增 📷 QR Code / 條碼手機鏡頭掃描報工：回報頁「選擇機台」新增掃描按鈕，調用相機一秒自動辨識帶入機台編號，附逼逼音效與震動回饋',
+        '【全系統】新增 📸 故障停機拍照上傳：回報「故障停機」時展開拍照上傳，前端最佳化壓縮後存入 Google Drive「機台故障照片」資料夾，Telegram 通知附帶照片超連結，戰情室支援照片縮圖燈箱放大檢視',
+        '【回報頁】新增 🎙️ 備註語音轉文字辨識：點擊麥克風按鈕說話，自動辨識轉為繁體中文填入備註說明',
+        '【戰情室】新增 🏭 全廠機台數位雙生矩陣看板（Digital Twin Matrix）：即時視覺化呈現各機台運轉狀態（🟢/🔴/🟡/⚪）、負責人員、本日累計產量，點擊卡片展開生產明細與歷史時間軸',
+        '【戰情室】新增 ⏱️ 停機逾時告警與計時器（Downtime Tracker）：即時跳秒計算故障停機時長，逾時自動亮起全廠高頻警示、頂部紅光橫幅，並可開啟雙音頻蜂鳴警報音',
+        '【戰情室】新增 🏷️ 異常代碼 Pareto 柏拉圖分析（80/20 法則）：Chart.js 雙軸長條加累積%折線圖，自動提煉關鍵異常要因（Vital Few），輔助 TPM 預防保養',
+        '【戰情室】新增 📥 一鍵匯出 Excel / CSV 報表：支援全廠回報與管理員篩選資料一鍵下載，含 UTF-8 BOM 徹底解決 Excel 中文亂碼'
+      ] },
       { v: 'v2.4.0', date: '2026-10-02', notes: [
         '【全系統】新增 Telegram 通知：機台回報送出後，Telegram 群組會即時收到通知（機台、狀態、回報人、生產數量、異常代碼、備註、裝置、時間），跟圖面查詢系統同一個群組',
         '【回報頁】上方新增 Telegram 群組資訊列：「➕ 加入群組」按鈕、掃碼加入的 QR Code，以及「什麼時候會收到通知？」說明（依後端目前的通知設定自動顯示）',
@@ -1064,6 +1276,16 @@
       renderPieChart(normalCount, failureCount, maintenanceCount);
 
       // ----------------------------------------
+      // 全廠設備數位雙生矩陣看板 (Digital Twin Matrix)
+      // ----------------------------------------
+      renderDigitalTwinMatrix(dataList);
+
+      // ----------------------------------------
+      // 異常代碼 Pareto 柏拉圖分析 (80/20 法則)
+      // ----------------------------------------
+      renderParetoChart(dataList);
+
+      // ----------------------------------------
       // 區塊三：用表格列出最新的 5 筆回報紀錄
       // ----------------------------------------
       renderLatestRecordsTable(dataList);
@@ -1278,6 +1500,13 @@
               <span class="text-[11px] text-slate-500 ml-1">PCS</span>
             </td>
             <td class="py-3 px-3 text-xs text-amber-100/90 max-w-[260px]"><div class="line-clamp-2 break-words" title="${escHtml(row.Notes || '')}">${row.Notes ? escHtml(row.Notes) : '<span class="text-slate-600">--</span>'}</div></td>
+            <td class="py-3 px-3 text-xs text-center whitespace-nowrap">
+              ${row.Photo_URL ? `
+                <button type="button" onclick="openPhotoModal('${escHtml(row.Photo_URL)}', '${escHtml(row.Machine_ID || '')}', '${escHtml(formatTimestamp(row.Timestamp))}')" class="px-2 py-1 rounded bg-rose-900/60 hover:bg-rose-800 border border-rose-500/60 text-rose-200 text-xs font-bold inline-flex items-center gap-1 shadow-[0_0_8px_rgba(255,46,84,0.3)]">
+                  <span>📸</span> 查看
+                </button>
+              ` : '<span class="text-slate-600">--</span>'}
+            </td>
             <td class="py-3 px-3">${deviceBadge(row.Device_Type)}</td>
             <td class="py-3 px-3 text-xs whitespace-nowrap">${browserOs}</td>
             <td class="py-3 px-3 text-xs text-emerald-300/90 whitespace-nowrap">${escHtml(row.IP || '--')}</td>
@@ -1291,6 +1520,8 @@
       animateNumber('totalProducedQty', 0);
       ['statTotalRecords', 'statNormalCount', 'statFailureCount', 'statMaintenanceCount'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = 0; });
       renderPieChart(0, 0, 0);
+      renderDigitalTwinMatrix([]);
+      renderParetoChart([]);
       renderLatestRecordsTable([]);
     }
 
@@ -1509,7 +1740,7 @@
       const rows = list.slice((adminPage - 1) * ADMIN_PAGE_SIZE, adminPage * ADMIN_PAGE_SIZE);
       const tbody = document.getElementById('adminTableBody');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="12" class="py-6 text-center text-slate-500">沒有符合的回報資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="py-6 text-center text-slate-500">沒有符合的回報資料</td></tr>';
       } else {
         tbody.innerHTML = rows.map(r => {
           const id = escHtml(r.Record_ID || '');
@@ -1524,6 +1755,13 @@
             <td class="py-2 px-2 text-right text-cyan-300">${(Number(r.Produced_Qty) || 0).toLocaleString('en-US')}</td>
             <td class="py-2 px-2 whitespace-nowrap text-slate-300">${escHtml(r.Error_Code || '')}</td>
             <td class="py-2 px-2 text-slate-400 max-w-[180px] truncate" title="${escHtml(r.Notes || '')}">${escHtml(r.Notes || '')}</td>
+            <td class="py-2 px-2 text-center whitespace-nowrap">
+              ${r.Photo_URL ? `
+                <button type="button" onclick="openPhotoModal('${escHtml(r.Photo_URL)}', '${escHtml(r.Machine_ID || '')}', '${escHtml(formatTimestamp(r.Timestamp))}')" class="px-2 py-0.5 rounded bg-rose-900/70 hover:bg-rose-800 border border-rose-500/60 text-rose-200 text-[11px] font-bold">
+                  📸 照片
+                </button>
+              ` : '<span class="text-slate-600">--</span>'}
+            </td>
             <td class="py-2 px-2 whitespace-nowrap">${deviceBadge(r.Device_Type)} <span class="text-slate-400">${escHtml(r.Browser || '')}</span></td>
             <td class="py-2 px-2 whitespace-nowrap"><div class="text-emerald-300/90">${escHtml(r.IP || '--')}</div><div class="text-[10px] text-slate-500">${escHtml(r.Device_ID || '')}</div></td>
             <td class="py-2 px-2 whitespace-nowrap text-[10px] text-slate-500">${r.Updated_At ? escHtml(formatTimestamp(r.Updated_At)) + '<br>' + escHtml(r.Updated_By || '') : '—'}</td>
@@ -1716,12 +1954,725 @@
     function closeTgModal() { document.getElementById('tgModal').classList.add('hidden'); }
 
     // ==========================================
+    // 🏭 全廠設備數位雙生矩陣 (Digital Twin Matrix) 與停機逾時追蹤
+    // ==========================================
+    const DEFAULT_FLEET = ['CNC-001', 'CNC-002', 'CNC-003', 'CNC-004', 'CNC-005', 'CNC-006', 'CNC-007', 'CNC-008', 'CNC-009', 'CNC-010', 'CNC-011', 'CNC-012'];
+    let currentMatrixFilter = 'ALL';
+    let DOWNTIME_THRESHOLD_MINUTES = parseInt(lsGet('hsh_downtime_thresh', '30')) || 30;
+    let ALARM_SOUND_ENABLED = lsGet('hsh_alarm_sound', 'true') === 'true';
+    let lastAlarmSoundTime = 0;
+    let downtimeTicker = null;
+
+    function getMachineFleetList(dataList) {
+      const set = new Set(DEFAULT_FLEET);
+      (dataList || []).forEach(r => {
+        if (r.Machine_ID && String(r.Machine_ID).trim()) {
+          set.add(String(r.Machine_ID).trim());
+        }
+      });
+      return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    }
+
+    function setMatrixFilter(filter) {
+      currentMatrixFilter = filter;
+      document.querySelectorAll('#matrixFilterTabs .matrix-tab').forEach(btn => {
+        btn.classList.remove('bg-cyan-900/60', 'border-cyan-500/40');
+      });
+      if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('bg-cyan-900/60', 'border-cyan-500/40');
+      }
+      renderDigitalTwinMatrix(LAST_DATA);
+    }
+
+    function onDowntimeThresholdChange(val) {
+      DOWNTIME_THRESHOLD_MINUTES = parseInt(val) || 30;
+      lsSet('hsh_downtime_thresh', String(DOWNTIME_THRESHOLD_MINUTES));
+      tickDowntimeCounters();
+    }
+
+    function toggleAlarmAudio() {
+      ALARM_SOUND_ENABLED = !ALARM_SOUND_ENABLED;
+      lsSet('hsh_alarm_sound', String(ALARM_SOUND_ENABLED));
+      updateAlarmAudioButton();
+      if (ALARM_SOUND_ENABLED) {
+        playAlarmSiren(true); // 試聽 0.25 秒
+      }
+    }
+
+    function updateAlarmAudioButton() {
+      const btn1 = document.getElementById('btnSoundToggle');
+      const btn2 = document.getElementById('btnAlarmMute');
+      if (btn1) {
+        btn1.textContent = ALARM_SOUND_ENABLED ? '🔊 警報音效: 開' : '🔇 警報音效: 關';
+        btn1.className = ALARM_SOUND_ENABLED 
+          ? 'px-2.5 py-1 rounded bg-rose-950/60 border border-rose-500/70 text-rose-300 font-bold transition-all'
+          : 'px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 transition-all';
+      }
+      if (btn2) {
+        btn2.textContent = ALARM_SOUND_ENABLED ? '🔊 警報音效: 開' : '🔇 警報音效: 關';
+      }
+    }
+
+    // Web Audio 雙頻警報蜂鳴音
+    function playAlarmSiren(isShort = false) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        if (isShort) {
+          osc.frequency.setValueAtTime(660, now);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else {
+          // 雙音頻警示
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.setValueAtTime(880, now + 0.25);
+          osc.frequency.setValueAtTime(520, now + 0.5);
+          osc.frequency.setValueAtTime(880, now + 0.75);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 1.1);
+        }
+      } catch (e) {
+        console.warn('Audio playback error:', e);
+      }
+    }
+
+    function scrollToDigitalTwin() {
+      const el = document.getElementById('digitalTwinSection');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderDigitalTwinMatrix(dataList) {
+      const container = document.getElementById('machineMatrixGrid');
+      if (!container) return;
+
+      const fleet = getMachineFleetList(dataList);
+      let countRun = 0, countStop = 0, countMaint = 0, countIdle = 0;
+
+      // 按機台分組資料
+      const machineMap = {};
+      fleet.forEach(m => {
+        machineMap[m] = {
+          id: m,
+          records: [],
+          latest: null,
+          statusCode: 'IDLE', // RUN, STOP, MAINT, IDLE
+          todayQty: 0,
+          operator: '--',
+          dept: '',
+          errorCode: '',
+          notes: '',
+          photoUrl: '',
+          lastTimestamp: null
+        };
+      });
+
+      const todayStr = taipeiDay(Date.now());
+
+      (dataList || []).forEach(r => {
+        const mId = String(r.Machine_ID || '').trim();
+        if (!machineMap[mId]) {
+          machineMap[mId] = {
+            id: mId,
+            records: [],
+            latest: null,
+            statusCode: 'IDLE',
+            todayQty: 0,
+            operator: '--',
+            dept: '',
+            errorCode: '',
+            notes: '',
+            photoUrl: '',
+            lastTimestamp: null
+          };
+        }
+        machineMap[mId].records.push(r);
+
+        // 累計當天產量
+        const rDay = taipeiDay(r.Timestamp);
+        if (rDay === todayStr || DATA_IS_DEMO) {
+          machineMap[mId].todayQty += (Number(r.Produced_Qty) || 0);
+        }
+      });
+
+      // 分析每個機台的最新狀態
+      Object.keys(machineMap).forEach(mId => {
+        const m = machineMap[mId];
+        if (m.records.length > 0) {
+          // 由新到舊排序
+          m.records.sort((a, b) => (new Date(b.Timestamp).getTime() || 0) - (new Date(a.Timestamp).getTime() || 0));
+          const latest = m.records[0];
+          m.latest = latest;
+          m.operator = latest.Operator || '--';
+          m.dept = latest.Dept || '';
+          m.errorCode = latest.Error_Code || '';
+          m.notes = latest.Notes || '';
+          m.photoUrl = latest.Photo_URL || '';
+          m.lastTimestamp = latest.Timestamp;
+
+          const s = String(latest.Status || '');
+          if (s.includes('故障') || s.includes('🔴')) {
+            m.statusCode = 'STOP';
+            countStop++;
+          } else if (s.includes('保養') || s.includes('🟡')) {
+            m.statusCode = 'MAINT';
+            countMaint++;
+          } else {
+            m.statusCode = 'RUN';
+            countRun++;
+          }
+        } else {
+          m.statusCode = 'IDLE';
+          countIdle++;
+        }
+      });
+
+      // 更新 Tab 計數標籤
+      const totalAll = fleet.length;
+      document.getElementById('tabCountAll').textContent = totalAll;
+      document.getElementById('tabCountRun').textContent = countRun;
+      document.getElementById('tabCountStop').textContent = countStop;
+      document.getElementById('tabCountMaint').textContent = countMaint;
+      document.getElementById('tabCountIdle').textContent = countIdle;
+
+      // 依目前 Tab 篩選欲顯示的機台
+      const filteredFleet = fleet.filter(mId => {
+        const m = machineMap[mId];
+        if (currentMatrixFilter === 'RUN') return m.statusCode === 'RUN';
+        if (currentMatrixFilter === 'STOP') return m.statusCode === 'STOP';
+        if (currentMatrixFilter === 'MAINT') return m.statusCode === 'MAINT';
+        if (currentMatrixFilter === 'IDLE') return m.statusCode === 'IDLE';
+        return true;
+      });
+
+      if (filteredFleet.length === 0) {
+        container.innerHTML = `<div class="col-span-full py-10 text-center text-slate-500 font-mono text-xs">此篩選條件下無任何機台</div>`;
+        return;
+      }
+
+      container.innerHTML = filteredFleet.map(mId => {
+        const m = machineMap[mId];
+        let statusBadge = '';
+        let cardBg = '';
+        let statusGlow = '';
+        let isAlarmOverdue = false;
+        let downtimeSec = 0;
+
+        if (m.statusCode === 'RUN') {
+          cardBg = 'bg-emerald-950/20 border-emerald-500/40 hover:border-emerald-400 shadow-[0_0_12px_rgba(0,255,157,0.12)]';
+          statusGlow = 'bg-emerald-400 shadow-[0_0_8px_#00ff9d]';
+          statusBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950/80 border border-emerald-500/50 text-emerald-300">🟢 正常</span>`;
+        } else if (m.statusCode === 'STOP') {
+          cardBg = 'bg-rose-950/30 border-rose-500 hover:border-rose-400 shadow-[0_0_15px_rgba(255,46,84,0.3)]';
+          statusGlow = 'bg-rose-500 shadow-[0_0_8px_#ff2e54]';
+          statusBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950/90 border border-rose-500 text-rose-300 animate-pulse">🔴 故障</span>`;
+          if (m.lastTimestamp) {
+            downtimeSec = Math.max(0, Math.floor((Date.now() - new Date(m.lastTimestamp).getTime()) / 1000));
+            isAlarmOverdue = downtimeSec >= DOWNTIME_THRESHOLD_MINUTES * 60;
+          }
+        } else if (m.statusCode === 'MAINT') {
+          cardBg = 'bg-amber-950/20 border-amber-500/40 hover:border-amber-400 shadow-[0_0_12px_rgba(250,204,21,0.12)]';
+          statusGlow = 'bg-amber-400 shadow-[0_0_8px_#facc15]';
+          statusBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 border border-amber-500/50 text-amber-300">🟡 保養</span>`;
+        } else {
+          cardBg = 'bg-slate-950/40 border-slate-800 hover:border-slate-600';
+          statusGlow = 'bg-slate-600';
+          statusBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-900 border border-slate-700 text-slate-400">⚪ 閒置</span>`;
+        }
+
+        const alarmClass = isAlarmOverdue ? 'ring-2 ring-rose-500 animate-pulse shadow-[0_0_20px_rgba(255,46,84,0.6)]' : '';
+
+        return `
+          <div onclick="openMachineTimeline('${escHtml(mId)}')" class="relative group cursor-pointer rounded-lg border p-3 font-mono transition-all duration-200 ${cardBg} ${alarmClass}">
+            <div class="flex items-center justify-between gap-1 mb-2">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full ${statusGlow}"></span>
+                <span class="text-sm font-bold tracking-wide text-cyan-200 group-hover:text-cyan-100">${escHtml(mId)}</span>
+              </div>
+              ${statusBadge}
+            </div>
+
+            <div class="space-y-1 text-[11px] text-slate-300">
+              <div class="flex items-center justify-between text-slate-400">
+                <span>人員</span>
+                <span class="text-slate-200 font-semibold truncate max-w-[90px] text-right">${escHtml(m.operator)}</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-400">
+                <span>本日產量</span>
+                <span class="text-cyan-300 font-bold">${m.todayQty.toLocaleString('en-US')} <span class="text-[9px] text-slate-500">PCS</span></span>
+              </div>
+            </div>
+
+            ${m.statusCode === 'STOP' ? `
+              <div class="mt-2.5 pt-2 border-t border-rose-900/60 flex items-center justify-between text-[10.5px]">
+                <span class="text-rose-400 font-bold">⏱️ 停機時長</span>
+                <span class="downtime-counter font-bold ${isAlarmOverdue ? 'text-rose-300 animate-pulse' : 'text-rose-200'}" data-machine="${escHtml(mId)}" data-ts="${escHtml(m.lastTimestamp || '')}">
+                  計算中…
+                </span>
+              </div>
+            ` : `
+              <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
+                <span>最後紀錄</span>
+                <span class="truncate max-w-[80px]">${m.lastTimestamp ? m.lastTimestamp.slice(11, 19) : '--'}</span>
+              </div>
+            `}
+
+            ${m.photoUrl ? `
+              <div class="absolute bottom-2 right-2 text-xs" title="有上傳故障照片">📸</div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      tickDowntimeCounters();
+    }
+
+    // 每秒跳秒更新停機時間計數器與檢查逾時警報
+    function tickDowntimeCounters() {
+      const counters = document.querySelectorAll('.downtime-counter');
+      const now = Date.now();
+      const overdueMachines = [];
+
+      counters.forEach(el => {
+        const ts = el.dataset.ts;
+        const mId = el.dataset.machine;
+        if (!ts) return;
+        const t = new Date(ts).getTime();
+        if (isNaN(t)) return;
+        const diffSec = Math.max(0, Math.floor((now - t) / 1000));
+        const hh = String(Math.floor(diffSec / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0');
+        const ss = String(diffSec % 60).padStart(2, '0');
+        el.textContent = `${hh}:${mm}:${ss}`;
+
+        if (diffSec >= DOWNTIME_THRESHOLD_MINUTES * 60) {
+          overdueMachines.push({ id: mId, mins: Math.floor(diffSec / 60) });
+        }
+      });
+
+      // 頂部逾時警報列控制
+      const banner = document.getElementById('downtimeAlarmBanner');
+      const textEl = document.getElementById('downtimeAlarmText');
+
+      if (banner && textEl) {
+        if (overdueMachines.length > 0) {
+          banner.classList.remove('hidden');
+          const detail = overdueMachines.map(m => `機台【${m.id}】停機已達 ${m.mins} 分鐘`).join('、');
+          textEl.textContent = `${detail}（門檻：${DOWNTIME_THRESHOLD_MINUTES} 分鐘），請幹部或生技維修人員立即排查排除！`;
+
+          // 每 25 秒若警報音開啟則警示一次
+          if (ALARM_SOUND_ENABLED && (now - lastAlarmSoundTime > 25000)) {
+            lastAlarmSoundTime = now;
+            playAlarmSiren();
+          }
+        } else {
+          banner.classList.add('hidden');
+        }
+      }
+    }
+
+    // 啟動定時跳秒計時器
+    if (!downtimeTicker) {
+      downtimeTicker = setInterval(tickDowntimeCounters, 1000);
+    }
+
+    // ==========================================
+    // 🏷️ 異常代碼 Pareto 柏拉圖分析 (80/20 法則)
+    // ==========================================
+    let currentParetoRange = 'ALL';
+    let paretoChartInstance = null;
+
+    function setParetoRange(range) {
+      currentParetoRange = range;
+      document.querySelectorAll('#paretoRangeTabs .pareto-tab').forEach(b => {
+        b.classList.remove('bg-cyan-900/60', 'border-cyan-500/40', 'text-cyan-300');
+        b.classList.add('text-slate-400');
+      });
+      if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('bg-cyan-900/60', 'border-cyan-500/40', 'text-cyan-300');
+        window.event.currentTarget.classList.remove('text-slate-400');
+      }
+      renderParetoChart(LAST_DATA);
+    }
+
+    function renderParetoChart(dataList) {
+      const canvas = document.getElementById('paretoChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const insightEl = document.getElementById('paretoInsight');
+      const listEl = document.getElementById('paretoTopList');
+
+      // 根據範圍過濾資料
+      const now = Date.now();
+      const filtered = (dataList || []).filter(r => {
+        const s = String(r.Status || '');
+        const err = String(r.Error_Code || '').trim();
+        const isStop = s.includes('故障') || s.includes('🔴') || (err && err !== '無');
+        if (!isStop) return false;
+
+        if (currentParetoRange === 'WEEK') {
+          const t = new Date(r.Timestamp).getTime();
+          return t && (now - t <= 7 * 86400 * 1000);
+        } else if (currentParetoRange === 'MONTH') {
+          const t = new Date(r.Timestamp).getTime();
+          return t && (now - t <= 30 * 86400 * 1000);
+        }
+        return true;
+      });
+
+      // 統計異常代碼發生頻率
+      const counts = {};
+      filtered.forEach(r => {
+        let code = String(r.Error_Code || '').trim();
+        if (!code || code === '無') code = '未標註原因';
+        counts[code] = (counts[code] || 0) + 1;
+      });
+
+      // 由大到小排序
+      const sortedKeys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+      const totalEvents = filtered.length;
+
+      if (sortedKeys.length === 0) {
+        if (paretoChartInstance) paretoChartInstance.destroy();
+        insightEl.innerHTML = '統計範圍內無任何故障停機或異常紀錄，設備運作極佳！';
+        listEl.innerHTML = '<span class="text-slate-500">無異常數據</span>';
+        return;
+      }
+
+      // 計算累積次數與累積百分比
+      let runningSum = 0;
+      const countsData = [];
+      const cumPercentages = [];
+      sortedKeys.forEach(k => {
+        const c = counts[k];
+        countsData.push(c);
+        runningSum += c;
+        cumPercentages.push(Number(((runningSum / totalEvents) * 100).toFixed(1)));
+      });
+
+      // 提煉 80/20 關鍵要因 (Vital Few)
+      const vitalFew = [];
+      let cum = 0;
+      for (let i = 0; i < sortedKeys.length; i++) {
+        vitalFew.push(sortedKeys[i]);
+        cum = cumPercentages[i];
+        if (cum >= 80) break;
+      }
+
+      const vitalRatio = ((vitalFew.length / sortedKeys.length) * 100).toFixed(0);
+      insightEl.innerHTML = `
+        統計共 <b class="text-amber-300 font-bold">${totalEvents}</b> 次異常停機事件。<br>
+        前 <b class="text-cyan-300 font-bold">${vitalFew.length}</b> 項主要原因（佔全部代碼之 ${vitalRatio}%）共導致了 
+        <b class="text-rose-400 font-bold">${cum}%</b> 的停機損失。<br>
+        建議生技維修與現場幹部優先鎖定前幾大項目進行 TPM 改善！
+      `;
+
+      listEl.innerHTML = sortedKeys.slice(0, 4).map((k, idx) => {
+        const c = counts[k];
+        const pct = ((c / totalEvents) * 100).toFixed(1);
+        const isTop = idx < vitalFew.length;
+        return `
+          <div class="flex items-center justify-between p-1.5 rounded ${isTop ? 'bg-amber-950/40 border border-amber-600/40' : 'bg-slate-950/40'}">
+            <span class="flex items-center gap-1.5 ${isTop ? 'text-amber-300 font-bold' : 'text-slate-300'}">
+              <span class="text-[10px] w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center">${idx + 1}</span>
+              ${escHtml(k)}
+            </span>
+            <span class="text-slate-400">${c} 次 (<b class="${isTop ? 'text-cyan-300' : 'text-slate-300'}">${pct}%</b>)</span>
+          </div>
+        `;
+      }).join('');
+
+      if (paretoChartInstance) {
+        paretoChartInstance.destroy();
+      }
+
+      paretoChartInstance = new Chart(ctx, {
+        data: {
+          labels: sortedKeys,
+          datasets: [
+            {
+              type: 'bar',
+              label: '異常發生次數 (次)',
+              data: countsData,
+              backgroundColor: 'rgba(245, 158, 11, 0.75)',
+              borderColor: '#F59E0B',
+              borderWidth: 1.5,
+              borderRadius: 4,
+              yAxisID: 'y'
+            },
+            {
+              type: 'line',
+              label: '累積百分比 (%)',
+              data: cumPercentages,
+              borderColor: '#00F0FF',
+              backgroundColor: 'rgba(0, 240, 255, 0.1)',
+              borderWidth: 2.5,
+              pointBackgroundColor: '#00F0FF',
+              pointRadius: 4,
+              yAxisID: 'y1',
+              tension: 0.2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#94A3B8',
+                font: { family: '"Chakra Petch", sans-serif', size: 12 }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(5, 8, 20, 0.95)',
+              titleColor: '#00F0FF',
+              borderColor: '#00F0FF',
+              borderWidth: 1,
+              padding: 10
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#94A3B8', font: { family: '"Share Tech Mono", monospace' } },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y: {
+              type: 'linear',
+              position: 'left',
+              title: { display: true, text: '發生次數', color: '#F59E0B' },
+              ticks: { color: '#F59E0B', stepSize: 1 },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y1: {
+              type: 'linear',
+              position: 'right',
+              title: { display: true, text: '累積 %', color: '#00F0FF' },
+              min: 0,
+              max: 100,
+              ticks: {
+                color: '#00F0FF',
+                callback: v => `${v}%`
+              },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      });
+    }
+
+    // ==========================================
+    // 📥 一鍵匯出 Excel / CSV 報表
+    // ==========================================
+    function exportDataToCsv(onlyFiltered = false) {
+      const dataToExport = onlyFiltered ? filteredAdminData() : sortedData();
+      if (!dataToExport || dataToExport.length === 0) {
+        alert('目前無可匯出的回報紀錄！');
+        return;
+      }
+
+      const headers = [
+        '紀錄編號 (Record_ID)',
+        '回報時間戳記 (Timestamp)',
+        '設備編號 (Machine_ID)',
+        '所屬部門 (Dept)',
+        '操作人員 (Operator)',
+        '運作狀態 (Status)',
+        '生產產量 (Produced_Qty)',
+        '異常代碼 (Error_Code)',
+        '備註說明 (Notes)',
+        '現場照片連結 (Photo_URL)',
+        '回報裝置 (Device_Type)',
+        '作業系統 (OS)',
+        '瀏覽器 (Browser)',
+        'IP 位址 (IP)',
+        '裝置識別碼 (Device_ID)',
+        '最後修改時間 (Updated_At)',
+        '最後修改人員 (Updated_By)'
+      ];
+
+      const csvRows = [headers.join(',')];
+
+      dataToExport.forEach(r => {
+        const row = [
+          csvEscape(r.Record_ID),
+          csvEscape(r.Timestamp),
+          csvEscape(r.Machine_ID),
+          csvEscape(r.Dept),
+          csvEscape(r.Operator),
+          csvEscape(r.Status),
+          csvEscape(r.Produced_Qty || 0),
+          csvEscape(r.Error_Code),
+          csvEscape(r.Notes),
+          csvEscape(r.Photo_URL),
+          csvEscape(r.Device_Type),
+          csvEscape(r.OS),
+          csvEscape(r.Browser),
+          csvEscape(r.IP),
+          csvEscape(r.Device_ID),
+          csvEscape(r.Updated_At),
+          csvEscape(r.Updated_By)
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvContent = '\uFEFF' + csvRows.join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const dateStr = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      a.href = url;
+      a.download = `許瑞興機台回報紀錄_${onlyFiltered ? '管理員篩選' : '全廠'}_${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setStatus(`✅ 已成功匯出 ${dataToExport.length} 筆回報紀錄為 Excel/CSV 檔案！`);
+    }
+
+    function csvEscape(val) {
+      if (val == null) return '""';
+      const s = String(val).replace(/"/g, '""');
+      return `"${s}"`;
+    }
+
+    // ==========================================
+    // 🏭 機台歷史時間軸 Modal 與 📸 照片燈箱
+    // ==========================================
+    function openMachineTimeline(machineId) {
+      const modal = document.getElementById('machineDetailModal');
+      if (!modal) return;
+
+      document.getElementById('mtMachineId').textContent = machineId;
+      const records = (LAST_DATA || []).filter(r => String(r.Machine_ID || '').trim() === machineId);
+      records.sort((a, b) => (new Date(b.Timestamp).getTime() || 0) - (new Date(a.Timestamp).getTime() || 0));
+
+      let totalQty = 0;
+      let failureCount = 0;
+      const todayStr = taipeiDay(Date.now());
+
+      records.forEach(r => {
+        if (taipeiDay(r.Timestamp) === todayStr || DATA_IS_DEMO) {
+          totalQty += (Number(r.Produced_Qty) || 0);
+        }
+        const s = String(r.Status || '');
+        if (s.includes('故障') || s.includes('🔴')) failureCount++;
+      });
+
+      document.getElementById('mtTotalQty').textContent = `${totalQty.toLocaleString('en-US')} PCS`;
+      document.getElementById('mtReportCount').textContent = records.length;
+      document.getElementById('mtFailureCount').textContent = failureCount;
+
+      const latest = records[0];
+      const curStatusEl = document.getElementById('mtCurrentStatus');
+      if (latest) {
+        const s = String(latest.Status || '');
+        const timeAgo = formatTimestamp(latest.Timestamp);
+        curStatusEl.innerHTML = `最新狀態：<b class="${s.includes('故障') ? 'text-rose-400' : s.includes('保養') ? 'text-amber-400' : 'text-emerald-400'}">${escHtml(s)}</b>（最後回報：${timeAgo} 由 ${escHtml(latest.Operator || '未註明')}）`;
+      } else {
+        curStatusEl.textContent = '此機台目前無歷史回報紀錄';
+      }
+
+      const timelineBody = document.getElementById('mtTimelineBody');
+      if (records.length === 0) {
+        timelineBody.innerHTML = '<div class="py-8 text-center text-slate-500">尚無回報紀錄</div>';
+      } else {
+        timelineBody.innerHTML = records.map((r, i) => {
+          const s = String(r.Status || '');
+          let dotColor = 'bg-emerald-400 shadow-[0_0_8px_#00ff9d]';
+          let borderCol = 'border-slate-800';
+          if (s.includes('故障') || s.includes('🔴')) {
+            dotColor = 'bg-rose-500 shadow-[0_0_8px_#ff2e54] animate-pulse';
+            borderCol = 'border-rose-900/60 bg-rose-950/20';
+          } else if (s.includes('保養') || s.includes('🟡')) {
+            dotColor = 'bg-amber-400 shadow-[0_0_8px_#facc15]';
+            borderCol = 'border-amber-900/60 bg-amber-950/20';
+          }
+
+          return `
+            <div class="relative pl-6 pb-3 border-l-2 border-slate-800 last:pb-0">
+              <span class="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full ${dotColor}"></span>
+              <div class="p-3 rounded-lg border ${borderCol} bg-slate-950/70">
+                <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] mb-1">
+                  <span class="font-bold text-slate-200">${formatTimestamp(r.Timestamp)}</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${s.includes('故障') ? 'bg-rose-950 text-rose-300 border border-rose-500/50' : s.includes('保養') ? 'bg-amber-950 text-amber-300 border border-amber-500/50' : 'bg-emerald-950 text-emerald-300 border border-emerald-500/50'}">
+                    ${escHtml(s)}
+                  </span>
+                </div>
+                <div class="text-[11.5px] text-slate-300 space-y-0.5">
+                  <div>回報人員：<span class="text-white font-semibold">${escHtml(r.Operator || '--')}</span> ${r.Dept ? `<span class="text-slate-500">(${escHtml(r.Dept)})</span>` : ''}</div>
+                  <div>生產產量：<span class="text-cyan-300 font-bold">${(Number(r.Produced_Qty) || 0).toLocaleString('en-US')} PCS</span></div>
+                  ${r.Error_Code && r.Error_Code !== '無' ? `<div>異常代碼：<span class="text-rose-300 font-bold">${escHtml(r.Error_Code)}</span></div>` : ''}
+                  ${r.Notes ? `<div>備註說明：<span class="text-amber-100/90">${escHtml(r.Notes)}</span></div>` : ''}
+                </div>
+                ${r.Photo_URL ? `
+                  <div class="mt-2 pt-2 border-t border-slate-800/80">
+                    <button type="button" onclick="openPhotoModal('${escHtml(r.Photo_URL)}', '${escHtml(machineId)}', '${escHtml(formatTimestamp(r.Timestamp))}')" class="px-2.5 py-1 rounded bg-rose-900/60 hover:bg-rose-800 border border-rose-500/60 text-rose-200 text-xs font-bold inline-flex items-center gap-1.5 shadow-[0_0_8px_rgba(255,46,84,0.3)]">
+                      <span>📸 檢視現場照片</span>
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeMachineTimeline() {
+      const modal = document.getElementById('machineDetailModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function openPhotoModal(photoUrl, machineId, time) {
+      const modal = document.getElementById('photoLightboxModal');
+      if (!modal) return;
+      document.getElementById('photoLightboxImg').src = photoUrl;
+      document.getElementById('photoLightboxTitle').textContent = `📸 現場故障照片 - ${machineId || ''} (${time || ''})`;
+      document.getElementById('photoLightboxDriveLink').href = photoUrl;
+      modal.classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      const modal = document.getElementById('photoLightboxModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        document.getElementById('photoLightboxImg').src = '';
+      }
+    }
+
+    // ==========================================
     // 頁面載入完成時立即發送請求
     // ==========================================
     window.addEventListener('DOMContentLoaded', () => {
       loadTelegramInfo();
       document.getElementById('versionTag').textContent = APP_VERSION;
       updateOnlineBadge_();
+      updateAlarmAudioButton();
+      const threshSelect = document.getElementById('downtimeThresholdSelect');
+      if (threshSelect) threshSelect.value = String(DOWNTIME_THRESHOLD_MINUTES);
       pingPresence();
       detectIp_().then(() => { presenceBusy = false; pingPresence(); });
       setInterval(pingPresence, 30000);
