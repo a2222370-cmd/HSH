@@ -518,6 +518,7 @@
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; user-select: none;
   }
   .cell .cell-name { font-size: 13px; font-weight: 800; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cell .cell-name-preview { font-size: 12.5px; font-weight: 600; color: var(--text); opacity: 0.72; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px; }
   .cell .cell-num { font-size: 10px; opacity: 0.7; }
   .cell.filled {
     background: var(--filled-bg); border-color: var(--accent);
@@ -871,6 +872,13 @@
         <select id="seatModeSelect" onchange="onSeatModeChange(); saveStateToStorage();">
           <option value="grid">行列（例如：第 3 行 第 5 列）</option>
           <option value="table">桌人（例如：第 3 桌 第 5 位）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="seatAssignModeSelect" style="color:var(--primary);font-weight:700;">座位對應情境</label>
+        <select id="seatAssignModeSelect" onchange="onSeatAssignModeChange(); saveStateToStorage();" style="font-weight:600;">
+          <option value="assigned">🍽️ 宴席抽獎模式（對號入座：依名冊固定桌位）</option>
+          <option value="random">🎲 隨機排位模式（原版排位：抽籤分派空座位）</option>
         </select>
       </div>
       <div class="field">
@@ -1429,7 +1437,7 @@ var Confetti = (function(){
 })();
 
 /* ================= 系統主要狀態變數 ================= */
-var APP_VERSION = 'v2.2.0';
+var APP_VERSION = 'v2.2.1';
 var lotteryMode = 'seat'; // 'seat' (純挑人/排位) | 'prize' (活動獎項模式)
 var rows = 5, cols = 6, total = 30;
 var pool = [];            // 候選人池
@@ -1445,6 +1453,7 @@ var soundOn = true;
 var darkMode = false;
 var stageMode = false;
 var seatMode = 'grid';    // 'grid' 或 'table'
+var seatAssignMode = 'assigned'; // 'assigned' (對號入座固定桌位) | 'random' (隨機排位分派空位)
 var drawView = 'grid';    // 'grid' | 'wheel' | 'slot' | 'lotto'
 var drawnMap = {};
 var randomGroupMaps = {};
@@ -1493,6 +1502,12 @@ var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181',
 
 /* 改版紀錄清單 */
 var CHANGELOG = [
+  { v: 'v2.2.1', date: '2026-10-04', notes: [
+    '🍽️ 新增「座位對應情境」切換：完整支援「宴席抽獎模式（對號入座）」與「隨機排位模式（原版排位）」自由切換！',
+    '🎯 宴席抽獎模式（對號入座）：依名冊序號精確鎖定每位同仁桌次（4桌10人時，編號24必定精準對應第3桌第4位），抽中時直接點亮得主真實座位，開獎卡片與廣播精準對齊，現場零混淆！',
+    '👀 格子未開獎預覽：對號入座模式下，每個座位即刻清晰標示預先排定之同仁姓名，中獎時華麗點亮變金，宴席桌次一目了然。',
+    '🔒 人員名冊管理全面管理者密碼鎖定：名冊編輯框與載入、上傳、套用、範本修改均受管理者密碼保護，關閉彈窗自動回鎖。'
+  ]},
   { v: 'v2.2.0', date: '2026-10-04', notes: [
     '🏢 系統命名優化：系統全銜正式定案為「許瑞興工業抽籤／幸運抽獎系統」，頂欄俐落呈現「許瑞興工業 抽籤／幸運抽獎系統」，去重複字詞更顯專業大器。',
     '🔒 雲端同步資安升級：GAS API 網址與 Token 預設全面密碼掩碼隱蔽（••••），畫面移除密碼明文，唯有管理者輸入密碼解鎖後方可檢視與編輯；關閉彈窗時自動重新上鎖。',
@@ -2561,7 +2576,11 @@ function renderEmptyGrid(){
           el.classList.add('filled');
           el.innerHTML = '<span class="cell-name">' + drawn.name + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
         } else {
-          el.innerHTML = '<span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
+          if (seatAssignMode === 'assigned' && useRoster && roster[i]){
+            el.innerHTML = '<span class="cell-name-preview">' + roster[i].name + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
+          } else {
+            el.innerHTML = '<span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
+          }
         }
         el.addEventListener('click', onCellClick);
         seatsGrid.appendChild(el);
@@ -2588,7 +2607,11 @@ function renderEmptyGrid(){
         el.classList.add('filled');
         el.innerHTML = '<span class="cell-name">' + drawn.name + '</span><span class="coord">' + r + '-' + c + '</span>';
       } else {
-        el.innerHTML = '<span class="coord">' + r + '-' + c + '</span>';
+        if (seatAssignMode === 'assigned' && useRoster && roster[i]){
+          el.innerHTML = '<span class="cell-name-preview">' + roster[i].name + '</span><span class="coord">' + r + '-' + c + '</span>';
+        } else {
+          el.innerHTML = '<span class="coord">' + r + '-' + c + '</span>';
+        }
       }
       el.addEventListener('click', onCellClick);
       g.appendChild(el);
@@ -2624,7 +2647,9 @@ function updateTotalHint(){
   var activeCount = total - Object.keys(excluded).length;
   var hint = (seatMode==='table' ? rows+' 桌 × 每桌 '+cols+' 人' : rows+' 行 × '+cols+' 列') +
     '，共 ' + total + ' 格（可用 ' + activeCount + ' 格）';
-  if (useRoster) hint += ' · 名冊已匯入 ' + roster.length + ' 人';
+  if (useRoster) {
+    hint += ' · 名冊已匯入 ' + roster.length + ' 人 (' + (seatAssignMode === 'assigned' ? '🍽️ 對號入座固定桌位' : '🎲 抽籤隨機分派空位') + ')';
+  }
   document.getElementById('totalHint').textContent = hint;
 }
 
@@ -2635,6 +2660,13 @@ function onSeatModeChange(){
   setupGrid();
 }
 
+function onSeatAssignModeChange(){
+  var sel = document.getElementById('seatAssignModeSelect');
+  if (sel) seatAssignMode = sel.value;
+  updateTotalHint();
+  setupGrid();
+}
+
 /* ================= 核心抽籤邏輯 ================= */
 function buildCandidatePool(){
   var candidates = [];
@@ -2642,11 +2674,24 @@ function buildCandidatePool(){
   
   if (useRoster && roster.length > 0){
     roster.forEach(function(person, idx){
+      // 對號入座模式下：若此名冊人員對應的座位被設為排除，則不參與抽籤
+      if (seatAssignMode === 'assigned' && excluded[idx]){
+        return;
+      }
+      var r = Math.floor(idx / cols) + 1;
+      var c = (idx % cols) + 1;
+      var seatText = seatMode === 'table' ? ('第 ' + r + ' 桌 第 ' + c + ' 位') : ('第 ' + r + ' 行 第 ' + c + ' 列');
+      var seatShort = seatMode === 'table' ? (r + '桌' + c) : (r + '-' + c);
       candidates.push({
-        num: idx + 1,
+        num: person.num || (idx + 1),
         name: person.name,
-        dept: person.dept,
-        id: person.id
+        dept: person.dept || '',
+        id: person.id || '',
+        seatIndex: idx,
+        r: r,
+        c: c,
+        seatText: seatText,
+        seatShort: seatShort
       });
     });
   } else {
@@ -2659,6 +2704,7 @@ function buildCandidatePool(){
         num: seq + 1,
         name: seatText,
         seatShort: seatShort,
+        seatIndex: idx,
         r: r,
         c: c,
         dept: '',
@@ -2728,12 +2774,18 @@ function executeDraw(){
 }
 
 function animateGrid(chosenIdx, doneCallback){
-  var cellIdx = activeCellOrder[filledCount];
-  var cellEl = cellRefs[cellIdx];
+  var picked = pool[chosenIdx];
+  var targetCellIdx;
+  if (seatAssignMode === 'assigned'){
+    targetCellIdx = (picked && picked.seatIndex !== undefined) ? picked.seatIndex : (picked ? (picked.num - 1) : 0);
+  } else {
+    targetCellIdx = activeCellOrder[filledCount];
+  }
+  var cellEl = cellRefs[targetCellIdx];
   var t = 0;
   var timer = setInterval(function(){
     var rand = pool[Math.floor(Math.random() * pool.length)];
-    cellEl.innerHTML = '<span class="cell-name">' + rand.name + '</span>';
+    if (cellEl) cellEl.innerHTML = '<span class="cell-name">' + rand.name + '</span>';
     t += 60;
     if (t >= 550){
       clearInterval(timer);
@@ -2745,13 +2797,21 @@ function animateGrid(chosenIdx, doneCallback){
 function finishDrawWithIndex(chosenIdx){
   if (soundOn) SoundFX.stopDrumRoll();
 
-  var cellIdx = activeCellOrder[filledCount];
-  var cellEl = cellRefs[cellIdx];
-  var r = Math.floor(cellIdx / cols) + 1, c = (cellIdx % cols) + 1;
-
   var picked = pool.splice(chosenIdx, 1)[0];
   var isPrize = lotteryMode === 'prize';
   var curPrize = isPrize ? (prizes.find(function(p){ return p.id === activePrizeId; }) || prizes[0]) : null;
+
+  var cellIdx;
+  if (seatAssignMode === 'assigned'){
+    // 宴席抽獎模式：對號入座，固定對應其原始座位（例如編號24固定對應第3桌第4位）
+    cellIdx = (picked && picked.seatIndex !== undefined) ? picked.seatIndex : (picked.num - 1);
+  } else {
+    // 隨機排位模式：抽籤時隨機分派空位填入
+    cellIdx = activeCellOrder[filledCount];
+  }
+
+  var cellEl = cellRefs[cellIdx];
+  var r = Math.floor(cellIdx / cols) + 1, c = (cellIdx % cols) + 1;
 
   filledCount++;
   var seatPos = seatMode === 'table' ? ('第 ' + r + ' 桌 第 ' + c + ' 位') : ('第 ' + r + ' 行 第 ' + c + ' 列');
@@ -2775,9 +2835,11 @@ function finishDrawWithIndex(chosenIdx){
   drawHistory.push(drawItem);
   drawnMap[cellIdx] = drawItem;
 
-  cellEl.innerHTML = '<span class="cell-name">' + (useRoster ? picked.name : seatShort) + '</span><span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
-  cellEl.classList.add('filled', 'just-filled');
-  setTimeout(function(){ cellEl.classList.remove('just-filled'); }, 400);
+  if (cellEl){
+    cellEl.innerHTML = '<span class="cell-name">' + (useRoster ? picked.name : seatShort) + '</span><span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
+    cellEl.classList.add('filled', 'just-filled');
+    setTimeout(function(){ cellEl.classList.remove('just-filled'); }, 400);
+  }
 
   applyGroupColors();
   showWinnerCard(drawItem);
@@ -2992,7 +3054,11 @@ function undoLastDraw(){
   var cellEl = cellRefs[last.cellIdx];
   if (cellEl){
     cellEl.classList.remove('filled');
-    cellEl.innerHTML = '<span class="coord">' + (seatMode==='table' ? last.r+'桌'+last.c : last.r+'-'+last.c) + '</span>';
+    if (seatAssignMode === 'assigned' && useRoster && roster[last.cellIdx]){
+      cellEl.innerHTML = '<span class="cell-name-preview">' + roster[last.cellIdx].name + '</span><span class="coord">' + (seatMode==='table' ? last.r+'桌'+last.c : last.r+'-'+last.c) + '</span>';
+    } else {
+      cellEl.innerHTML = '<span class="coord">' + (seatMode==='table' ? last.r+'桌'+last.c : last.r+'-'+last.c) + '</span>';
+    }
   }
 
   pool.push({ num: last.num, name: last.name, dept: last.dept, id: last.id });
@@ -4077,6 +4143,7 @@ function saveStateToStorage(){
       lotteryMode: lotteryMode,
       rows: rows, cols: cols, total: total,
       seatMode: seatMode, drawView: drawView,
+      seatAssignMode: seatAssignMode,
       prizes: prizes, activePrizeId: activePrizeId,
       currentPrizeTemplateKey: currentPrizeTemplateKey,
       currentRosterTemplateKey: currentRosterTemplateKey,
@@ -4103,6 +4170,11 @@ function loadSettings(){
     if (state.seatMode) {
       seatMode = state.seatMode;
       document.getElementById('seatModeSelect').value = seatMode;
+    }
+    if (state.seatAssignMode) {
+      seatAssignMode = state.seatAssignMode;
+      var selAssign = document.getElementById('seatAssignModeSelect');
+      if (selAssign) selAssign.value = seatAssignMode;
     }
     if (state.drawView) switchDrawView(state.drawView);
     if (state.lotteryMode) {
