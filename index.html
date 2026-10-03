@@ -764,16 +764,19 @@
       <h3>👥 人員名冊管理</h3>
       <button class="modal-close-btn" onclick="closeModal('rosterModal')">✕</button>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-      <label style="font-weight:700;font-size:13px;color:var(--primary);">切換名冊範本：</label>
-      <select id="rosterTemplateSelect" onchange="onRosterTemplateSelect(this.value)" style="flex:1;min-width:180px;font-size:13px;padding:5px 8px;">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+      <label style="font-weight:700;font-size:13px;color:var(--primary);">名冊範本：</label>
+      <select id="rosterTemplateSelect" onchange="onRosterTemplateSelect(this.value)" style="flex:1;min-width:160px;font-size:13px;padding:5px 8px;">
         <option value="demo">許瑞興示範名單 (30人)</option>
       </select>
-      <button class="tool-btn" onclick="saveNewRosterTemplate()">💾 另存名冊</button>
+      <button class="tool-btn highlight" id="btnUpdateCurRosterTpl" onclick="updateCurrentRosterTemplate()" disabled title="修改下方名單後點此直接更新覆寫當前選中的範本（含預設範本）">💾 儲存修改</button>
+      <button class="tool-btn" id="btnRenameRosterTpl" onclick="renameRosterTemplate()" disabled title="修改當前範本名稱（含預設範本）">✏️ 改名</button>
+      <button class="tool-btn" id="btnSaveRosterTpl" onclick="saveNewRosterTemplate()" disabled title="將目前名單另存為全新自訂範本">➕ 自訂新範本</button>
+      <button class="tool-btn" id="btnResetFactoryRoster" onclick="resetFactoryRosterTemplate()" disabled title="將此預設名冊還原為原廠初始內容" style="display:none;color:#d97706;">🔄 還原預設</button>
       <button class="tool-btn" onclick="syncTemplatesFromCloud(true)" title="從 Google 試算表同步其他電腦的名冊">☁️ 雲端同步</button>
       <button class="tool-btn" onclick="exportTemplatesBackup()" title="匯出成備份檔帶到別台電腦">📤 備份</button>
       <button class="tool-btn" onclick="importTemplatesBackup()" title="匯入備份檔">📥 匯入</button>
-      <button class="tool-btn" id="btnDeleteRosterTpl" onclick="deleteRosterTemplate()" style="color:#dc2626;" disabled>🗑️ 刪除名冊</button>
+      <button class="tool-btn" id="btnDeleteRosterTpl" onclick="deleteRosterTemplate()" style="color:#dc2626;" disabled>🗑️ 刪除</button>
     </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">
       每行一位同仁，格式支援：<code>工號 姓名 部門</code> 或 <code>姓名 部門</code> 或 <code>姓名</code>（從 Excel 整欄複製貼上亦可）：
@@ -806,15 +809,18 @@
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <label style="font-weight:700;font-size:13px;color:var(--primary);">獎項範本：</label>
         <select id="prizeTemplateSelect" onchange="onPrizeTemplateSelect(this.value)" style="font-size:13px;padding:4px 8px;">
-          <option value="preset_standard">🏆 尾牙春酒標準版 (5獎 36名)</option>
-          <option value="preset_dept">🍽️ 部門聚餐精簡版 (3獎 17名)</option>
+          <option value="preset_standard">🏆 尾牙春酒標準版 (4獎 16名)</option>
+          <option value="preset_dept">🍽️ 部門聚餐精簡版 (3獎 6名)</option>
           <option value="preset_class">🎓 課堂活動激勵版 (3獎 10名)</option>
         </select>
-        <button class="tool-btn" id="btnSavePrizeTpl" onclick="saveNewPrizeTemplate()" disabled>💾 另存範本</button>
+        <button class="tool-btn highlight" id="btnUpdateCurPrizeTpl" onclick="updateCurrentPrizeTemplate()" disabled title="修改獎項後點此直接更新覆寫當前選中的範本（含預設範本）">💾 儲存修改</button>
+        <button class="tool-btn" id="btnRenamePrizeTpl" onclick="renamePrizeTemplate()" disabled title="修改當前範本名稱（含預設範本）">✏️ 改名</button>
+        <button class="tool-btn" id="btnSavePrizeTpl" onclick="saveNewPrizeTemplate()" disabled title="將目前獎項另存為全新自訂範本">➕ 自訂新範本</button>
+        <button class="tool-btn" id="btnResetFactoryPrize" onclick="resetFactoryPrizeTemplate()" disabled title="將此預設範本還原為原廠初始內容" style="display:none;color:#d97706;">🔄 還原預設</button>
         <button class="tool-btn" onclick="syncTemplatesFromCloud(true)" title="從 Google 試算表同步其他電腦的獎項">☁️ 雲端同步</button>
         <button class="tool-btn" onclick="exportTemplatesBackup()" title="匯出成備份檔帶到別台電腦">📤 備份</button>
         <button class="tool-btn" onclick="importTemplatesBackup()" title="匯入備份檔">📥 匯入</button>
-        <button class="tool-btn" id="btnDeletePrizeTpl" onclick="deletePrizeTemplate()" style="color:#dc2626;" disabled>🗑️ 刪除範本</button>
+        <button class="tool-btn" id="btnDeletePrizeTpl" onclick="deletePrizeTemplate()" style="color:#dc2626;" disabled>🗑️ 刪除</button>
       </div>
       <button class="tool-btn highlight" id="btnAddPrizeRow" onclick="addNewPrizeRow()" disabled>＋ 新增獎項</button>
     </div>
@@ -1321,90 +1327,229 @@ var PRESET_PRIZE_TEMPLATES = {
   }
 };
 
-function getCustomPrizeTemplates(){
+var FACTORY_PRIZE_TEMPLATES = {
+  'preset_standard': {
+    name: '🏆 尾牙春酒標準版 (4獎 16名)',
+    prizes: [
+      { id: 'p1', name: '特獎', reward: 'iPhone 16 Pro', count: 1, icon: '🥇', color: '#f59e0b' },
+      { id: 'p2', name: '頭獎', reward: '萬元獎金', count: 2, icon: '🥈', color: '#e11d48' },
+      { id: 'p3', name: '貳獎', reward: '智慧家電', count: 3, icon: '🥉', color: '#7c3aed' },
+      { id: 'p4', name: '普獎', reward: '幸運紅包', count: 10, icon: '🎁', color: '#2563eb' }
+    ]
+  },
+  'preset_dept': {
+    name: '🍽️ 部門聚餐精簡版 (3獎 6名)',
+    prizes: [
+      { id: 'p1', name: '大獎', reward: 'AirPods Pro', count: 1, icon: '🌟', color: '#f59e0b' },
+      { id: 'p2', name: '二獎', reward: '千元餐券', count: 2, icon: '🍴', color: '#10b981' },
+      { id: 'p3', name: '參加獎', reward: '電影票 2 張', count: 3, icon: '🎟️', color: '#2563eb' }
+    ]
+  },
+  'preset_class': {
+    name: '🎓 課堂活動激勵版 (3獎 10名)',
+    prizes: [
+      { id: 'p1', name: '冠軍獎', reward: '精美圖書禮券', count: 1, icon: '👑', color: '#f59e0b' },
+      { id: 'p2', name: '優勝獎', reward: '文具禮品組', count: 3, icon: '🎖️', color: '#ec4899' },
+      { id: 'p3', name: '幸運獎', reward: '超商百元禮品卡', count: 6, icon: '🎈', color: '#06b6d4' }
+    ]
+  }
+};
+
+function getAllPrizeTemplates(){
+  var stored = {};
+  try { stored = JSON.parse(localStorage.getItem('lottery_all_prize_templates') || '{}'); } catch(e){ stored = {}; }
   try {
-    return JSON.parse(localStorage.getItem('lottery_custom_prize_templates') || '{}');
-  } catch(e){ return {}; }
+    var oldCustom = JSON.parse(localStorage.getItem('lottery_custom_prize_templates') || '{}');
+    Object.keys(oldCustom).forEach(function(k){ if (!stored[k]) stored[k] = oldCustom[k]; });
+  } catch(e){}
+
+  var merged = {};
+  Object.keys(FACTORY_PRIZE_TEMPLATES).forEach(function(k){
+    merged[k] = stored[k] ? JSON.parse(JSON.stringify(stored[k])) : JSON.parse(JSON.stringify(FACTORY_PRIZE_TEMPLATES[k]));
+  });
+  Object.keys(stored).forEach(function(k){
+    if (!merged[k]) merged[k] = stored[k];
+  });
+  return merged;
+}
+
+function saveAllPrizeTemplates(allTpls){
+  try {
+    localStorage.setItem('lottery_all_prize_templates', JSON.stringify(allTpls));
+  } catch(e){}
+}
+
+function getCustomPrizeTemplates(){
+  return getAllPrizeTemplates();
 }
 
 function saveCustomPrizeTemplates(tpls){
-  try {
-    localStorage.setItem('lottery_custom_prize_templates', JSON.stringify(tpls));
-  } catch(e){}
+  saveAllPrizeTemplates(tpls);
 }
 
 function renderPrizeTemplateOptions(selectedKey){
   var sel = document.getElementById('prizeTemplateSelect');
   if (!sel) return;
-  var custom = getCustomPrizeTemplates();
-  var html = '';
-  Object.keys(PRESET_PRIZE_TEMPLATES).forEach(function(k){
-    html += '<option value="' + k + '">' + PRESET_PRIZE_TEMPLATES[k].name + '</option>';
+  var allTpls = getAllPrizeTemplates();
+  var curVal = selectedKey || sel.value || 'preset_standard';
+  var presetKeys = Object.keys(FACTORY_PRIZE_TEMPLATES);
+  var customKeys = Object.keys(allTpls).filter(function(k){ return presetKeys.indexOf(k) < 0; });
+
+  var html = '<optgroup label="── 預設獎項範本（可編輯/改名） ──">';
+  presetKeys.forEach(function(k){
+    var item = allTpls[k] || FACTORY_PRIZE_TEMPLATES[k];
+    html += '<option value="' + k + '">' + item.name + '</option>';
   });
-  var customKeys = Object.keys(custom);
+  html += '</optgroup>';
+
   if (customKeys.length > 0){
-    html += '<optgroup label="── 自訂已儲存範本 ──">';
+    html += '<optgroup label="── 自訂獎項範本 ──">';
     customKeys.forEach(function(k){
-      html += '<option value="' + k + '">📁 ' + custom[k].name + '</option>';
+      html += '<option value="' + k + '">📁 ' + allTpls[k].name + '</option>';
     });
     html += '</optgroup>';
   }
   sel.innerHTML = html;
-  if (selectedKey) sel.value = selectedKey;
-  updatePrizeDeleteBtnState();
+  if (allTpls[curVal]) sel.value = curVal;
+  else sel.value = 'preset_standard';
+  updatePrizeTplButtonStates();
 }
 
-function updatePrizeDeleteBtnState(){
+function updatePrizeTplButtonStates(){
   var sel = document.getElementById('prizeTemplateSelect');
   var btnDel = document.getElementById('btnDeletePrizeTpl');
-  if (!sel || !btnDel) return;
-  var isCustom = sel.value.indexOf('custom_') === 0;
-  btnDel.disabled = !prizeAdminUnlocked || !isCustom;
+  var btnUpdate = document.getElementById('btnUpdateCurPrizeTpl');
+  var btnRename = document.getElementById('btnRenamePrizeTpl');
+  var btnReset = document.getElementById('btnResetFactoryPrize');
+  var btnSaveNew = document.getElementById('btnSavePrizeTpl');
+  if (!sel) return;
+
+  var val = sel.value;
+  var isPreset = Object.keys(FACTORY_PRIZE_TEMPLATES).indexOf(val) >= 0;
+
+  if (btnUpdate) btnUpdate.disabled = !prizeAdminUnlocked;
+  if (btnRename) btnRename.disabled = !prizeAdminUnlocked;
+  if (btnSaveNew) btnSaveNew.disabled = !prizeAdminUnlocked;
+  if (btnDel) btnDel.disabled = !prizeAdminUnlocked || isPreset;
+
+  if (btnReset){
+    if (isPreset){
+      var stored = {};
+      try { stored = JSON.parse(localStorage.getItem('lottery_all_prize_templates') || '{}'); } catch(e){}
+      var isModified = !!stored[val];
+      btnReset.style.display = isModified ? 'inline-block' : 'none';
+      btnReset.disabled = !prizeAdminUnlocked;
+    } else {
+      btnReset.style.display = 'none';
+    }
+  }
 }
 
 function onPrizeTemplateSelect(val){
-  var custom = getCustomPrizeTemplates();
-  var tpl = PRESET_PRIZE_TEMPLATES[val] || custom[val];
+  var allTpls = getAllPrizeTemplates();
+  var tpl = allTpls[val] || FACTORY_PRIZE_TEMPLATES[val];
   if (!tpl) return;
   prizes = JSON.parse(JSON.stringify(tpl.prizes));
   if (prizes.length > 0) activePrizeId = prizes[0].id;
   renderPrizesTable();
   renderPrizeSelect();
-  updatePrizeDeleteBtnState();
+  updatePrizeTplButtonStates();
   if (lotteryMode === 'prize') onLotteryModeChange();
   saveStateToStorage();
 }
 
+// 1. 管理者直接修改當前選中範本的內容（支援預設與自訂）
+function updateCurrentPrizeTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  var sel = document.getElementById('prizeTemplateSelect');
+  var val = sel.value;
+  var allTpls = getAllPrizeTemplates();
+  var curTpl = allTpls[val];
+  if (!curTpl) return;
+
+  var prizeList = JSON.parse(JSON.stringify(prizes));
+  curTpl.prizes = prizeList;
+  allTpls[val] = curTpl;
+  saveAllPrizeTemplates(allTpls);
+  updatePrizeTplButtonStates();
+  cloudSaveTemplate_('prize', val, curTpl.name, prizeList);
+  alert('✅ 範本「' + curTpl.name + '」內容已成功更新覆寫！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表。' : ''));
+}
+
+// 2. 管理者修改當前範本名稱（支援預設與自訂）
+function renamePrizeTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  var sel = document.getElementById('prizeTemplateSelect');
+  var val = sel.value;
+  var allTpls = getAllPrizeTemplates();
+  var curTpl = allTpls[val];
+  if (!curTpl) return;
+
+  var newName = prompt('請輸入此範本的新名稱：', curTpl.name);
+  if (!newName || !newName.trim() || newName.trim() === curTpl.name) return;
+  newName = newName.trim();
+
+  curTpl.name = newName;
+  allTpls[val] = curTpl;
+  saveAllPrizeTemplates(allTpls);
+  renderPrizeTemplateOptions(val);
+  cloudSaveTemplate_('prize', val, newName, curTpl.prizes);
+  alert('✅ 範本名稱已成功修改為「' + newName + '」！');
+}
+
+// 3. 管理者另存為全新自訂範本
 function saveNewPrizeTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
-  var name = prompt('請輸入新獎項範本名稱（例如：2026年終尾牙、中秋聯歡抽獎等）：');
+  var name = prompt('請輸入全新獎項範本名稱（例如：2026年終尾牙、中秋聯歡抽獎等）：');
   if (!name || !name.trim()) return;
   name = name.trim();
-  var custom = getCustomPrizeTemplates();
+  var allTpls = getAllPrizeTemplates();
   var key = 'custom_' + Date.now();
   var prizeList = JSON.parse(JSON.stringify(prizes));
-  custom[key] = {
+  allTpls[key] = {
     name: name,
     prizes: prizeList
   };
-  saveCustomPrizeTemplates(custom);
+  saveAllPrizeTemplates(allTpls);
   renderPrizeTemplateOptions(key);
-  updatePrizeDeleteBtnState();
   cloudSaveTemplate_('prize', key, name, prizeList);
-  alert('✅ 獎項範本「' + name + '」已成功儲存！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表，換別台電腦也能看得到！' : ''));
+  alert('✅ 已建立全新自訂範本「' + name + '」！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表，換別台電腦也能看得到！' : ''));
 }
 
+// 4. 管理者還原預設範本為原廠設定
+function resetFactoryPrizeTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  var sel = document.getElementById('prizeTemplateSelect');
+  var val = sel.value;
+  var factory = FACTORY_PRIZE_TEMPLATES[val];
+  if (!factory) return;
+  if (!confirm('確定要將預設範本「' + factory.name + '」還原為原廠初始內容與名稱嗎？')) return;
+
+  var stored = {};
+  try { stored = JSON.parse(localStorage.getItem('lottery_all_prize_templates') || '{}'); } catch(e){}
+  delete stored[val];
+  saveAllPrizeTemplates(stored);
+  renderPrizeTemplateOptions(val);
+  onPrizeTemplateSelect(val);
+  cloudSaveTemplate_('prize', val, factory.name, factory.prizes);
+  alert('✅ 已還原為原廠初始範本設定！');
+}
+
+// 5. 刪除自訂範本
 function deletePrizeTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
   var sel = document.getElementById('prizeTemplateSelect');
   var val = sel.value;
-  if (val.indexOf('custom_') !== 0){ alert('內建預設範本不可刪除！'); return; }
-  var custom = getCustomPrizeTemplates();
-  var target = custom[val];
+  if (Object.keys(FACTORY_PRIZE_TEMPLATES).indexOf(val) >= 0){
+    alert('預設範本不可直接刪除；若已修改內容，可點擊「🔄 還原預設」恢復初始設定。');
+    return;
+  }
+  var allTpls = getAllPrizeTemplates();
+  var target = allTpls[val];
   if (!target) return;
   if (!confirm('確定要刪除範本「' + target.name + '」嗎？刪除後無法復原。')) return;
-  delete custom[val];
-  saveCustomPrizeTemplates(custom);
+  delete allTpls[val];
+  saveAllPrizeTemplates(allTpls);
   cloudDeleteTemplate_('prize', val);
   renderPrizeTemplateOptions('preset_standard');
   onPrizeTemplateSelect('preset_standard');
@@ -1456,6 +1601,8 @@ function applyPrizeAdminLockState(){
     if (btnSaveSettings) btnSaveSettings.disabled = true;
   }
   updatePrizeDeleteBtnState();
+  updatePrizeTplButtonStates();
+  updateRosterTplButtonStates();
   renderPrizesTable();
 }
 
@@ -1533,7 +1680,7 @@ function savePrizeSettings(){
 }
 
 /* ================= 人員名冊模組（含範本切換與試算表雙向同步） ================= */
-var PRESET_ROSTER_TEMPLATES = {
+var FACTORY_ROSTER_TEMPLATES = {
   'demo': {
     name: '許瑞興示範名單 (30人)',
     text: [
@@ -1561,86 +1708,200 @@ var PRESET_ROSTER_TEMPLATES = {
   }
 };
 
-function getCustomRosterTemplates(){
+function getAllRosterTemplates(){
+  var stored = {};
+  try { stored = JSON.parse(localStorage.getItem('lottery_all_roster_templates') || '{}'); } catch(e){ stored = {}; }
   try {
-    return JSON.parse(localStorage.getItem('lottery_custom_roster_templates') || '{}');
-  } catch(e){ return {}; }
+    var oldCustom = JSON.parse(localStorage.getItem('lottery_custom_roster_templates') || '{}');
+    Object.keys(oldCustom).forEach(function(k){ if (!stored[k]) stored[k] = oldCustom[k]; });
+  } catch(e){}
+
+  var merged = {};
+  Object.keys(FACTORY_ROSTER_TEMPLATES).forEach(function(k){
+    merged[k] = stored[k] ? JSON.parse(JSON.stringify(stored[k])) : JSON.parse(JSON.stringify(FACTORY_ROSTER_TEMPLATES[k]));
+  });
+  Object.keys(stored).forEach(function(k){
+    if (!merged[k]) merged[k] = stored[k];
+  });
+  return merged;
+}
+
+function saveAllRosterTemplates(allTpls){
+  try {
+    localStorage.setItem('lottery_all_roster_templates', JSON.stringify(allTpls));
+  } catch(e){}
+}
+
+function getCustomRosterTemplates(){
+  return getAllRosterTemplates();
 }
 
 function saveCustomRosterTemplates(tpls){
-  try {
-    localStorage.setItem('lottery_custom_roster_templates', JSON.stringify(tpls));
-  } catch(e){}
+  saveAllRosterTemplates(tpls);
 }
 
 function renderRosterTemplateOptions(selectedKey){
   var sel = document.getElementById('rosterTemplateSelect');
   if (!sel) return;
-  var custom = getCustomRosterTemplates();
-  var html = '';
-  Object.keys(PRESET_ROSTER_TEMPLATES).forEach(function(k){
-    html += '<option value="' + k + '">' + PRESET_ROSTER_TEMPLATES[k].name + '</option>';
+  var allTpls = getAllRosterTemplates();
+  var curVal = selectedKey || sel.value || 'demo';
+  var presetKeys = Object.keys(FACTORY_ROSTER_TEMPLATES);
+  var customKeys = Object.keys(allTpls).filter(function(k){ return presetKeys.indexOf(k) < 0; });
+
+  var html = '<optgroup label="── 預設名冊範本（可編輯/改名） ──">';
+  presetKeys.forEach(function(k){
+    var item = allTpls[k] || FACTORY_ROSTER_TEMPLATES[k];
+    html += '<option value="' + k + '">' + item.name + '</option>';
   });
-  var customKeys = Object.keys(custom);
+  html += '</optgroup>';
+
   if (customKeys.length > 0){
-    html += '<optgroup label="── 自訂已儲存名冊 ──">';
+    html += '<optgroup label="── 自訂名冊範本 ──">';
     customKeys.forEach(function(k){
-      html += '<option value="' + k + '">📁 ' + custom[k].name + '</option>';
+      html += '<option value="' + k + '">📁 ' + allTpls[k].name + '</option>';
     });
     html += '</optgroup>';
   }
   sel.innerHTML = html;
-  if (selectedKey) sel.value = selectedKey;
-  updateRosterDeleteBtnState();
+  if (allTpls[curVal]) sel.value = curVal;
+  else sel.value = 'demo';
+  updateRosterTplButtonStates();
 }
 
-function updateRosterDeleteBtnState(){
+function updateRosterTplButtonStates(){
   var sel = document.getElementById('rosterTemplateSelect');
   var btnDel = document.getElementById('btnDeleteRosterTpl');
-  if (!sel || !btnDel) return;
-  var isCustom = sel.value.indexOf('custom_') === 0;
-  btnDel.disabled = !isCustom;
+  var btnUpdate = document.getElementById('btnUpdateCurRosterTpl');
+  var btnRename = document.getElementById('btnRenameRosterTpl');
+  var btnReset = document.getElementById('btnResetFactoryRoster');
+  var btnSaveNew = document.getElementById('btnSaveRosterTpl');
+  if (!sel) return;
+
+  var val = sel.value;
+  var isPreset = Object.keys(FACTORY_ROSTER_TEMPLATES).indexOf(val) >= 0;
+
+  if (btnUpdate) btnUpdate.disabled = !prizeAdminUnlocked;
+  if (btnRename) btnRename.disabled = !prizeAdminUnlocked;
+  if (btnSaveNew) btnSaveNew.disabled = !prizeAdminUnlocked;
+  if (btnDel) btnDel.disabled = !prizeAdminUnlocked || isPreset;
+
+  if (btnReset){
+    if (isPreset){
+      var stored = {};
+      try { stored = JSON.parse(localStorage.getItem('lottery_all_roster_templates') || '{}'); } catch(e){}
+      var isModified = !!stored[val];
+      btnReset.style.display = isModified ? 'inline-block' : 'none';
+      btnReset.disabled = !prizeAdminUnlocked;
+    } else {
+      btnReset.style.display = 'none';
+    }
+  }
 }
 
 function onRosterTemplateSelect(val){
-  var custom = getCustomRosterTemplates();
-  var tpl = PRESET_ROSTER_TEMPLATES[val] || custom[val];
+  var allTpls = getAllRosterTemplates();
+  var tpl = allTpls[val] || FACTORY_ROSTER_TEMPLATES[val];
   if (!tpl) return;
   document.getElementById('rosterText').value = tpl.text;
   var count = tpl.text.split('\n').filter(function(s){ return s.trim(); }).length;
   document.getElementById('rosterCountHint').textContent = '目前名單：共 ' + count + ' 人';
-  updateRosterDeleteBtnState();
+  updateRosterTplButtonStates();
 }
 
+// 1. 管理者直接修改當前選中名冊內容（支援預設與自訂）
+function updateCurrentRosterTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  var txt = document.getElementById('rosterText').value.trim();
+  if (!txt){ alert('名冊內容為空，無法儲存！'); return; }
+  var sel = document.getElementById('rosterTemplateSelect');
+  var val = sel.value;
+  var allTpls = getAllRosterTemplates();
+  var curTpl = allTpls[val];
+  if (!curTpl) return;
+
+  curTpl.text = txt;
+  allTpls[val] = curTpl;
+  saveAllRosterTemplates(allTpls);
+  updateRosterTplButtonStates();
+  cloudSaveTemplate_('roster', val, curTpl.name, txt);
+  alert('✅ 名冊範本「' + curTpl.name + '」內容已成功更新覆寫！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表。' : ''));
+}
+
+// 2. 管理者修改當前名冊範本名稱（支援預設與自訂）
+function renameRosterTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  var sel = document.getElementById('rosterTemplateSelect');
+  var val = sel.value;
+  var allTpls = getAllRosterTemplates();
+  var curTpl = allTpls[val];
+  if (!curTpl) return;
+
+  var newName = prompt('請輸入此名冊的新名稱：', curTpl.name);
+  if (!newName || !newName.trim() || newName.trim() === curTpl.name) return;
+  newName = newName.trim();
+
+  curTpl.name = newName;
+  allTpls[val] = curTpl;
+  saveAllRosterTemplates(allTpls);
+  renderRosterTemplateOptions(val);
+  cloudSaveTemplate_('roster', val, newName, curTpl.text);
+  alert('✅ 名冊名稱已成功修改為「' + newName + '」！');
+}
+
+// 3. 管理者另存為全新自訂名冊
 function saveNewRosterTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
   var txt = document.getElementById('rosterText').value.trim();
   if (!txt){ alert('名冊內容為空，無法另存！'); return; }
-  var name = prompt('請輸入新名冊名稱（例如：業務部春酒名冊、現場來賓名冊等）：');
+  var name = prompt('請輸入全新名冊名稱（例如：業務部春酒名冊、現場來賓名冊等）：');
   if (!name || !name.trim()) return;
   name = name.trim();
-  var custom = getCustomRosterTemplates();
+  var allTpls = getAllRosterTemplates();
   var key = 'custom_' + Date.now();
-  custom[key] = {
+  allTpls[key] = {
     name: name,
     text: txt
   };
-  saveCustomRosterTemplates(custom);
+  saveAllRosterTemplates(allTpls);
   renderRosterTemplateOptions(key);
-  updateRosterDeleteBtnState();
   cloudSaveTemplate_('roster', key, name, txt);
-  alert('✅ 名冊「' + name + '」已成功儲存！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表，換別台電腦也能看得到！' : ''));
+  alert('✅ 已建立全新自訂名冊「' + name + '」！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表，換別台電腦也能看得到！' : ''));
 }
 
-function deleteRosterTemplate(){
+// 4. 管理者還原預設名冊為原廠設定
+function resetFactoryRosterTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
   var sel = document.getElementById('rosterTemplateSelect');
   var val = sel.value;
-  if (val.indexOf('custom_') !== 0){ alert('內建預設名單不可刪除！'); return; }
-  var custom = getCustomRosterTemplates();
-  var target = custom[val];
+  var factory = FACTORY_ROSTER_TEMPLATES[val];
+  if (!factory) return;
+  if (!confirm('確定要將預設名冊「' + factory.name + '」還原為原廠初始內容與名稱嗎？')) return;
+
+  var stored = {};
+  try { stored = JSON.parse(localStorage.getItem('lottery_all_roster_templates') || '{}'); } catch(e){}
+  delete stored[val];
+  saveAllRosterTemplates(stored);
+  renderRosterTemplateOptions(val);
+  onRosterTemplateSelect(val);
+  cloudSaveTemplate_('roster', val, factory.name, factory.text);
+  alert('✅ 已還原為原廠初始名冊設定！');
+}
+
+// 5. 刪除自訂名冊
+function deleteRosterTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  var sel = document.getElementById('rosterTemplateSelect');
+  var val = sel.value;
+  if (Object.keys(FACTORY_ROSTER_TEMPLATES).indexOf(val) >= 0){
+    alert('預設名冊不可直接刪除；若已修改內容，可點擊「🔄 還原預設」恢復初始設定。');
+    return;
+  }
+  var allTpls = getAllRosterTemplates();
+  var target = allTpls[val];
   if (!target) return;
   if (!confirm('確定要刪除名冊「' + target.name + '」嗎？')) return;
-  delete custom[val];
-  saveCustomRosterTemplates(custom);
+  delete allTpls[val];
+  saveAllRosterTemplates(allTpls);
   cloudDeleteTemplate_('roster', val);
   renderRosterTemplateOptions('demo');
   onRosterTemplateSelect('demo');
