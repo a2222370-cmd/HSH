@@ -667,7 +667,7 @@
         <div class="winner-meta-sub">
           <span class="winner-tag" id="winDeptTag">研發部</span>
           <span id="winSeatPos">第 2 行 第 3 列</span>
-          <span id="winNumTag" style="font-size:13px;opacity:0.6;">#12</span>
+          <span id="winNumTag" style="font-size:13px;opacity:0.6;display:none;">#12</span>
         </div>
       </div>
     </div>
@@ -1144,6 +1144,8 @@ var DEFAULT_PRIZES = [
 ];
 var prizes = JSON.parse(JSON.stringify(DEFAULT_PRIZES));
 var activePrizeId = 'p1';
+var currentPrizeTemplateKey = 'preset_standard';
+var currentRosterTemplateKey = 'demo';
 
 // Telegram 設定
 var tgConfig = {
@@ -1179,7 +1181,8 @@ var CHANGELOG = [
     '☁️ Google 試算表面冊雙向同步：無名冊工作表時自動建立範本，支援網頁名冊一鍵上傳覆寫試算表，以及從試算表即時載入。',
     '🍽️ 桌人模式升級宴會桌次視覺：宴會桌卡片立體排列，桌號、每桌人數與個別座位獨立呈現，極佳臨場感！',
     '🎡 幸運大獎盤全面強化：未抽籤時完整顯示所有候選人扇形，標示中獎號碼（#1、#2...）與高對比陰影，外環增添金色外框與裝飾燈效。',
-    '🎨 活動獎項抽獎模式專屬獎級上色：獎項模式自動依特獎（金）、頭獎（桃紅）等榮譽等級尊貴上色，自動隔離一般座位分組規則。'
+    '🎨 活動獎項抽獎模式專屬獎級上色：獎項模式自動依特獎（金）、頭獎（桃紅）等榮譽等級尊貴上色，自動隔離一般座位分組規則。',
+    '🎯 桌人與座位抽籤去混淆化：抽出得主直接醒目呈現「第 X 桌 第 X 位」（或同仁姓名），全面移除全場流水號（#號碼），現場最直觀、絕不造成賓客困擾！'
   ]},
   { v: 'v2.0.0', date: '2026-10-03', notes: [
     '✨ 徹底分流「純挑人模式」與「活動獎項模式」：純抽人支援任意限制抽出人數，活動獎項模式名額嚴格匹配獎項配額！',
@@ -1194,8 +1197,8 @@ var CHANGELOG = [
 window.addEventListener('DOMContentLoaded', function(){
   document.getElementById('versionTag').textContent = APP_VERSION;
   loadSettings();
-  renderPrizeTemplateOptions();
-  renderRosterTemplateOptions();
+  renderPrizeTemplateOptions(currentPrizeTemplateKey);
+  renderRosterTemplateOptions(currentRosterTemplateKey);
   renderPrizeSelect();
   renderPrizesTable();
   applyPrizeAdminLockState();
@@ -1387,11 +1390,35 @@ function saveCustomPrizeTemplates(tpls){
   saveAllPrizeTemplates(tpls);
 }
 
+function syncPrizesFromTable(){
+  var tb = document.getElementById('prizeTableBody');
+  if (!tb) return prizes;
+  var rows = tb.querySelectorAll('tr');
+  if (!rows || rows.length === 0) return prizes;
+  var list = [];
+  rows.forEach(function(tr, idx){
+    var inputs = tr.querySelectorAll('input');
+    if (inputs.length >= 4){
+      var old = prizes[idx] || {};
+      list.push({
+        id: old.id || ('p_' + (idx + 1)),
+        icon: inputs[0].value.trim() || '🎁',
+        name: inputs[1].value.trim() || ('獎項 ' + (idx + 1)),
+        reward: inputs[2].value.trim() || '精美好禮',
+        count: Math.max(1, parseInt(inputs[3].value) || 1),
+        color: old.color || '#2563eb'
+      });
+    }
+  });
+  if (list.length > 0) prizes = list;
+  return prizes;
+}
+
 function renderPrizeTemplateOptions(selectedKey){
   var sel = document.getElementById('prizeTemplateSelect');
   if (!sel) return;
   var allTpls = getAllPrizeTemplates();
-  var curVal = selectedKey || sel.value || 'preset_standard';
+  var curVal = selectedKey || currentPrizeTemplateKey || sel.value || 'preset_standard';
   var presetKeys = Object.keys(FACTORY_PRIZE_TEMPLATES);
   var customKeys = Object.keys(allTpls).filter(function(k){ return presetKeys.indexOf(k) < 0; });
 
@@ -1412,6 +1439,7 @@ function renderPrizeTemplateOptions(selectedKey){
   sel.innerHTML = html;
   if (allTpls[curVal]) sel.value = curVal;
   else sel.value = 'preset_standard';
+  currentPrizeTemplateKey = sel.value;
   updatePrizeTplButtonStates();
 }
 
@@ -1449,10 +1477,12 @@ function onPrizeTemplateSelect(val){
   var allTpls = getAllPrizeTemplates();
   var tpl = allTpls[val] || FACTORY_PRIZE_TEMPLATES[val];
   if (!tpl) return;
+  currentPrizeTemplateKey = val;
   prizes = JSON.parse(JSON.stringify(tpl.prizes));
   if (prizes.length > 0) activePrizeId = prizes[0].id;
   renderPrizesTable();
   renderPrizeSelect();
+  updatePrizeBar();
   updatePrizeTplButtonStates();
   if (lotteryMode === 'prize') onLotteryModeChange();
   saveStateToStorage();
@@ -1461,26 +1491,37 @@ function onPrizeTemplateSelect(val){
 // 1. 管理者直接修改當前選中範本的內容（支援預設與自訂）
 function updateCurrentPrizeTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  syncPrizesFromTable();
   var sel = document.getElementById('prizeTemplateSelect');
-  var val = sel.value;
+  var val = (sel ? sel.value : currentPrizeTemplateKey) || 'preset_standard';
   var allTpls = getAllPrizeTemplates();
+  if (!allTpls[val]) {
+    if (FACTORY_PRIZE_TEMPLATES[val]) {
+      allTpls[val] = JSON.parse(JSON.stringify(FACTORY_PRIZE_TEMPLATES[val]));
+    } else {
+      allTpls[val] = { name: '自訂獎項範本', prizes: [] };
+    }
+  }
   var curTpl = allTpls[val];
-  if (!curTpl) return;
-
   var prizeList = JSON.parse(JSON.stringify(prizes));
   curTpl.prizes = prizeList;
   allTpls[val] = curTpl;
+  currentPrizeTemplateKey = val;
+
   saveAllPrizeTemplates(allTpls);
+  saveStateToStorage();
   updatePrizeTplButtonStates();
+  renderPrizeSelect();
+  updatePrizeBar();
   cloudSaveTemplate_('prize', val, curTpl.name, prizeList);
-  alert('✅ 範本「' + curTpl.name + '」內容已成功更新覆寫！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表。' : ''));
+  alert('✅ 範本「' + curTpl.name + '」內容已成功更新覆寫並儲存！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表。' : ''));
 }
 
 // 2. 管理者修改當前範本名稱（支援預設與自訂）
 function renamePrizeTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
   var sel = document.getElementById('prizeTemplateSelect');
-  var val = sel.value;
+  var val = (sel ? sel.value : currentPrizeTemplateKey) || 'preset_standard';
   var allTpls = getAllPrizeTemplates();
   var curTpl = allTpls[val];
   if (!curTpl) return;
@@ -1492,6 +1533,7 @@ function renamePrizeTemplate(){
   curTpl.name = newName;
   allTpls[val] = curTpl;
   saveAllPrizeTemplates(allTpls);
+  saveStateToStorage();
   renderPrizeTemplateOptions(val);
   cloudSaveTemplate_('prize', val, newName, curTpl.prizes);
   alert('✅ 範本名稱已成功修改為「' + newName + '」！');
@@ -1500,6 +1542,7 @@ function renamePrizeTemplate(){
 // 3. 管理者另存為全新自訂範本
 function saveNewPrizeTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  syncPrizesFromTable();
   var name = prompt('請輸入全新獎項範本名稱（例如：2026年終尾牙、中秋聯歡抽獎等）：');
   if (!name || !name.trim()) return;
   name = name.trim();
@@ -1510,8 +1553,12 @@ function saveNewPrizeTemplate(){
     name: name,
     prizes: prizeList
   };
+  currentPrizeTemplateKey = key;
   saveAllPrizeTemplates(allTpls);
+  saveStateToStorage();
   renderPrizeTemplateOptions(key);
+  renderPrizeSelect();
+  updatePrizeBar();
   cloudSaveTemplate_('prize', key, name, prizeList);
   alert('✅ 已建立全新自訂範本「' + name + '」！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表，換別台電腦也能看得到！' : ''));
 }
@@ -1520,7 +1567,7 @@ function saveNewPrizeTemplate(){
 function resetFactoryPrizeTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
   var sel = document.getElementById('prizeTemplateSelect');
-  var val = sel.value;
+  var val = (sel ? sel.value : currentPrizeTemplateKey) || 'preset_standard';
   var factory = FACTORY_PRIZE_TEMPLATES[val];
   if (!factory) return;
   if (!confirm('確定要將預設範本「' + factory.name + '」還原為原廠初始內容與名稱嗎？')) return;
@@ -1539,7 +1586,7 @@ function resetFactoryPrizeTemplate(){
 function deletePrizeTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
   var sel = document.getElementById('prizeTemplateSelect');
-  var val = sel.value;
+  var val = (sel ? sel.value : currentPrizeTemplateKey) || 'preset_standard';
   if (Object.keys(FACTORY_PRIZE_TEMPLATES).indexOf(val) >= 0){
     alert('預設範本不可直接刪除；若已修改內容，可點擊「🔄 還原預設」恢復初始設定。');
     return;
@@ -1646,10 +1693,10 @@ function renderPrizesTable(){
   var dis = prizeAdminUnlocked ? '' : 'disabled';
   tb.innerHTML = prizes.map(function(p, idx){
     return '<tr>' +
-      '<td><input type="text" value="'+p.icon+'" style="width:36px;text-align:center;" '+dis+' onchange="prizes['+idx+'].icon=this.value"></td>' +
-      '<td><input type="text" value="'+p.name+'" style="width:90px;" '+dis+' onchange="prizes['+idx+'].name=this.value"></td>' +
-      '<td><input type="text" value="'+p.reward+'" style="width:130px;" '+dis+' onchange="prizes['+idx+'].reward=this.value"></td>' +
-      '<td><input type="number" value="'+p.count+'" min="1" style="width:60px;" '+dis+' onchange="prizes['+idx+'].count=parseInt(this.value)||1"></td>' +
+      '<td><input type="text" value="'+p.icon+'" style="width:36px;text-align:center;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
+      '<td><input type="text" value="'+p.name+'" style="width:90px;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
+      '<td><input type="text" value="'+p.reward+'" style="width:130px;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
+      '<td><input type="number" value="'+p.count+'" min="1" style="width:60px;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
       '<td><button class="tool-btn" style="color:#dc2626;padding:2px 6px;" '+dis+' onclick="deletePrizeRow('+idx+')">✕</button></td>' +
     '</tr>';
   }).join('');
@@ -1657,26 +1704,40 @@ function renderPrizesTable(){
 
 function addNewPrizeRow(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
+  syncPrizesFromTable();
   prizes.push({ id: 'p_' + Date.now(), name: '新獎項', reward: '精美禮品', count: 1, icon: '🎁', color: '#2563eb' });
   renderPrizesTable();
 }
 
 function deletePrizeRow(idx){
   if (!prizeAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
+  syncPrizesFromTable();
   if (prizes.length <= 1) { alert('至少需保留一個獎項'); return; }
   prizes.splice(idx, 1);
   if (!prizes.find(function(p){ return p.id === activePrizeId; })) activePrizeId = prizes[0].id;
   renderPrizesTable();
   renderPrizeSelect();
+  updatePrizeBar();
 }
 
 function savePrizeSettings(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
-  renderPrizeSelect();
-  closeModal('prizeModal');
+  syncPrizesFromTable();
+  var sel = document.getElementById('prizeTemplateSelect');
+  var val = (sel ? sel.value : currentPrizeTemplateKey) || 'preset_standard';
+  var allTpls = getAllPrizeTemplates();
+  if (allTpls[val]) {
+    allTpls[val].prizes = JSON.parse(JSON.stringify(prizes));
+    saveAllPrizeTemplates(allTpls);
+    cloudSaveTemplate_('prize', val, allTpls[val].name, allTpls[val].prizes);
+  }
+  currentPrizeTemplateKey = val;
   saveStateToStorage();
+  renderPrizeSelect();
+  updatePrizeBar();
   if (lotteryMode === 'prize') onLotteryModeChange();
-  alert('✅ 獎項設定已成功更新！');
+  closeModal('prizeModal');
+  alert('✅ 獎項設定與範本「' + (allTpls[val] ? allTpls[val].name : '') + '」內容已成功儲存！\n下次開啟或換電腦查詢均會保留最新修改。');
 }
 
 /* ================= 人員名冊模組（含範本切換與試算表雙向同步） ================= */
@@ -1744,7 +1805,7 @@ function renderRosterTemplateOptions(selectedKey){
   var sel = document.getElementById('rosterTemplateSelect');
   if (!sel) return;
   var allTpls = getAllRosterTemplates();
-  var curVal = selectedKey || sel.value || 'demo';
+  var curVal = selectedKey || currentRosterTemplateKey || sel.value || 'demo';
   var presetKeys = Object.keys(FACTORY_ROSTER_TEMPLATES);
   var customKeys = Object.keys(allTpls).filter(function(k){ return presetKeys.indexOf(k) < 0; });
 
@@ -1765,6 +1826,7 @@ function renderRosterTemplateOptions(selectedKey){
   sel.innerHTML = html;
   if (allTpls[curVal]) sel.value = curVal;
   else sel.value = 'demo';
+  currentRosterTemplateKey = sel.value;
   updateRosterTplButtonStates();
 }
 
@@ -1802,10 +1864,12 @@ function onRosterTemplateSelect(val){
   var allTpls = getAllRosterTemplates();
   var tpl = allTpls[val] || FACTORY_ROSTER_TEMPLATES[val];
   if (!tpl) return;
+  currentRosterTemplateKey = val;
   document.getElementById('rosterText').value = tpl.text;
   var count = tpl.text.split('\n').filter(function(s){ return s.trim(); }).length;
   document.getElementById('rosterCountHint').textContent = '目前名單：共 ' + count + ' 人';
   updateRosterTplButtonStates();
+  saveStateToStorage();
 }
 
 // 1. 管理者直接修改當前選中名冊內容（支援預設與自訂）
@@ -1814,24 +1878,31 @@ function updateCurrentRosterTemplate(){
   var txt = document.getElementById('rosterText').value.trim();
   if (!txt){ alert('名冊內容為空，無法儲存！'); return; }
   var sel = document.getElementById('rosterTemplateSelect');
-  var val = sel.value;
+  var val = (sel ? sel.value : currentRosterTemplateKey) || 'demo';
   var allTpls = getAllRosterTemplates();
+  if (!allTpls[val]) {
+    if (FACTORY_ROSTER_TEMPLATES[val]) {
+      allTpls[val] = JSON.parse(JSON.stringify(FACTORY_ROSTER_TEMPLATES[val]));
+    } else {
+      allTpls[val] = { name: '自訂名冊', text: txt };
+    }
+  }
   var curTpl = allTpls[val];
-  if (!curTpl) return;
-
   curTpl.text = txt;
   allTpls[val] = curTpl;
+  currentRosterTemplateKey = val;
   saveAllRosterTemplates(allTpls);
+  saveStateToStorage();
   updateRosterTplButtonStates();
   cloudSaveTemplate_('roster', val, curTpl.name, txt);
-  alert('✅ 名冊範本「' + curTpl.name + '」內容已成功更新覆寫！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表。' : ''));
+  alert('✅ 名冊範本「' + curTpl.name + '」內容已成功更新覆寫並儲存！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表。' : ''));
 }
 
 // 2. 管理者修改當前名冊範本名稱（支援預設與自訂）
 function renameRosterTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
   var sel = document.getElementById('rosterTemplateSelect');
-  var val = sel.value;
+  var val = (sel ? sel.value : currentRosterTemplateKey) || 'demo';
   var allTpls = getAllRosterTemplates();
   var curTpl = allTpls[val];
   if (!curTpl) return;
@@ -1843,6 +1914,7 @@ function renameRosterTemplate(){
   curTpl.name = newName;
   allTpls[val] = curTpl;
   saveAllRosterTemplates(allTpls);
+  saveStateToStorage();
   renderRosterTemplateOptions(val);
   cloudSaveTemplate_('roster', val, newName, curTpl.text);
   alert('✅ 名冊名稱已成功修改為「' + newName + '」！');
@@ -1862,7 +1934,9 @@ function saveNewRosterTemplate(){
     name: name,
     text: txt
   };
+  currentRosterTemplateKey = key;
   saveAllRosterTemplates(allTpls);
+  saveStateToStorage();
   renderRosterTemplateOptions(key);
   cloudSaveTemplate_('roster', key, name, txt);
   alert('✅ 已建立全新自訂名冊「' + name + '」！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表，換別台電腦也能看得到！' : ''));
@@ -1872,7 +1946,7 @@ function saveNewRosterTemplate(){
 function resetFactoryRosterTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
   var sel = document.getElementById('rosterTemplateSelect');
-  var val = sel.value;
+  var val = (sel ? sel.value : currentRosterTemplateKey) || 'demo';
   var factory = FACTORY_ROSTER_TEMPLATES[val];
   if (!factory) return;
   if (!confirm('確定要將預設名冊「' + factory.name + '」還原為原廠初始內容與名稱嗎？')) return;
@@ -1891,7 +1965,7 @@ function resetFactoryRosterTemplate(){
 function deleteRosterTemplate(){
   if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
   var sel = document.getElementById('rosterTemplateSelect');
-  var val = sel.value;
+  var val = (sel ? sel.value : currentRosterTemplateKey) || 'demo';
   if (Object.keys(FACTORY_ROSTER_TEMPLATES).indexOf(val) >= 0){
     alert('預設名冊不可直接刪除；若已修改內容，可點擊「🔄 還原預設」恢復初始設定。');
     return;
@@ -1914,7 +1988,8 @@ function clearRosterInput(){
 }
 
 function applyRoster(){
-  var lines = document.getElementById('rosterText').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  var txt = document.getElementById('rosterText').value.trim();
+  var lines = txt.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
   if (lines.length === 0){
     useRoster = false;
     roster = [];
@@ -1933,8 +2008,20 @@ function applyRoster(){
     document.getElementById('colsInput').value = c;
     setupGrid();
   }
+  // 若管理者已解鎖，同步自動更新覆寫當前名冊範本
+  if (prizeAdminUnlocked && txt){
+    var sel = document.getElementById('rosterTemplateSelect');
+    var val = (sel ? sel.value : currentRosterTemplateKey) || 'demo';
+    var allTpls = getAllRosterTemplates();
+    if (allTpls[val]){
+      allTpls[val].text = txt;
+      saveAllRosterTemplates(allTpls);
+      cloudSaveTemplate_('roster', val, allTpls[val].name, txt);
+    }
+  }
   closeModal('rosterModal');
   saveStateToStorage();
+  alert('✅ 名冊設定已成功套用並儲存！');
 }
 
 function uploadRosterToCloud(){
@@ -2149,9 +2236,21 @@ function buildCandidatePool(){
       });
     });
   } else {
-    for (var i = 1; i <= activeIndices.length; i++){
-      candidates.push({ num: i, name: i + ' 號', dept: '', id: '' });
-    }
+    activeIndices.forEach(function(idx, seq){
+      var r = Math.floor(idx / cols) + 1;
+      var c = (idx % cols) + 1;
+      var seatText = seatMode === 'table' ? ('第 ' + r + ' 桌 第 ' + c + ' 位') : ('第 ' + r + ' 行 第 ' + c + ' 列');
+      var seatShort = seatMode === 'table' ? (r + '桌' + c) : (r + '-' + c);
+      candidates.push({
+        num: seq + 1,
+        name: seatText,
+        seatShort: seatShort,
+        r: r,
+        c: c,
+        dept: '',
+        id: ''
+      });
+    });
   }
 
   // 防重複得獎過濾
@@ -2241,12 +2340,17 @@ function finishDrawWithIndex(chosenIdx){
   var curPrize = isPrize ? (prizes.find(function(p){ return p.id === activePrizeId; }) || prizes[0]) : null;
 
   filledCount++;
+  var seatPos = seatMode === 'table' ? ('第 ' + r + ' 桌 第 ' + c + ' 位') : ('第 ' + r + ' 行 第 ' + c + ' 列');
+  var seatShort = seatMode === 'table' ? (r + '桌' + c) : (r + '-' + c);
+  var displayName = (useRoster && picked && picked.name) ? picked.name : seatPos;
+
   var drawItem = {
     seq: filledCount,
     num: picked.num,
-    name: picked.name,
-    dept: picked.dept,
-    id: picked.id,
+    name: displayName,
+    seatShort: seatShort,
+    dept: (useRoster && picked) ? (picked.dept || '') : '',
+    id: picked.id || '',
     r: r, c: c,
     cellIdx: cellIdx,
     prize: isPrize ? curPrize.name : '',
@@ -2257,7 +2361,7 @@ function finishDrawWithIndex(chosenIdx){
   drawHistory.push(drawItem);
   drawnMap[cellIdx] = drawItem;
 
-  cellEl.innerHTML = '<span class="cell-name">' + picked.name + '</span><span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
+  cellEl.innerHTML = '<span class="cell-name">' + (useRoster ? picked.name : seatShort) + '</span><span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
   cellEl.classList.add('filled', 'just-filled');
   setTimeout(function(){ cellEl.classList.remove('just-filled'); }, 400);
 
@@ -2289,11 +2393,12 @@ function finishDrawWithIndex(chosenIdx){
 }
 
 function renderSlotWinner(item){
+  var seatPos = seatMode === 'table' ? ('第 ' + item.r + ' 桌 第 ' + item.c + ' 位') : ('第 ' + item.r + ' 行 第 ' + item.c + ' 列');
   var el = document.getElementById('slotText');
-  if (el) el.textContent = item.name || (item.num + ' 號');
+  if (el) el.textContent = item.name || seatPos;
   var sub = document.getElementById('slotSubInfo');
   if (sub){
-    var pos = seatMode === 'table' ? ('第 ' + item.r + ' 桌 第 ' + item.c + ' 位') : ('第 ' + item.r + ' 行 第 ' + item.c + ' 列');
+    var pos = seatPos;
     sub.textContent = (item.prize ? item.prizeIcon + ' ' + item.prize + ' · ' : '') + pos + (item.dept ? ' (' + item.dept + ')' : '');
   }
   renderSlotWinnersStrip();
@@ -2310,8 +2415,9 @@ function renderSlotWinnersStrip(){
   var recent = validList.slice(-20).reverse();
   strip.innerHTML = recent.map(function(d){
     var pos = seatMode === 'table' ? (d.r + '桌' + d.c + '位') : (d.r + '-' + d.c);
+    var label = (useRoster && d.name && d.name !== pos) ? (d.name + ' (' + pos + ')') : ('第 ' + pos);
     return '<span class="slot-winner-chip">' +
-      (d.prize ? d.prizeIcon + ' ' : '') + '<b>#' + d.num + ' ' + d.name + '</b> (' + pos + ')' +
+      (d.prize ? d.prizeIcon + ' ' : '') + '<b>' + label + '</b>' +
     '</span>';
   }).join('');
 }
@@ -2330,13 +2436,14 @@ function renderLottoChute(lastItem){
     if (cb) cb.innerHTML = '';
     return;
   }
+  var seatPos = seatMode === 'table' ? ('第 ' + last.r + ' 桌 第 ' + last.c + ' 位') : ('第 ' + last.r + ' 行 第 ' + last.c + ' 列');
+  var seatShort = seatMode === 'table' ? (last.r + '桌' + last.c) : (last.r + '-' + last.c);
   var icon = document.getElementById('lottoBallIcon');
-  if (icon) icon.textContent = last.num;
+  if (icon) icon.textContent = useRoster ? (last.name ? last.name.slice(0, 2) : '幸運') : seatShort;
   var bn2 = document.getElementById('lottoBallName');
-  if (bn2) bn2.textContent = last.name || (last.num + ' 號');
-  var pos = seatMode === 'table' ? ('第 ' + last.r + ' 桌 第 ' + last.c + ' 位') : ('第 ' + last.r + ' 行 第 ' + last.c + ' 列');
+  if (bn2) bn2.textContent = last.name || seatPos;
   var bp2 = document.getElementById('lottoBallPos');
-  if (bp2) bp2.textContent = (last.prize ? last.prizeIcon + ' ' + last.prize + ' · ' : '') + pos + (last.dept ? ' (' + last.dept + ')' : '');
+  if (bp2) bp2.textContent = (last.prize ? last.prizeIcon + ' ' + last.prize + ' · ' : '') + seatPos + (last.dept ? ' (' + last.dept + ')' : '');
   var ct2 = document.getElementById('lottoChuteTitle');
   if (ct2) ct2.style.display = 'block';
 
@@ -2344,7 +2451,8 @@ function renderLottoChute(lastItem){
   if (chute){
     chute.innerHTML = validList.slice(-24).reverse().map(function(d){
       var p = seatMode === 'table' ? (d.r + '桌' + d.c) : (d.r + '-' + d.c);
-      return '<span class="lotto-chute-chip">🎱 <b>#' + d.num + ' ' + d.name + '</b> <span style="font-size:10.5px;opacity:0.8;">(' + p + ')</span></span>';
+      var label = (useRoster && d.name && d.name !== p) ? (d.name + ' <span style="font-size:10.5px;opacity:0.8;">(' + p + ')</span>') : ('第 ' + p + ' 位');
+      return '<span class="lotto-chute-chip">🎱 <b>' + label + '</b></span>';
     }).join('');
   }
 }
@@ -2442,10 +2550,11 @@ function updateAllViewsAfterDrawAll(count){
   if (drawView === 'wheel') renderWheel();
 
   if (drawView === 'slot'){
+    var seatPos = seatMode === 'table' ? ('第 ' + lastItem.r + ' 桌 第 ' + lastItem.c + ' 位') : ('第 ' + lastItem.r + ' 行 第 ' + lastItem.c + ' 列');
     var sText = document.getElementById('slotText');
-    if (sText) sText.textContent = lastItem.name || (lastItem.num + ' 號');
+    if (sText) sText.textContent = lastItem.name || seatPos;
     var sSub = document.getElementById('slotSubInfo');
-    if (sSub) sSub.textContent = '🎉 一鍵產生完成！本次共抽出 ' + count + ' 位（最後抽出：' + (lastItem.name || lastItem.num) + '）';
+    if (sSub) sSub.textContent = '🎉 一鍵產生完成！本次共抽出 ' + count + ' 位（最後抽出：' + (lastItem.name || seatPos) + '）';
     renderSlotWinnersStrip();
   }
 
@@ -2529,10 +2638,29 @@ function showWinnerCard(item){
     badge.textContent = '🎯 第 ' + item.seq + ' 位抽出';
   }
 
-  document.getElementById('winNameHuge').textContent = item.name || (item.num + ' 號');
-  document.getElementById('winDeptTag').textContent = item.dept || '幸運得主';
-  document.getElementById('winSeatPos').textContent = seatMode==='table' ? ('第 '+item.r+' 桌 第 '+item.c+' 位') : ('第 '+item.r+' 行 第 '+item.c+' 列');
-  document.getElementById('winNumTag').textContent = '#' + item.num;
+  var seatPos = seatMode==='table' ? ('第 '+item.r+' 桌 第 '+item.c+' 位') : ('第 '+item.r+' 行 第 '+item.c+' 列');
+  var hasRoster = useRoster && item.name && item.name !== seatPos;
+
+  var nameHuge = document.getElementById('winNameHuge');
+  var deptTag = document.getElementById('winDeptTag');
+  var seatPosEl = document.getElementById('winSeatPos');
+  var winNumTag = document.getElementById('winNumTag');
+
+  if (hasRoster){
+    nameHuge.textContent = item.name;
+    deptTag.textContent = item.dept || '幸運得主';
+    deptTag.style.display = 'inline-block';
+    seatPosEl.textContent = seatPos;
+    seatPosEl.style.display = 'inline-block';
+  } else {
+    // 桌人／行列模式無名冊時：大字直接醒目呈現「第 X 桌 第 X 位」為得獎唯一主角！
+    nameHuge.textContent = seatPos;
+    deptTag.style.display = 'none';
+    seatPosEl.style.display = 'none';
+  }
+
+  // 徹底拿掉無意義的流水號標籤
+  if (winNumTag) winNumTag.style.display = 'none';
 }
 
 /* ================= 幸運大輪盤 (Wheel) 絕對精確物理對準 ================= */
@@ -2589,18 +2717,18 @@ function renderWheel(){
     ctx.shadowBlur = 3;
 
     var item = candidates[i];
-    var label = '';
+    var label = item.name;
+    if (!useRoster){
+      label = item.seatShort || (seatMode === 'table' ? (item.r + '桌' + item.c) : (item.r + '-' + item.c)) || item.name;
+    }
     if (count <= 25){
-      label = (item.num ? '#' + item.num + ' ' : '') + (item.name || '');
       ctx.font = 'bold 13px sans-serif';
     } else if (count <= 45){
-      label = (item.name && item.name !== item.num + ' 號') ? item.name : ('#' + item.num);
       ctx.font = 'bold 11px sans-serif';
     } else {
-      label = '#' + item.num;
       ctx.font = 'bold 9.5px sans-serif';
     }
-    if (label.length > 8) label = label.slice(0, 7) + '…';
+    if (label && label.length > 8) label = label.slice(0, 7) + '…';
     ctx.fillText(label, r - 12, 0);
     ctx.restore();
   }
@@ -3429,9 +3557,10 @@ function renderHistory(){
     var isWaived = d.status === 'waived';
     var isPrize = lotteryMode === 'prize';
     var pos = seatMode==='table' ? d.r+'桌'+d.c+'位' : d.r+'行'+d.c+'列';
+    var isSeatName = d.name === pos || d.name === ('第 '+d.r+' 桌 第 '+d.c+' 位') || d.name === ('第 '+d.r+' 行 第 '+d.c+' 列');
+    var label = isSeatName ? ('<b>第 ' + pos + '</b>') : ('<b>' + d.name + '</b>' + (d.dept ? ' ('+d.dept+')' : '') + ' · ' + pos);
     return '<div style="font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--border);'+(isWaived?'text-decoration:line-through;color:#f87171;':'')+'">' +
-      '第 ' + d.seq + ' 抽：' + (isPrize ? '['+(d.prize||'')+'] ' : '') + '<b>' + d.name + '</b>' + (d.dept?' ('+d.dept+')':'') +
-      ' · ' + pos +
+      '第 ' + d.seq + ' 抽：' + (isPrize ? '['+(d.prize||'')+'] ' : '') + label +
       (isWaived ? ' <b style="color:#dc2626;text-decoration:none;">[已棄權]</b>' : '') +
     '</div>';
   }).join('');
@@ -3450,6 +3579,8 @@ function saveStateToStorage(){
       rows: rows, cols: cols, total: total,
       seatMode: seatMode, drawView: drawView,
       prizes: prizes, activePrizeId: activePrizeId,
+      currentPrizeTemplateKey: currentPrizeTemplateKey,
+      currentRosterTemplateKey: currentRosterTemplateKey,
       roster: roster, useRoster: useRoster,
       drawHistory: drawHistory, filledCount: filledCount,
       started: started, excluded: excluded,
@@ -3469,6 +3600,8 @@ function loadSettings(){
       document.getElementById('lotteryModeSelect').value = lotteryMode;
       onLotteryModeChange();
     }
+    if (state.currentPrizeTemplateKey) currentPrizeTemplateKey = state.currentPrizeTemplateKey;
+    if (state.currentRosterTemplateKey) currentRosterTemplateKey = state.currentRosterTemplateKey;
     if (state.prizes) prizes = state.prizes;
     if (state.activePrizeId) activePrizeId = state.activePrizeId;
     if (state.roster) roster = state.roster;
@@ -3542,6 +3675,15 @@ function applyGroupColors(){
 /* ================= 彈窗輔助 ================= */
 function openModal(id){
   document.getElementById(id).classList.add('active');
+  if (id === 'prizeModal'){
+    renderPrizeTemplateOptions(currentPrizeTemplateKey);
+    renderPrizesTable();
+    updatePrizeTplButtonStates();
+  }
+  if (id === 'rosterModal'){
+    renderRosterTemplateOptions(currentRosterTemplateKey);
+    updateRosterTplButtonStates();
+  }
   if (id === 'prizeBoardModal') renderPrizeBoard();
   if (id === 'qrModal') renderLiveQr();
 }
