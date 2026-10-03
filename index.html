@@ -79,8 +79,18 @@
   body.stage-mode .online-wrap,
   body.stage-mode .header-sub,
   body.stage-mode .history-panel,
-  body.stage-mode #groupResultPanel,
   body.stage-mode .non-stage { display: none !important; }
+  body.stage-mode #groupResultPanel {
+    background: rgba(15,23,42,0.95);
+    border: 2px solid #3b82f6;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+    margin-top: 16px;
+  }
+  body.stage-mode #groupResultPanel .group-row {
+    background: rgba(30,41,59,0.9);
+    border-color: #475569;
+    font-size: 15px;
+  }
   body.stage-mode .wrap { max-width: 1300px; }
   body.stage-mode .panel {
     background: rgba(15,23,42,0.85);
@@ -336,12 +346,51 @@
     box-shadow: inset 0 10px 20px rgba(0,0,0,0.8), inset 0 -10px 20px rgba(0,0,0,0.8);
     display: flex; align-items: center; justify-content: center;
   }
-  .slot-reel-text { font-size: 54px; font-weight: 900; color: #38bdf8; text-shadow: 0 0 15px rgba(56,189,248,0.8); }
+  .slot-reel-text { font-size: 54px; font-weight: 900; color: #38bdf8; text-shadow: 0 0 15px rgba(56,189,248,0.8); transition: transform 0.1s; }
   .slot-reel-text.rolling { filter: blur(2px); }
+  .slot-sub-info { font-size: 15px; font-weight: 700; color: #fde68a; margin-top: 10px; min-height: 22px; text-align: center; }
+  .slot-winners-strip { margin-top: 10px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; max-height: 130px; overflow-y: auto; }
+  .slot-winner-chip {
+    background: rgba(15,23,42,0.85); border: 1.5px solid #f59e0b; color: #fef08a;
+    border-radius: 14px; padding: 4px 10px; font-size: 12px; font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3); animation: popIn 0.3s ease;
+  }
 
   /* 4. 樂透搖獎機 Lotto Machine */
   .lotto-wrapper { position: relative; width: 360px; height: 360px; margin: 10px auto; }
   #lottoCanvas { width: 100%; height: 100%; filter: drop-shadow(0 12px 25px rgba(0,0,0,0.3)); }
+  .lotto-showcase-box {
+    margin-top: 12px; padding: 14px; border-radius: 16px;
+    background: rgba(255,255,255,0.7); border: 1px solid var(--border);
+    max-width: 580px; margin-left: auto; margin-right: auto;
+    box-shadow: var(--shadow-sm);
+  }
+  body.darkmode .lotto-showcase-box { background: rgba(15,23,42,0.6); }
+  .lotto-latest-ball-card {
+    display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 8px;
+  }
+  .lotto-ball-icon {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fde047, #ca8a04);
+    box-shadow: 0 6px 15px rgba(202,138,4,0.4), inset 0 2px 4px #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 900; color: #78350f; border: 2px solid #fff;
+  }
+  .lotto-ball-meta { text-align: left; }
+  .lotto-ball-name { font-size: 20px; font-weight: 900; color: var(--primary); }
+  body.darkmode .lotto-ball-name { color: #60a5fa; }
+  .lotto-ball-pos { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .lotto-chute-balls {
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+    max-height: 120px; overflow-y: auto; padding: 4px;
+  }
+  .lotto-chute-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #fff; border: 1.5px solid #38bdf8; border-radius: 20px;
+    padding: 3px 10px; font-size: 12px; font-weight: 700; color: #0369a1;
+    box-shadow: var(--shadow-sm); animation: popIn 0.3s ease;
+  }
+  body.darkmode .lotto-chute-chip { background: #1e293b; color: #7dd3fc; border-color: #0284c7; }
 
   /* 設定面板 */
   .setup-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
@@ -404,14 +453,24 @@
   .winner-chip.waived { text-decoration: line-through; opacity: 0.55; border-color: #f87171; }
   .winner-chip-waived-tag { font-size: 11px; color: #dc2626; font-weight: 800; text-decoration: none; display: inline-block; }
 
-  /* 大螢幕懸浮退出按鈕 */
-  .exit-stage-float-btn {
+  /* 大螢幕懸浮控制列 */
+  .stage-control-bar {
     display: none; position: fixed; top: 16px; right: 16px; z-index: 99999;
+    gap: 8px; align-items: center;
+  }
+  body.stage-mode .stage-control-bar { display: flex; }
+  .stage-bar-btn {
     background: rgba(15,23,42,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.3);
     border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 700;
     cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: all 0.2s ease;
   }
-  body.stage-mode .exit-stage-float-btn { display: block; }
+  .stage-bar-btn:hover { background: #1e293b; border-color: #3b82f6; transform: translateY(-1px); }
+  .stage-bar-btn.highlight {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-color: #fde68a; color: #fff;
+    box-shadow: 0 4px 14px rgba(245,158,11,0.4);
+  }
 
   /* 響應式 */
   @media (max-width: 600px) {
@@ -432,8 +491,12 @@
 </head>
 <body>
 
-<canvas id="confettiCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
-<button class="exit-stage-float-btn" onclick="toggleStageMode()">↩ 退出舞台大螢幕 (Esc)</button>
+<div class="stage-control-bar" id="stageControlBar">
+  <button class="stage-bar-btn highlight" onclick="toggleGroupResultPanel()">📊 開獎名單／分組清單</button>
+  <button class="stage-bar-btn" onclick="executeDraw()">🎯 抽籤</button>
+  <button class="stage-bar-btn" onclick="executeDrawAll()">⚡ 一鍵產生結果</button>
+  <button class="stage-bar-btn" onclick="toggleStageMode()">↩ 退出大螢幕 (Esc)</button>
+</div>
 
 <div class="wrap">
   <header>
@@ -452,7 +515,59 @@
     </div>
   </header>
 
-  <!-- 視覺抽獎模式切換 -->
+  <!-- 1. 抽籤模式與座位分組設定（前置設定面板） -->
+  <div class="panel" id="setupPanel">
+    <div class="setup-row">
+      <div class="field">
+        <label for="lotteryModeSelect" style="color:var(--primary);font-weight:800;">抽籤模式（重要分流）</label>
+        <select id="lotteryModeSelect" onchange="onLotteryModeChange()" style="border:2px solid var(--primary);font-weight:800;">
+          <option value="seat">🎲 隨機挑人／排位模式（不分獎項）</option>
+          <option value="prize">🏆 活動獎項抽獎模式（特獎、頭獎…）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="seatModeSelect">座位稱呼</label>
+        <select id="seatModeSelect" onchange="onSeatModeChange(); saveStateToStorage();">
+          <option value="grid">行列（例如：第 3 行 第 5 列）</option>
+          <option value="table">桌人（例如：第 3 桌 第 5 位）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="rowsInput" id="rowsLabel">行數 / 桌數</label>
+        <input type="number" id="rowsInput" min="1" max="40" value="5">
+      </div>
+      <div class="field">
+        <label for="colsInput" id="colsLabel">列數 / 每桌人數</label>
+        <input type="number" id="colsInput" min="1" max="40" value="6">
+      </div>
+      <div class="field">
+        <label for="drawLimitInput" id="drawLimitLabel">限制抽出人數</label>
+        <input type="number" id="drawLimitInput" min="1" placeholder="留白＝全抽" style="width:130px;" oninput="updateTotalHint(); saveStateToStorage();">
+      </div>
+      <button id="btnSetup" onclick="setupGrid()">建立格子</button>
+      <button id="btnExclude" class="tool-btn" onclick="toggleExcludeMode()" disabled>🚫 設定排除格</button>
+      <div class="field">
+        <label for="groupMode">分組上色</label>
+        <select id="groupMode" onchange="applyGroupColors(); saveStateToStorage();">
+          <option value="none">不分組</option>
+          <option value="parity">奇偶分兩組</option>
+          <option value="byRow">依「行」分組</option>
+          <option value="byCol">依「列」分組</option>
+          <option value="rand2">亂數分 2 個一組</option>
+          <option value="rand3">亂數分 3 個一組</option>
+          <option value="rand5">亂數分 5 個一組</option>
+          <option value="rand10">亂數分 10 個一組</option>
+        </select>
+      </div>
+      <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin-bottom:6px;">
+        <input type="checkbox" id="chkNoDup" checked onchange="saveStateToStorage()">
+        <label for="chkNoDup" style="cursor:pointer;user-select:none;">一人限得一獎（防重複中獎）</label>
+      </div>
+    </div>
+    <div class="hint" id="totalHint" style="font-size:12.5px;color:var(--muted);margin-top:8px;"></div>
+  </div>
+
+  <!-- 2. 抽籤畫面切換列 -->
   <div class="view-switch-bar">
     <button class="view-switch-btn active" data-v="grid" onclick="switchDrawView('grid')">🗂️ 座位網格</button>
     <button class="view-switch-btn" data-v="wheel" onclick="switchDrawView('wheel')">🎡 幸運大輪盤</button>
@@ -518,6 +633,7 @@
     <div class="action-row">
       <button id="btnDraw" onclick="executeDraw()">🎯 抽籤</button>
       <button id="btnDrawAll" class="tool-btn" onclick="executeDrawAll()">⚡ 一鍵產生結果</button>
+      <button id="btnActionGroupResult" class="tool-btn highlight" onclick="toggleGroupResultPanel()">📊 開獎名單／分組清單</button>
       <button id="btnRedraw" class="tool-btn" onclick="executeRedraw()" disabled>🚫 棄權重抽</button>
       <button id="btnUndo" onclick="undoLastDraw()" disabled>↩ 復原上一步</button>
       <button id="btnHistory" class="tool-btn" onclick="toggleHistory()">📜 最近三次結果</button>
@@ -554,22 +670,37 @@
 
   <!-- 容器 3: 🎰 大字滾輪機 -->
   <div class="view-container" id="viewSlotContainer">
-    <div class="panel" style="padding:10px;">
+    <div class="panel" style="padding:16px 12px;">
       <div class="slot-wrapper">
         <div class="slot-window">
           <div class="slot-reel-text" id="slotText">READY ?</div>
         </div>
+        <div class="slot-sub-info" id="slotSubInfo">準備就緒，點擊「🎯 抽籤」或「⚡ 一鍵產生結果」</div>
       </div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-top:10px;text-align:center;">🎰 滾輪抽出記錄：</div>
+      <div class="slot-winners-strip" id="slotWinnersStrip"></div>
     </div>
   </div>
 
   <!-- 容器 4: 🎱 樂透搖獎機 -->
   <div class="view-container" id="viewLottoContainer">
-    <div class="panel" style="padding:10px 0;">
+    <div class="panel" style="padding:14px 10px;">
       <div class="lotto-wrapper">
         <canvas id="lottoCanvas" width="380" height="380"></canvas>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px;">🎱 物理重力彩球彈跳模擬 · 搖獎出球</div>
+      <!-- 出球中獎展示台 -->
+      <div class="lotto-showcase-box" id="lottoShowcaseBox">
+        <div class="lotto-latest-ball-card" id="lottoLatestBallCard">
+          <div class="lotto-ball-icon" id="lottoBallIcon">🎱</div>
+          <div class="lotto-ball-meta">
+            <div class="lotto-ball-name" id="lottoBallName">等待搖獎出球...</div>
+            <div class="lotto-ball-pos" id="lottoBallPos">點擊「🎯 抽籤」或「⚡ 一鍵產生結果」</div>
+          </div>
+        </div>
+        <div id="lottoChuteTitle" style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;display:none;text-align:center;">🎱 已搖出彩球清單：</div>
+        <div class="lotto-chute-balls" id="lottoChuteBalls"></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;text-align:center;">🎱 物理重力彩球彈跳模擬 · 搖獎出球展示</div>
     </div>
   </div>
 
@@ -580,58 +711,6 @@
       <button class="tool-btn" style="padding:2px 8px;font-size:12px;" onclick="toggleGroupResultPanel()">✕ 收合</button>
     </div>
     <div id="groupResultList"></div>
-  </div>
-
-  <!-- 座位與分組設定 (Grid Setup) -->
-  <div class="panel" id="setupPanel">
-    <div class="setup-row">
-      <div class="field">
-        <label for="lotteryModeSelect" style="color:var(--primary);font-weight:800;">抽籤模式（重要分流）</label>
-        <select id="lotteryModeSelect" onchange="onLotteryModeChange()" style="border:2px solid var(--primary);font-weight:800;">
-          <option value="seat">🎲 隨機挑人／排位模式（不分獎項）</option>
-          <option value="prize">🏆 活動獎項抽獎模式（特獎、頭獎…）</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="seatModeSelect">座位稱呼</label>
-        <select id="seatModeSelect" onchange="onSeatModeChange(); saveStateToStorage();">
-          <option value="grid">行列（例如：第 3 行 第 5 列）</option>
-          <option value="table">桌人（例如：第 3 桌 第 5 位）</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="rowsInput" id="rowsLabel">行數 / 桌數</label>
-        <input type="number" id="rowsInput" min="1" max="40" value="5">
-      </div>
-      <div class="field">
-        <label for="colsInput" id="colsLabel">列數 / 每桌人數</label>
-        <input type="number" id="colsInput" min="1" max="40" value="6">
-      </div>
-      <div class="field">
-        <label for="drawLimitInput" id="drawLimitLabel">限制抽出人數</label>
-        <input type="number" id="drawLimitInput" min="1" placeholder="留白＝全抽" style="width:130px;" oninput="updateTotalHint(); saveStateToStorage();">
-      </div>
-      <button id="btnSetup" onclick="setupGrid()">建立格子</button>
-      <button id="btnExclude" class="tool-btn" onclick="toggleExcludeMode()" disabled>🚫 設定排除格</button>
-      <div class="field">
-        <label for="groupMode">分組上色</label>
-        <select id="groupMode" onchange="applyGroupColors(); saveStateToStorage();">
-          <option value="none">不分組</option>
-          <option value="parity">奇偶分兩組</option>
-          <option value="byRow">依「行」分組</option>
-          <option value="byCol">依「列」分組</option>
-          <option value="rand2">亂數分 2 個一組</option>
-          <option value="rand3">亂數分 3 個一組</option>
-          <option value="rand5">亂數分 5 個一組</option>
-          <option value="rand10">亂數分 10 個一組</option>
-        </select>
-      </div>
-      <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin-bottom:6px;">
-        <input type="checkbox" id="chkNoDup" checked onchange="saveStateToStorage()">
-        <label for="chkNoDup" style="cursor:pointer;user-select:none;">一人限得一獎（防重複中獎）</label>
-      </div>
-    </div>
-    <div class="hint" id="totalHint" style="font-size:12.5px;color:var(--muted);margin-top:8px;"></div>
   </div>
 </div>
 
@@ -1072,8 +1151,17 @@ function switchDrawView(view){
   });
   if (view === 'grid') document.getElementById('viewGridContainer').classList.add('active');
   if (view === 'wheel') { document.getElementById('viewWheelContainer').classList.add('active'); renderWheel(); }
-  if (view === 'slot') document.getElementById('viewSlotContainer').classList.add('active');
-  if (view === 'lotto') { document.getElementById('viewLottoContainer').classList.add('active'); renderLotto(); }
+  if (view === 'slot') {
+    document.getElementById('viewSlotContainer').classList.add('active');
+    renderSlotWinnersStrip();
+    var validList = drawHistory.filter(function(d){ return d.status !== 'waived'; });
+    if (validList.length > 0) renderSlotWinner(validList[validList.length - 1]);
+  }
+  if (view === 'lotto') {
+    document.getElementById('viewLottoContainer').classList.add('active');
+    renderLotto();
+    renderLottoChute();
+  }
 }
 
 function toggleStageMode(){
@@ -1264,6 +1352,14 @@ function setupGrid(){
   document.getElementById('btnRedraw').disabled = true;
   document.getElementById('winnerCard').style.display = 'none';
   document.getElementById('resultPlaceholder').style.display = 'block';
+
+  var slotEl = document.getElementById('slotText');
+  if (slotEl) slotEl.textContent = 'READY ?';
+  var slotSub = document.getElementById('slotSubInfo');
+  if (slotSub) slotSub.textContent = '準備就緒，點擊「🎯 抽籤」或「⚡ 一鍵產生結果」';
+  renderSlotWinnersStrip();
+  renderLottoChute(null);
+  renderGroupResults();
 
   renderPrizeSelect();
   if (drawView === 'wheel') renderWheel();
@@ -1471,7 +1567,72 @@ function finishDrawWithIndex(chosenIdx){
   saveStateToStorage();
 
   if (drawView === 'wheel') renderWheel();
-  if (drawView === 'lotto') renderLotto();
+  if (drawView === 'slot') renderSlotWinner(drawItem);
+  if (drawView === 'lotto') {
+    renderLotto();
+    renderLottoChute(drawItem);
+  }
+}
+
+function renderSlotWinner(item){
+  var el = document.getElementById('slotText');
+  if (el) el.textContent = item.name || (item.num + ' 號');
+  var sub = document.getElementById('slotSubInfo');
+  if (sub){
+    var pos = seatMode === 'table' ? ('第 ' + item.r + ' 桌 第 ' + item.c + ' 位') : ('第 ' + item.r + ' 行 第 ' + item.c + ' 列');
+    sub.textContent = (item.prize ? item.prizeIcon + ' ' + item.prize + ' · ' : '') + pos + (item.dept ? ' (' + item.dept + ')' : '');
+  }
+  renderSlotWinnersStrip();
+}
+
+function renderSlotWinnersStrip(){
+  var strip = document.getElementById('slotWinnersStrip');
+  if (!strip) return;
+  var validList = drawHistory.filter(function(d){ return d.status !== 'waived'; });
+  if (validList.length === 0){
+    strip.innerHTML = '';
+    return;
+  }
+  var recent = validList.slice(-20).reverse();
+  strip.innerHTML = recent.map(function(d){
+    var pos = seatMode === 'table' ? (d.r + '桌' + d.c + '位') : (d.r + '-' + d.c);
+    return '<span class="slot-winner-chip">' +
+      (d.prize ? d.prizeIcon + ' ' : '') + '<b>#' + d.num + ' ' + d.name + '</b> (' + pos + ')' +
+    '</span>';
+  }).join('');
+}
+
+function renderLottoChute(lastItem){
+  var validList = drawHistory.filter(function(d){ return d.status !== 'waived'; });
+  var last = lastItem || (validList.length ? validList[validList.length - 1] : null);
+  if (!last){
+    var bn = document.getElementById('lottoBallName');
+    if (bn) bn.textContent = '等待搖獎出球...';
+    var bp = document.getElementById('lottoBallPos');
+    if (bp) bp.textContent = '點擊「🎯 抽籤」或「⚡ 一鍵產生結果」';
+    var ct = document.getElementById('lottoChuteTitle');
+    if (ct) ct.style.display = 'none';
+    var cb = document.getElementById('lottoChuteBalls');
+    if (cb) cb.innerHTML = '';
+    return;
+  }
+  var icon = document.getElementById('lottoBallIcon');
+  if (icon) icon.textContent = last.num;
+  var bn2 = document.getElementById('lottoBallName');
+  if (bn2) bn2.textContent = last.name || (last.num + ' 號');
+  var pos = seatMode === 'table' ? ('第 ' + last.r + ' 桌 第 ' + last.c + ' 位') : ('第 ' + last.r + ' 行 第 ' + last.c + ' 列');
+  var bp2 = document.getElementById('lottoBallPos');
+  if (bp2) bp2.textContent = (last.prize ? last.prizeIcon + ' ' + last.prize + ' · ' : '') + pos + (last.dept ? ' (' + last.dept + ')' : '');
+  var ct2 = document.getElementById('lottoChuteTitle');
+  if (ct2) ct2.style.display = 'block';
+
+  var chute = document.getElementById('lottoChuteBalls');
+  if (chute){
+    chute.innerHTML = validList.slice(-24).reverse().map(function(d){
+      var p = seatMode === 'table' ? (d.r + '桌' + d.c) : (d.r + '-' + d.c);
+      return '<span class="lotto-chute-chip">🎱 <b>#' + d.num + ' ' + d.name + '</b> <span style="font-size:10.5px;opacity:0.8;">(' + p + ')</span></span>';
+    }).join('');
+  }
 }
 
 function executeRedraw(){
@@ -1489,37 +1650,67 @@ function executeRedraw(){
 }
 
 function executeDrawAll(){
-  // 檢查在獎項模式下的名額
+  // 1. 若尚未啟動，先進行初始化候選名單與座位順序
+  if (!started){
+    activeCellOrder = cellOrder.filter(function(x){ return !excluded[x]; });
+    activeCellOrder.sort(function(){ return Math.random() - 0.5; });
+    if (lotteryMode === 'seat'){
+      var limit = parseInt(document.getElementById('drawLimitInput').value);
+      if (limit && limit > 0 && limit < activeCellOrder.length) {
+        activeCellOrder = activeCellOrder.slice(0, limit);
+      }
+    }
+    pool = buildCandidatePool();
+    started = true;
+    document.getElementById('btnExclude').disabled = true;
+    cloudCreateSession_();
+  }
+
+  if (pool.length === 0 || filledCount >= activeCellOrder.length){
+    alert('候選人名冊或可用座位已抽完！');
+    return;
+  }
+
+  var toDraw = 0;
   if (lotteryMode === 'prize'){
     var curP = prizes.find(function(p){ return p.id === activePrizeId; }) || prizes[0];
     var wonInPrize = drawHistory.filter(function(d){ return d.prize === curP.name && d.status !== 'waived'; }).length;
     var remain = Math.max(0, curP.count - wonInPrize);
-    if (remain === 0){ alert('【' + curP.name + '】配額已抽滿！'); return; }
-    if (!confirm('確定要一次抽完【' + curP.name + '】剩下的 ' + remain + ' 位幸運得主嗎？')) return;
 
-    for (var i = 0; i < remain && pool.length > 0; i++){
-      if (!started){
-        activeCellOrder = cellOrder.filter(function(x){ return !excluded[x]; });
-        activeCellOrder.sort(function(){ return Math.random() - 0.5; });
-        pool = buildCandidatePool();
-        started = true;
+    if (remain === 0){
+      var nextP = prizes.find(function(p){
+        var w = drawHistory.filter(function(d){ return d.prize === p.name && d.status !== 'waived'; }).length;
+        return w < p.count;
+      });
+      if (nextP && confirm('【' + curP.name + '】名額已滿（' + curP.count + '/' + curP.count + ' 名）！\n是否切換至【' + nextP.name + '】繼續一鍵抽獎？')){
+        activePrizeId = nextP.id;
+        onPrizeSelectChange(activePrizeId);
+        curP = nextP;
+        remain = curP.count - drawHistory.filter(function(d){ return d.prize === curP.name && d.status !== 'waived'; }).length;
+      } else {
+        alert('所有獎項配額均已抽滿！');
+        return;
       }
+    }
+
+    toDraw = Math.min(remain, pool.length, activeCellOrder.length - filledCount);
+    if (!confirm('確定要一次抽完【' + curP.name + '】剩下的 ' + toDraw + ' 位幸運得主嗎？')) return;
+
+    for (var i = 0; i < toDraw; i++){
       var cIdx = Math.floor(Math.random() * pool.length);
       finishDrawWithIndex(cIdx);
     }
   } else {
-    var limit = parseInt(document.getElementById('drawLimitInput').value) || total;
-    var toDraw = Math.min(limit - filledCount, pool.length || total);
+    var limitInput = parseInt(document.getElementById('drawLimitInput').value);
+    var targetLimit = (limitInput && limitInput > 0) ? Math.min(limitInput, activeCellOrder.length) : activeCellOrder.length;
+    toDraw = Math.min(targetLimit - filledCount, pool.length);
+    if (toDraw <= 0){
+      alert('已達到設定的限制抽出人數（' + filledCount + ' 人）！');
+      return;
+    }
     if (!confirm('確定要一次產生剩下的 ' + toDraw + ' 位抽籤結果嗎？')) return;
 
-    while (pool.length > 0 && filledCount < limit){
-      if (!started){
-        activeCellOrder = cellOrder.filter(function(x){ return !excluded[x]; });
-        activeCellOrder.sort(function(){ return Math.random() - 0.5; });
-        if (limit < activeCellOrder.length) activeCellOrder = activeCellOrder.slice(0, limit);
-        pool = buildCandidatePool();
-        started = true;
-      }
+    for (var j = 0; j < toDraw; j++){
       var cIdx = Math.floor(Math.random() * pool.length);
       finishDrawWithIndex(cIdx);
     }
@@ -1527,6 +1718,32 @@ function executeDrawAll(){
 
   Confetti.grandFinale();
   if (soundOn) SoundFX.playDoneChime();
+  updateAllViewsAfterDrawAll(toDraw);
+}
+
+function updateAllViewsAfterDrawAll(count){
+  if (drawHistory.length === 0) return;
+  var lastItem = drawHistory[drawHistory.length - 1];
+
+  if (drawView === 'wheel') renderWheel();
+
+  if (drawView === 'slot'){
+    var sText = document.getElementById('slotText');
+    if (sText) sText.textContent = lastItem.name || (lastItem.num + ' 號');
+    var sSub = document.getElementById('slotSubInfo');
+    if (sSub) sSub.textContent = '🎉 一鍵產生完成！本次共抽出 ' + count + ' 位（最後抽出：' + (lastItem.name || lastItem.num) + '）';
+    renderSlotWinnersStrip();
+  }
+
+  if (drawView === 'lotto'){
+    renderLotto();
+    renderLottoChute(lastItem);
+    var lName = document.getElementById('lottoBallName');
+    if (lName) lName.textContent = '🎉 搖獎完成！共抽出 ' + count + ' 位幸運球';
+  }
+
+  showWinnerCard(lastItem);
+  renderGroupResults();
 }
 
 function undoLastDraw(){
@@ -1557,6 +1774,22 @@ function undoLastDraw(){
   }
   renderHistory();
   renderGroupResults();
+
+  if (drawView === 'wheel') renderWheel();
+  if (drawView === 'slot'){
+    var validList = drawHistory.filter(function(d){ return d.status !== 'waived'; });
+    if (validList.length > 0) renderSlotWinner(validList[validList.length - 1]);
+    else {
+      document.getElementById('slotText').textContent = 'READY ?';
+      document.getElementById('slotSubInfo').textContent = '準備就緒，點擊「🎯 抽籤」或「⚡ 一鍵產生結果」';
+      renderSlotWinnersStrip();
+    }
+  }
+  if (drawView === 'lotto'){
+    renderLotto();
+    renderLottoChute(drawHistory.length > 0 ? drawHistory[drawHistory.length - 1] : null);
+  }
+
   cloudUndoLastDraw_();
   saveStateToStorage();
 }
@@ -2174,6 +2407,16 @@ function detectIp_(){
 }
 
 var ONLINE = { ok: false, count: 0, users: [], now: 0 };
+function getCleanOnlineUsers_(){
+  return (ONLINE.users || []).filter(function(u){
+    if (u.device === MY_DEVICE_ID) return true;
+    // 排除無 IP 且帶有其他系統/爬蟲特徵的異常幽靈紀錄 (例如 dev_ 開頭、無 IP、browser 為 Web 等)
+    if ((!u.ip || u.ip === '未取得') && (u.browser === 'Web' || u.device.indexOf('dev_') === 0)) return false;
+    if (u.page && u.page !== 'lottery') return false;
+    return true;
+  });
+}
+
 function startPresence(){
   function ping(){
     if (!CLOUD_API_URL) return;
@@ -2189,7 +2432,8 @@ function startPresence(){
       .then(function(res){
         if (res.ok){
           ONLINE = res;
-          document.getElementById('onlineCount').textContent = res.count || res.users.length;
+          var clean = getCleanOnlineUsers_();
+          document.getElementById('onlineCount').textContent = clean.length;
           document.getElementById('onlineBadge').classList.remove('off');
           if (document.getElementById('onlineList').style.display !== 'none') renderOnlineList_();
         }
@@ -2209,10 +2453,13 @@ function renderOnlineList_(){
     var m = Math.floor(((ONLINE.now || Date.now()/1000) - since) / 60);
     return m < 1 ? '剛連線' : (m < 60 ? m + ' 分' : Math.floor(m/60) + ' 時 ' + (m%60) + ' 分');
   };
+  var clean = getCleanOnlineUsers_();
+  document.getElementById('onlineCount').textContent = clean.length;
+
   var html = '<table class="online-table">' +
     '<thead><tr><th>#</th><th>電腦 IP</th><th>裝置</th><th>作業系統</th><th>瀏覽器</th><th>裝置 ID</th><th>連線</th></tr></thead>' +
     '<tbody>' +
-    ONLINE.users.map(function(u, i){
+    clean.map(function(u, i){
       var isMe = u.device === MY_DEVICE_ID;
       return '<tr style="'+(isMe?'font-weight:800;color:var(--primary);':'')+'">' +
         '<td>' + (i + 1) + '</td>' +
