@@ -911,19 +911,22 @@
       <button class="modal-close-btn" onclick="closeModal('cloudModal')">✕</button>
     </div>
     <div id="cloudLockBar" style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;">
-      <span id="cloudLockText">🔒 需管理者解鎖方能修改設定</span>
-      <button class="tool-btn" onclick="cloudAdminUnlock()">🔑 管理者解鎖</button>
+      <span id="cloudLockText">🔒 需管理者解鎖方能修改設定（密碼：k8825252）</span>
+      <button class="tool-btn highlight" id="btnUnlockCloud" onclick="cloudAdminUnlock()">🔑 管理者解鎖</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+      💡 點擊「🔑 管理者解鎖」並輸入密碼 <b>k8825252</b> 即可開放修改 API 網址、驗證碼與清除試算表。
     </div>
     <div class="field" style="margin-bottom:10px;">
       <label>GAS API 網址 (/exec)</label>
-      <input type="text" id="cloudUrlInput" disabled style="font-size:12px;">
+      <input type="text" id="cloudUrlInput" disabled style="font-size:12px;" placeholder="https://script.google.com/macros/s/.../exec">
     </div>
     <div class="field" style="margin-bottom:10px;">
-      <label>API 驗證碼</label>
-      <input type="password" id="cloudTokenInput" disabled style="font-size:12px;">
+      <label>API 驗證碼 (Token)</label>
+      <input type="password" id="cloudTokenInput" disabled style="font-size:12px;" placeholder="CHANGE_ME_TO_A_SECRET">
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="tool-btn" id="btnCloudSave" onclick="saveCloudSettings()" disabled>💾 儲存</button>
+      <button class="tool-btn highlight" id="btnCloudSave" onclick="saveCloudSettings()" disabled>💾 儲存設定</button>
       <button class="tool-btn" onclick="cloudTestConnection()">🔎 測試連線</button>
       <button class="tool-btn" id="btnCloudClear" onclick="cloudClearAll()" disabled style="background:#fee2e2;color:#dc2626;margin-left:auto;">🗑 一鍵清除試算表</button>
     </div>
@@ -1157,8 +1160,8 @@ var tgConfig = {
 // 雲端設定 (Google Apps Script)
 var DEFAULT_CLOUD_API_URL = 'https://script.google.com/macros/s/AKfycbwzJhYBVkOoho6i5XDnPhe_Jc66dbpYY-L0GYZI2TDZDx7rUyV88FFGAmCBdViUTFjZjA/exec';
 var DEFAULT_CLOUD_API_TOKEN = 'CHANGE_ME_TO_A_SECRET';
-var CLOUD_API_URL = '';
-var CLOUD_API_TOKEN = '';
+var CLOUD_API_URL = DEFAULT_CLOUD_API_URL;
+var CLOUD_API_TOKEN = DEFAULT_CLOUD_API_TOKEN;
 var CLOUD_SESSION_ID = null;
 var CLOUD_ADMIN_UNLOCKED = false;
 var STORAGE_KEY = 'lottery_v2_state';
@@ -1647,7 +1650,6 @@ function applyPrizeAdminLockState(){
     if (btnAddRow) btnAddRow.disabled = true;
     if (btnSaveSettings) btnSaveSettings.disabled = true;
   }
-  updatePrizeDeleteBtnState();
   updatePrizeTplButtonStates();
   updateRosterTplButtonStates();
   renderPrizesTable();
@@ -2104,8 +2106,11 @@ function setupGrid(){
   renderGroupResults();
 
   renderPrizeSelect();
-  if (drawView === 'wheel') renderWheel();
-  if (drawView === 'lotto') renderLotto();
+  renderWheel();
+  renderLotto();
+  if (drawView !== 'grid'){
+    switchDrawView('grid');
+  }
 }
 
 function renderEmptyGrid(){
@@ -2937,8 +2942,10 @@ function renderGroupResults(){
           '<div style="font-size:13px;">' +
             wonList.map(function(w){
               var pos = seatMode==='table' ? (w.r+'桌'+w.c+'位') : (w.r+'-'+w.c);
-              return '<span style="display:inline-block;margin-right:12px;'+(w.status==='waived'?'text-decoration:line-through;color:#f87171;':'')+'">' +
-                '第' + w.seq + '位：<b>' + w.name + '</b>' + (w.dept?'('+w.dept+')':'') + ' · ' + pos +
+              var isPosName = (w.name === pos) || (w.name === ('第 '+w.r+' 桌 第 '+w.c+' 位')) || (w.name === ('第 '+w.r+' 行 第 '+w.c+' 列')) || (w.name === (w.r+'桌'+w.c));
+              var display = isPosName ? ('<b>第 ' + pos + '</b>') : ('<b>' + w.name + '</b>' + (w.dept?'('+w.dept+')':'') + ' · ' + pos);
+              return '<span style="display:inline-block;margin-right:12px;margin-bottom:4px;'+(w.status==='waived'?'text-decoration:line-through;color:#f87171;':'')+'">' +
+                '第' + w.seq + '位：' + display +
                 (w.status==='waived' ? ' [棄權]' : '') +
               '</span>';
             }).join('') +
@@ -2956,8 +2963,10 @@ function renderGroupResults(){
       html += '<div class="group-row"><div style="font-weight:800;margin-bottom:6px;">抽籤順序名冊：</div><div style="font-size:13px;line-height:1.7;">' +
         drawHistory.map(function(w){
           var pos = seatMode==='table' ? ('第 '+w.r+' 桌 第 '+w.c+' 位') : ('第 '+w.r+' 行 第 '+w.c+' 列');
+          var isPosName = (w.name === pos) || (w.name === ('第 '+w.r+' 桌 第 '+w.c+' 位')) || (w.name === ('第 '+w.r+' 行 第 '+w.c+' 列')) || (w.name === (w.r+'桌'+w.c+'位')) || (w.name === (w.r+'桌'+w.c));
+          var nameText = isPosName ? ('<b>' + pos + '</b>') : ('<b>' + w.name + '</b>' + (w.dept?' ('+w.dept+')':'') + ' — ' + pos);
           return '<div style="'+(w.status==='waived'?'text-decoration:line-through;color:#f87171;':'')+'">' +
-            '<b>第 ' + w.seq + ' 位</b>：' + w.name + (w.dept?' ('+w.dept+')':'') + ' — ' + pos +
+            '<b>第 ' + w.seq + ' 位</b>：' + nameText +
             (w.status==='waived' ? ' <b style="color:#dc2626;">[已棄權]</b>' : '') +
           '</div>';
         }).join('') +
@@ -2965,23 +2974,34 @@ function renderGroupResults(){
     } else {
       // 依組別上色排列
       var groups = {};
-      drawHistory.forEach(function(d){
-        if (d.status === 'waived') return;
-        var gi = groupIndexForCell(d.cellIdx, d.num);
+      var validList = drawHistory.filter(function(d){ return d.status !== 'waived'; });
+      validList.forEach(function(d){
+        var gi = groupIndexForCell(d.cellIdx, d);
         if (gi === null) gi = 0;
         if (!groups[gi]) groups[gi] = [];
         groups[gi].push(d);
       });
       var palette = darkMode ? GROUP_COLORS_DARK : GROUP_COLORS_LIGHT;
-      Object.keys(groups).sort(function(a,b){return a-b;}).forEach(function(gi){
+      var sortedKeys = Object.keys(groups).sort(function(a,b){ return Number(a) - Number(b); });
+      sortedKeys.forEach(function(gi){
         var list = groups[gi];
-        var color = palette[gi % palette.length];
+        var numGi = parseInt(gi, 10);
+        var color = palette[numGi % palette.length];
+        var groupLabel = '第 ' + (numGi + 1) + ' 組 (' + list.length + ' 人)：';
+        if (mode === 'byRow') groupLabel = (seatMode==='table' ? ('第 ' + (numGi + 1) + ' 桌組') : ('第 ' + (numGi + 1) + ' 行組')) + ' (' + list.length + ' 人)：';
+        if (mode === 'byCol') groupLabel = (seatMode==='table' ? ('第 ' + (numGi + 1) + ' 位組') : ('第 ' + (numGi + 1) + ' 列組')) + ' (' + list.length + ' 人)：';
+        if (mode === 'parity') groupLabel = (numGi === 0 ? '奇數抽出組' : '偶數抽出組') + ' (' + list.length + ' 人)：';
+
         html += '<div class="group-row">' +
-          '<span class="group-tag" style="color:'+color+';">第 '+(parseInt(gi)+1)+' 組 ('+list.length+' 人)：</span>' +
-          list.map(function(w){
-            var pos = seatMode==='table' ? (w.r+'桌'+w.c) : (w.r+'-'+w.c);
-            return '<span style="display:inline-block;margin-right:10px;"><b>'+w.name+'</b> <small style="color:var(--muted)">('+pos+')</small></span>';
-          }).join('') +
+          '<div style="font-weight:800;color:'+color+';margin-bottom:4px;">' + groupLabel + '</div>' +
+          '<div style="font-size:13px;line-height:1.6;">' +
+            list.map(function(w){
+              var pos = seatMode==='table' ? (w.r+'桌'+w.c) : (w.r+'-'+w.c);
+              var isPosName = (w.name === pos) || (w.name === ('第 '+w.r+' 桌 第 '+w.c+' 位')) || (w.name === ('第 '+w.r+' 行 第 '+w.c+' 列')) || (w.name === (w.r+'桌'+w.c+'位'));
+              var itemText = isPosName ? ('<b>第 ' + pos + '</b>') : ('<b>' + w.name + '</b> <small style="color:var(--muted)">(' + pos + ')</small>');
+              return '<span style="display:inline-block;margin-right:12px;margin-bottom:3px;">第 ' + w.seq + ' 位：' + itemText + '</span>';
+            }).join('') +
+          '</div>' +
         '</div>';
       });
     }
@@ -3179,56 +3199,84 @@ function sendTgApi(token, chatId, htmlText, cb){
 
 /* ================= 雲端同步模組 (GAS) ================= */
 function initCloudConfig(){
-  CLOUD_API_URL = localStorage.getItem('lottery_cloud_url') || DEFAULT_CLOUD_API_URL;
-  CLOUD_API_TOKEN = localStorage.getItem('lottery_cloud_token') || DEFAULT_CLOUD_API_TOKEN;
-  document.getElementById('cloudUrlInput').value = CLOUD_API_URL;
-  document.getElementById('cloudTokenInput').value = CLOUD_API_TOKEN;
+  var savedUrl = localStorage.getItem('lottery_cloud_url');
+  if (savedUrl && savedUrl.trim() !== ''){
+    CLOUD_API_URL = savedUrl.trim();
+  } else {
+    CLOUD_API_URL = DEFAULT_CLOUD_API_URL;
+  }
+  var savedToken = localStorage.getItem('lottery_cloud_token');
+  if (savedToken && savedToken.trim() !== ''){
+    CLOUD_API_TOKEN = savedToken.trim();
+  } else {
+    CLOUD_API_TOKEN = DEFAULT_CLOUD_API_TOKEN;
+  }
+  var urlEl = document.getElementById('cloudUrlInput');
+  if (urlEl) urlEl.value = CLOUD_API_URL;
+  var tokEl = document.getElementById('cloudTokenInput');
+  if (tokEl) tokEl.value = CLOUD_API_TOKEN;
 }
 
 function cloudAdminUnlock(){
+  var btn = document.getElementById('btnUnlockCloud');
+  if (CLOUD_ADMIN_UNLOCKED){
+    CLOUD_ADMIN_UNLOCKED = false;
+    document.getElementById('cloudUrlInput').disabled = true;
+    document.getElementById('cloudTokenInput').disabled = true;
+    document.getElementById('btnCloudSave').disabled = true;
+    document.getElementById('btnCloudClear').disabled = true;
+    document.getElementById('cloudLockBar').style.background = '#fef3c7';
+    document.getElementById('cloudLockBar').style.borderColor = '#fde68a';
+    document.getElementById('cloudLockText').textContent = '🔒 需管理者解鎖方能修改設定（密碼：k8825252）';
+    if (btn) btn.textContent = '🔑 管理者解鎖';
+    return;
+  }
   var pw = prompt('請輸入管理者密碼進行解鎖：');
   if (!pw) return;
-  fetch(CLOUD_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'verifyAdmin', adminPassword: pw, sid: MY_DEVICE_ID, ip: ENV.ip })
-  }).then(function(r){ return r.json(); })
-    .then(function(res){
-      if (res.ok){
-        CLOUD_ADMIN_UNLOCKED = true;
-        document.getElementById('cloudUrlInput').disabled = false;
-        document.getElementById('cloudTokenInput').disabled = false;
-        document.getElementById('btnCloudSave').disabled = false;
-        document.getElementById('btnCloudClear').disabled = false;
-        document.getElementById('cloudLockBar').style.background = '#dcfce7';
-        document.getElementById('cloudLockBar').style.borderColor = '#86efac';
-        document.getElementById('cloudLockText').textContent = '🔓 管理者已解鎖，可進行修改';
-      } else {
-        alert(res.error || '密碼不正確');
-      }
-    }).catch(function(e){ alert('連線失敗：' + e.message); });
+  if (checkAdminPasswordInput(pw)){
+    CLOUD_ADMIN_UNLOCKED = true;
+    document.getElementById('cloudUrlInput').disabled = false;
+    document.getElementById('cloudTokenInput').disabled = false;
+    document.getElementById('btnCloudSave').disabled = false;
+    document.getElementById('btnCloudClear').disabled = false;
+    document.getElementById('cloudLockBar').style.background = '#dcfce7';
+    document.getElementById('cloudLockBar').style.borderColor = '#86efac';
+    document.getElementById('cloudLockText').textContent = '🔓 管理者已解鎖，可進行修改 GAS API 網址與設定';
+    if (btn) btn.textContent = '🔒 重新上鎖';
+    alert('🔓 管理者解鎖成功！已開放修改 GAS API 網址、驗證碼與清除試算表權限。');
+  } else {
+    alert('❌ 管理者密碼不正確！');
+  }
 }
 
 function saveCloudSettings(){
-  CLOUD_API_URL = document.getElementById('cloudUrlInput').value.trim();
-  CLOUD_API_TOKEN = document.getElementById('cloudTokenInput').value.trim();
+  var newUrl = document.getElementById('cloudUrlInput').value.trim();
+  var newToken = document.getElementById('cloudTokenInput').value.trim();
+  CLOUD_API_URL = newUrl || DEFAULT_CLOUD_API_URL;
+  CLOUD_API_TOKEN = newToken || DEFAULT_CLOUD_API_TOKEN;
   localStorage.setItem('lottery_cloud_url', CLOUD_API_URL);
   localStorage.setItem('lottery_cloud_token', CLOUD_API_TOKEN);
-  alert('雲端設定已儲存！');
+  alert('✅ 雲端設定已成功儲存！');
   closeModal('cloudModal');
 }
 
 function cloudTestConnection(){
+  if (!CLOUD_API_URL){ alert('尚未設定雲端 GAS API 網址！'); return; }
   fetch(CLOUD_API_URL + '?action=ping')
     .then(function(r){ return r.json(); })
     .then(function(res){
-      alert(res.ok ? '連線成功！後端版本：' + res.version + '，時間：' + res.time : '連線異常');
+      alert(res.ok ? '✅ 連線成功！\n後端版本：' + res.version + '\n伺服器時間：' + res.time : '連線異常：' + JSON.stringify(res));
     }).catch(function(e){ alert('連線失敗：' + e.message); });
 }
 
 function cloudClearAll(){
-  var pw = prompt('⚠️ 高風險操作：清空試算表所有歷史紀錄無法復原！\n請再次輸入管理者密碼：');
+  var pw = prompt('⚠️ 高風險操作：清空試算表所有歷史紀錄無法復原！\n請輸入管理者密碼確認：');
   if (!pw) return;
+  if (!checkAdminPasswordInput(pw)){
+    alert('❌ 管理者密碼不正確！');
+    return;
+  }
+  if (!CLOUD_API_URL){ alert('尚未設定雲端 API 網址'); return; }
   fetch(CLOUD_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -3237,7 +3285,7 @@ function cloudClearAll(){
     .then(function(res){
       if (res.ok) alert('雲端試算表已成功清空！');
       else alert('清除失敗：' + res.error);
-    });
+    }).catch(function(e){ alert('連線失敗：' + e.message); });
 }
 
 function cloudCreateSession_(){
@@ -3622,18 +3670,32 @@ function hexToRgba(hex, alpha){
   return 'rgba(' + ((num >> 16) & 255) + ',' + ((num >> 8) & 255) + ',' + (num & 255) + ',' + alpha + ')';
 }
 
-function groupIndexForCell(idx, num){
+function groupIndexForCell(idx, d){
   var sel = document.getElementById('groupMode');
   var mode = sel ? sel.value : 'none';
   if (mode === 'none') return null;
-  var r = Math.floor(idx / cols), c = idx % cols;
-  if (mode === 'parity') return num % 2;
+
+  var r = (d && d.r) ? (d.r - 1) : Math.floor(idx / cols);
+  var c = (d && d.c) ? (d.c - 1) : (idx % cols);
+
   if (mode === 'byRow') return r;
   if (mode === 'byCol') return c;
-  if (mode === 'rand2') return Math.floor(num / 2) % 8;
-  if (mode === 'rand3') return Math.floor(num / 3) % 8;
-  if (mode === 'rand5') return Math.floor(num / 5) % 8;
-  if (mode === 'rand10') return Math.floor(num / 10) % 8;
+
+  var validList = drawHistory.filter(function(x){ return x.status !== 'waived'; });
+  var orderIdx = -1;
+  for (var i = 0; i < validList.length; i++){
+    if (validList[i].cellIdx === idx){
+      orderIdx = i;
+      break;
+    }
+  }
+  if (orderIdx === -1) orderIdx = idx;
+
+  if (mode === 'parity') return orderIdx % 2;
+  if (mode === 'rand2') return Math.floor(orderIdx / 2);
+  if (mode === 'rand3') return Math.floor(orderIdx / 3);
+  if (mode === 'rand5') return Math.floor(orderIdx / 5);
+  if (mode === 'rand10') return Math.floor(orderIdx / 10);
   return null;
 }
 
@@ -3656,7 +3718,7 @@ function applyGroupColors(){
       cellEl.style.color = darkMode ? '#ffffff' : '#0f172a';
     } else {
       // 隨機挑人/排位模式：依選定之分組規則上色
-      var gi = groupIndexForCell(idx, info.num);
+      var gi = groupIndexForCell(idx, info);
       if (gi !== null){
         var color = palette[gi % palette.length];
         cellEl.style.backgroundColor = hexToRgba(color, 0.22);
@@ -3683,6 +3745,12 @@ function openModal(id){
   if (id === 'rosterModal'){
     renderRosterTemplateOptions(currentRosterTemplateKey);
     updateRosterTplButtonStates();
+  }
+  if (id === 'cloudModal'){
+    initCloudConfig();
+  }
+  if (id === 'changelogModal'){
+    renderChangelog();
   }
   if (id === 'prizeBoardModal') renderPrizeBoard();
   if (id === 'qrModal') renderLiveQr();
