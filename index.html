@@ -306,6 +306,47 @@
   .cell .coord { position: absolute; bottom: 2px; right: 3px; font-size: 9px; opacity: 0.45; }
   .empty-state { padding: 30px; text-align: center; color: var(--muted); font-size: 14px; }
 
+  /* 桌人模式宴會桌次視覺 */
+  .tables-grid { display: grid; gap: 16px; width: 100%; justify-content: center; }
+  .table-card {
+    background: rgba(255, 255, 255, 0.88);
+    border: 2px solid rgba(226, 232, 240, 0.95);
+    border-radius: 18px; padding: 12px 14px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+    transition: all 0.25s ease; position: relative;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  body.darkmode .table-card {
+    background: rgba(30, 41, 59, 0.85);
+    border-color: #334155;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+  }
+  .table-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+  .table-card-head {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 14.5px; font-weight: 800; color: var(--primary);
+    padding-bottom: 6px; border-bottom: 1.5px dashed var(--border);
+  }
+  body.darkmode .table-card-head { color: #60a5fa; }
+  .table-seats-count { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .table-seats-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+    gap: 8px; justify-items: center; align-items: center;
+  }
+  .table-seat-cell { width: 100%; min-height: 52px; border-radius: 12px; font-size: 13px; }
+
+  /* 管理者鎖定提示條 */
+  .admin-auth-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #fef3c7; border: 1px solid #fde68a; border-radius: 10px;
+    padding: 8px 12px; margin-bottom: 12px; font-size: 12.5px; color: #92400e; font-weight: 700;
+  }
+  body.darkmode .admin-auth-bar { background: #2a2215; border-color: #78350f; color: #fde68a; }
+  .admin-auth-bar.unlocked {
+    background: #ecfdf5; border-color: #a7f3d0; color: #065f46;
+  }
+  body.darkmode .admin-auth-bar.unlocked { background: #064e3b; border-color: #047857; color: #a7f3d0; }
+
   /* 2. 幸運大輪盤 Wheel */
   .wheel-box { position: relative; width: 380px; height: 380px; margin: 10px auto; }
   #wheelCanvas { width: 100%; height: 100%; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.25)); }
@@ -723,17 +764,25 @@
       <h3>👥 人員名冊管理</h3>
       <button class="modal-close-btn" onclick="closeModal('rosterModal')">✕</button>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <label style="font-weight:700;font-size:13px;color:var(--primary);">切換名冊範本：</label>
+      <select id="rosterTemplateSelect" onchange="onRosterTemplateSelect(this.value)" style="flex:1;min-width:180px;font-size:13px;padding:5px 8px;">
+        <option value="demo">許瑞興示範名單 (30人)</option>
+      </select>
+      <button class="tool-btn" onclick="saveNewRosterTemplate()">💾 另存為新名冊</button>
+      <button class="tool-btn" id="btnDeleteRosterTpl" onclick="deleteRosterTemplate()" style="color:#dc2626;" disabled>🗑️ 刪除名冊</button>
+    </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">
-      每行一位同仁，格式支援：<code>工號 姓名 部門</code> 或 <code>姓名 部門</code> 或 <code>姓名</code>（中間用空白或 Tab 分隔，從 Excel 整欄貼上也可以）：
+      每行一位同仁，格式支援：<code>工號 姓名 部門</code> 或 <code>姓名 部門</code> 或 <code>姓名</code>（從 Excel 整欄複製貼上亦可）：
     </div>
     <textarea class="roster-textarea" id="rosterText" placeholder="A01 王大明 研發部&#10;A02 李小美 生管部&#10;A03 張偉國 製造部"></textarea>
     <div style="font-size:12px;color:var(--primary);font-weight:700;margin-top:6px;" id="rosterCountHint">
       目前名單：0 人
     </div>
     <div class="roster-actions">
-      <button class="tool-btn highlight" onclick="loadDemoRoster()">帶入許瑞興示範名單 (30人)</button>
       <button class="tool-btn" onclick="clearRosterInput()">清空名單</button>
-      <button class="tool-btn" onclick="fetchRosterFromCloud()">從 Google 試算表載入名冊</button>
+      <button class="tool-btn highlight" onclick="fetchRosterFromCloud()">📥 從 Google 試算表載入名冊</button>
+      <button class="tool-btn" onclick="uploadRosterToCloud()">📤 上傳目前名冊到 Google 試算表</button>
       <button class="tool-btn" style="background:#2563eb;color:#fff;margin-left:auto;" onclick="applyRoster()">💾 儲存並套用名冊</button>
     </div>
   </div>
@@ -746,9 +795,22 @@
       <h3>🏆 獎項抽獎設定</h3>
       <button class="modal-close-btn" onclick="closeModal('prizeModal')">✕</button>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span style="font-size:13px;color:var(--muted);">自訂活動獎項，抽獎時可依獎項逐一抽取：</span>
-      <button class="tool-btn highlight" onclick="addNewPrizeRow()">＋ 新增獎項</button>
+    <div class="admin-auth-bar" id="prizeAdminBar">
+      <span id="prizeLockStatus">🔒 目前為鎖定檢視模式（編輯、刪除或儲存範本需管理者解鎖）</span>
+      <button class="tool-btn highlight" id="btnUnlockPrize" onclick="unlockPrizeAdmin()">🔑 管理者解鎖</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <label style="font-weight:700;font-size:13px;color:var(--primary);">獎項範本：</label>
+        <select id="prizeTemplateSelect" onchange="onPrizeTemplateSelect(this.value)" style="font-size:13px;padding:4px 8px;">
+          <option value="preset_standard">🏆 尾牙春酒標準版 (5獎 36名)</option>
+          <option value="preset_dept">🍽️ 部門聚餐精簡版 (3獎 17名)</option>
+          <option value="preset_class">🎓 課堂活動激勵版 (3獎 10名)</option>
+        </select>
+        <button class="tool-btn" id="btnSavePrizeTpl" onclick="saveNewPrizeTemplate()" disabled>💾 另存為新範本</button>
+        <button class="tool-btn" id="btnDeletePrizeTpl" onclick="deletePrizeTemplate()" style="color:#dc2626;" disabled>🗑️ 刪除範本</button>
+      </div>
+      <button class="tool-btn highlight" id="btnAddPrizeRow" onclick="addNewPrizeRow()" disabled>＋ 新增獎項</button>
     </div>
     <table class="prize-table" id="prizeTable">
       <thead>
@@ -762,9 +824,8 @@
       </thead>
       <tbody id="prizeTableBody"></tbody>
     </table>
-    <div style="display:flex;justify-content:space-between;margin-top:16px;">
-      <button class="tool-btn" onclick="resetDefaultPrizes()">恢復預設獎項</button>
-      <button class="tool-btn" style="background:#2563eb;color:#fff;" onclick="savePrizeSettings()">💾 儲存獎項設定</button>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+      <button class="tool-btn" id="btnSavePrizeSettings" style="background:#2563eb;color:#fff;" onclick="savePrizeSettings()" disabled>💾 儲存獎項設定</button>
     </div>
   </div>
 </div>
@@ -791,24 +852,28 @@
       <h3>📢 Telegram 中獎戰報推播</h3>
       <button class="modal-close-btn" onclick="closeModal('tgModal')">✕</button>
     </div>
+    <div class="admin-auth-bar" id="tgAdminBar">
+      <span id="tgLockStatus">🔒 權限保護中：Token、Chat ID 與推播功能僅限管理者操作</span>
+      <button class="tool-btn highlight" id="btnUnlockTg" onclick="unlockTgAdmin()">🔑 管理者解鎖</button>
+    </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">
       可即時推播中獎喜報到公司 Telegram 群組，已內建許瑞興 Telegram Bot 設定：
     </div>
     <div class="field" style="margin-bottom:10px;">
-      <label>Telegram Bot Token</label>
-      <input type="text" id="tgTokenInput" style="font-family:monospace;font-size:12px;" value="8877416210:AAFrcexthULtHnEwIjrmLo41BUSrgAxqylc">
+      <label>Telegram Bot Token (機密金鑰)</label>
+      <input type="password" id="tgTokenInput" style="font-family:monospace;font-size:12px;" value="8877416210:AAFrcexthULtHnEwIjrmLo41BUSrgAxqylc" disabled>
     </div>
     <div class="field" style="margin-bottom:10px;">
-      <label>群組 Chat ID</label>
-      <input type="text" id="tgChatInput" style="font-family:monospace;font-size:12px;" value="-5524528569">
+      <label>群組 Chat ID (頻道/群組)</label>
+      <input type="password" id="tgChatInput" style="font-family:monospace;font-size:12px;" value="-5524528569" disabled>
     </div>
     <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin-bottom:14px;">
-      <input type="checkbox" id="tgAutoNotify" checked>
+      <input type="checkbox" id="tgAutoNotify" checked disabled>
       <label for="tgAutoNotify" style="cursor:pointer;">抽中特獎/頭獎時，自動發送中獎喜報到 Telegram 群組</label>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button class="tool-btn" onclick="testTelegram()">🔔 測試推播</button>
-      <button class="tool-btn highlight" onclick="broadcastWinnersToTelegram()">🚀 立即推播目前得獎名冊</button>
+      <button class="tool-btn" id="btnTestTg" onclick="testTelegram()" disabled>🔔 測試推播 (限管理者)</button>
+      <button class="tool-btn highlight" id="btnBroadcastTg" onclick="broadcastWinnersToTelegram()" disabled>🚀 立即推播目前得獎名冊 (限管理者)</button>
     </div>
   </div>
 </div>
@@ -1034,7 +1099,7 @@ var Confetti = (function(){
 })();
 
 /* ================= 系統主要狀態變數 ================= */
-var APP_VERSION = 'v2.0.0';
+var APP_VERSION = 'v2.1.0';
 var lotteryMode = 'seat'; // 'seat' (純挑人/排位) | 'prize' (活動獎項模式)
 var rows = 5, cols = 6, total = 30;
 var pool = [];            // 候選人池
@@ -1084,12 +1149,26 @@ var CLOUD_SESSION_ID = null;
 var CLOUD_ADMIN_UNLOCKED = false;
 var STORAGE_KEY = 'lottery_v2_state';
 
+// 管理者密碼標準驗證（前後端一致）
+var ADMIN_PASSWORD_STANDARD = 'k8825252';
+function checkAdminPasswordInput(pw){
+  return String(pw || '').trim() === ADMIN_PASSWORD_STANDARD;
+}
+
 // 調色盤
 var GROUP_COLORS_LIGHT = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
 var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
 
 /* 改版紀錄清單 */
 var CHANGELOG = [
+  { v: 'v2.1.0', date: '2026-10-03', notes: [
+    '🔐 權限管理升級：獎項編輯/刪除與範本儲存需管理者密碼（預設 k8825252）解鎖；Telegram 金鑰自動遮蔽，推播操作僅限管理者解鎖後可用。',
+    '💾 獎項與名冊雙模組範本庫：支援自由命名另存新範本與隨時下拉選單切換（如尾牙春酒版、部門聚餐版、課堂激勵版）。',
+    '☁️ Google 試算表面冊雙向同步：無名冊工作表時自動建立範本，支援網頁名冊一鍵上傳覆寫試算表，以及從試算表即時載入。',
+    '🍽️ 桌人模式升級宴會桌次視覺：宴會桌卡片立體排列，桌號、每桌人數與個別座位獨立呈現，極佳臨場感！',
+    '🎡 幸運大獎盤全面強化：未抽籤時完整顯示所有候選人扇形，標示中獎號碼（#1、#2...）與高對比陰影，外環增添金色外框與裝飾燈效。',
+    '🎨 活動獎項抽獎模式專屬獎級上色：獎項模式自動依特獎（金）、頭獎（桃紅）等榮譽等級尊貴上色，自動隔離一般座位分組規則。'
+  ]},
   { v: 'v2.0.0', date: '2026-10-03', notes: [
     '✨ 徹底分流「純挑人模式」與「活動獎項模式」：純抽人支援任意限制抽出人數，活動獎項模式名額嚴格匹配獎項配額！',
     '🎡 幸運大輪盤物理精確對齊：旋轉指針必定精確指向開獎號碼與得主，零誤差！',
@@ -1103,8 +1182,12 @@ var CHANGELOG = [
 window.addEventListener('DOMContentLoaded', function(){
   document.getElementById('versionTag').textContent = APP_VERSION;
   loadSettings();
+  renderPrizeTemplateOptions();
+  renderRosterTemplateOptions();
   renderPrizeSelect();
   renderPrizesTable();
+  applyPrizeAdminLockState();
+  applyTgAdminLockState();
   setupGrid();
   renderChangelog();
   initCloudConfig();
@@ -1123,6 +1206,7 @@ function onLotteryModeChange(){
   document.getElementById('prizeBar').style.display = isPrize ? 'flex' : 'none';
   var limitInput = document.getElementById('drawLimitInput');
   var limitLabel = document.getElementById('drawLimitLabel');
+  var groupSel = document.getElementById('groupMode');
 
   if (isPrize){
     var curP = prizes.find(function(p){ return p.id === activePrizeId; }) || prizes[0];
@@ -1131,12 +1215,21 @@ function onLotteryModeChange(){
     limitInput.value = remain;
     limitInput.disabled = true;
     limitLabel.textContent = '本獎項剩餘配額';
+    if (groupSel){
+      groupSel.disabled = true;
+      groupSel.title = '活動獎項模式下，座位將自動依獎項等級（特獎金、頭獎紅等）專屬上色，不需手動分組';
+    }
     updatePrizeBar();
   } else {
     limitInput.disabled = false;
     limitLabel.textContent = '限制抽出人數';
     limitInput.placeholder = '留白＝全抽';
+    if (groupSel){
+      groupSel.disabled = false;
+      groupSel.title = '依選取規則為抽出座位分組上色';
+    }
   }
+  applyGroupColors();
   updateTotalHint();
   saveStateToStorage();
 }
@@ -1190,9 +1283,175 @@ function toggleDarkMode(){
   if (drawView === 'lotto') renderLotto();
 }
 
-/* ================= 獎項管理模組 ================= */
+/* ================= 獎項管理模組（含管理者密碼鎖定與範本庫） ================= */
+var prizeAdminUnlocked = false;
+
+var PRESET_PRIZE_TEMPLATES = {
+  'preset_standard': {
+    name: '🏆 尾牙春酒標準版 (4獎 16名)',
+    prizes: [
+      { id: 'p1', name: '特獎', reward: 'iPhone 16 Pro', count: 1, icon: '🥇', color: '#f59e0b' },
+      { id: 'p2', name: '頭獎', reward: '萬元獎金', count: 2, icon: '🥈', color: '#e11d48' },
+      { id: 'p3', name: '貳獎', reward: '智慧家電', count: 3, icon: '🥉', color: '#7c3aed' },
+      { id: 'p4', name: '普獎', reward: '幸運紅包', count: 10, icon: '🎁', color: '#2563eb' }
+    ]
+  },
+  'preset_dept': {
+    name: '🍽️ 部門聚餐精簡版 (3獎 6名)',
+    prizes: [
+      { id: 'p1', name: '大獎', reward: 'AirPods Pro', count: 1, icon: '🌟', color: '#f59e0b' },
+      { id: 'p2', name: '二獎', reward: '千元餐券', count: 2, icon: '🍴', color: '#10b981' },
+      { id: 'p3', name: '參加獎', reward: '電影票 2 張', count: 3, icon: '🎟️', color: '#2563eb' }
+    ]
+  },
+  'preset_class': {
+    name: '🎓 課堂活動激勵版 (3獎 10名)',
+    prizes: [
+      { id: 'p1', name: '冠軍獎', reward: '精美圖書禮券', count: 1, icon: '👑', color: '#f59e0b' },
+      { id: 'p2', name: '優勝獎', reward: '文具禮品組', count: 3, icon: '🎖️', color: '#ec4899' },
+      { id: 'p3', name: '幸運獎', reward: '超商百元禮品卡', count: 6, icon: '🎈', color: '#06b6d4' }
+    ]
+  }
+};
+
+function getCustomPrizeTemplates(){
+  try {
+    return JSON.parse(localStorage.getItem('lottery_custom_prize_templates') || '{}');
+  } catch(e){ return {}; }
+}
+
+function saveCustomPrizeTemplates(tpls){
+  try {
+    localStorage.setItem('lottery_custom_prize_templates', JSON.stringify(tpls));
+  } catch(e){}
+}
+
+function renderPrizeTemplateOptions(selectedKey){
+  var sel = document.getElementById('prizeTemplateSelect');
+  if (!sel) return;
+  var custom = getCustomPrizeTemplates();
+  var html = '';
+  Object.keys(PRESET_PRIZE_TEMPLATES).forEach(function(k){
+    html += '<option value="' + k + '">' + PRESET_PRIZE_TEMPLATES[k].name + '</option>';
+  });
+  var customKeys = Object.keys(custom);
+  if (customKeys.length > 0){
+    html += '<optgroup label="── 自訂已儲存範本 ──">';
+    customKeys.forEach(function(k){
+      html += '<option value="' + k + '">📁 ' + custom[k].name + '</option>';
+    });
+    html += '</optgroup>';
+  }
+  sel.innerHTML = html;
+  if (selectedKey) sel.value = selectedKey;
+  updatePrizeDeleteBtnState();
+}
+
+function updatePrizeDeleteBtnState(){
+  var sel = document.getElementById('prizeTemplateSelect');
+  var btnDel = document.getElementById('btnDeletePrizeTpl');
+  if (!sel || !btnDel) return;
+  var isCustom = sel.value.indexOf('custom_') === 0;
+  btnDel.disabled = !prizeAdminUnlocked || !isCustom;
+}
+
+function onPrizeTemplateSelect(val){
+  var custom = getCustomPrizeTemplates();
+  var tpl = PRESET_PRIZE_TEMPLATES[val] || custom[val];
+  if (!tpl) return;
+  prizes = JSON.parse(JSON.stringify(tpl.prizes));
+  if (prizes.length > 0) activePrizeId = prizes[0].id;
+  renderPrizesTable();
+  renderPrizeSelect();
+  updatePrizeDeleteBtnState();
+  if (lotteryMode === 'prize') onLotteryModeChange();
+  saveStateToStorage();
+}
+
+function saveNewPrizeTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  var name = prompt('請輸入新獎項範本名稱（例如：2026年終尾牙、中秋聯歡抽獎等）：');
+  if (!name || !name.trim()) return;
+  name = name.trim();
+  var custom = getCustomPrizeTemplates();
+  var key = 'custom_' + Date.now();
+  custom[key] = {
+    name: name,
+    prizes: JSON.parse(JSON.stringify(prizes))
+  };
+  saveCustomPrizeTemplates(custom);
+  renderPrizeTemplateOptions(key);
+  updatePrizeDeleteBtnState();
+  alert('✅ 獎項範本「' + name + '」已成功儲存！日後可隨時於選單中切換套用。');
+}
+
+function deletePrizeTemplate(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者密碼解鎖'); return; }
+  var sel = document.getElementById('prizeTemplateSelect');
+  var val = sel.value;
+  if (val.indexOf('custom_') !== 0){ alert('內建預設範本不可刪除！'); return; }
+  var custom = getCustomPrizeTemplates();
+  var target = custom[val];
+  if (!target) return;
+  if (!confirm('確定要刪除範本「' + target.name + '」嗎？刪除後無法復原。')) return;
+  delete custom[val];
+  saveCustomPrizeTemplates(custom);
+  renderPrizeTemplateOptions('preset_standard');
+  onPrizeTemplateSelect('preset_standard');
+  alert('已成功刪除該獎項範本');
+}
+
+function unlockPrizeAdmin(){
+  if (prizeAdminUnlocked){
+    lockPrizeAdmin();
+    return;
+  }
+  var pw = prompt('請輸入管理者密碼進行解鎖：');
+  if (!pw) return;
+  if (checkAdminPasswordInput(pw)){
+    prizeAdminUnlocked = true;
+    applyPrizeAdminLockState();
+    alert('🔓 管理者解鎖成功！已開放獎項編輯、增刪與儲存範本權限。');
+  } else {
+    alert('❌ 管理者密碼不正確！');
+  }
+}
+
+function lockPrizeAdmin(){
+  prizeAdminUnlocked = false;
+  applyPrizeAdminLockState();
+}
+
+function applyPrizeAdminLockState(){
+  var bar = document.getElementById('prizeAdminBar');
+  var status = document.getElementById('prizeLockStatus');
+  var btn = document.getElementById('btnUnlockPrize');
+  var btnSaveTpl = document.getElementById('btnSavePrizeTpl');
+  var btnAddRow = document.getElementById('btnAddPrizeRow');
+  var btnSaveSettings = document.getElementById('btnSavePrizeSettings');
+
+  if (prizeAdminUnlocked){
+    if (bar) bar.classList.add('unlocked');
+    if (status) status.textContent = '🔓 管理者已解鎖：已具備編輯、刪除獎項與儲存自訂範本權限';
+    if (btn) btn.textContent = '🔒 重新上鎖';
+    if (btnSaveTpl) btnSaveTpl.disabled = false;
+    if (btnAddRow) btnAddRow.disabled = false;
+    if (btnSaveSettings) btnSaveSettings.disabled = false;
+  } else {
+    if (bar) bar.classList.remove('unlocked');
+    if (status) status.textContent = '🔒 目前為鎖定檢視模式（編輯、刪除或儲存範本需管理者解鎖）';
+    if (btn) btn.textContent = '🔑 管理者解鎖';
+    if (btnSaveTpl) btnSaveTpl.disabled = true;
+    if (btnAddRow) btnAddRow.disabled = true;
+    if (btnSaveSettings) btnSaveSettings.disabled = true;
+  }
+  updatePrizeDeleteBtnState();
+  renderPrizesTable();
+}
+
 function renderPrizeSelect(){
   var sel = document.getElementById('prizeQuickSelect');
+  if (!sel) return;
   sel.innerHTML = prizes.map(function(p){
     var won = drawHistory.filter(function(d){ return d.prize === p.name && d.status !== 'waived'; }).length;
     var remain = Math.max(0, p.count - won);
@@ -1226,57 +1485,154 @@ function updatePrizeBar(){
 
 function renderPrizesTable(){
   var tb = document.getElementById('prizeTableBody');
+  if (!tb) return;
+  var dis = prizeAdminUnlocked ? '' : 'disabled';
   tb.innerHTML = prizes.map(function(p, idx){
     return '<tr>' +
-      '<td><input type="text" value="'+p.icon+'" style="width:36px;text-align:center;" onchange="prizes['+idx+'].icon=this.value"></td>' +
-      '<td><input type="text" value="'+p.name+'" style="width:90px;" onchange="prizes['+idx+'].name=this.value"></td>' +
-      '<td><input type="text" value="'+p.reward+'" style="width:130px;" onchange="prizes['+idx+'].reward=this.value"></td>' +
-      '<td><input type="number" value="'+p.count+'" min="1" style="width:60px;" onchange="prizes['+idx+'].count=parseInt(this.value)||1"></td>' +
-      '<td><button class="tool-btn" style="color:#dc2626;padding:2px 6px;" onclick="deletePrizeRow('+idx+')">✕</button></td>' +
+      '<td><input type="text" value="'+p.icon+'" style="width:36px;text-align:center;" '+dis+' onchange="prizes['+idx+'].icon=this.value"></td>' +
+      '<td><input type="text" value="'+p.name+'" style="width:90px;" '+dis+' onchange="prizes['+idx+'].name=this.value"></td>' +
+      '<td><input type="text" value="'+p.reward+'" style="width:130px;" '+dis+' onchange="prizes['+idx+'].reward=this.value"></td>' +
+      '<td><input type="number" value="'+p.count+'" min="1" style="width:60px;" '+dis+' onchange="prizes['+idx+'].count=parseInt(this.value)||1"></td>' +
+      '<td><button class="tool-btn" style="color:#dc2626;padding:2px 6px;" '+dis+' onclick="deletePrizeRow('+idx+')">✕</button></td>' +
     '</tr>';
   }).join('');
 }
 
 function addNewPrizeRow(){
-  prizes.push({ id: 'p_' + Date.now(), name: '獎項', reward: '禮品', count: 1, icon: '🎁', color: '#2563eb' });
+  if (!prizeAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
+  prizes.push({ id: 'p_' + Date.now(), name: '新獎項', reward: '精美禮品', count: 1, icon: '🎁', color: '#2563eb' });
   renderPrizesTable();
 }
 
 function deletePrizeRow(idx){
-  if (prizes.length <= 1) { alert('至少保留一個獎項'); return; }
+  if (!prizeAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
+  if (prizes.length <= 1) { alert('至少需保留一個獎項'); return; }
   prizes.splice(idx, 1);
   if (!prizes.find(function(p){ return p.id === activePrizeId; })) activePrizeId = prizes[0].id;
   renderPrizesTable();
   renderPrizeSelect();
 }
 
-function resetDefaultPrizes(){
-  prizes = JSON.parse(JSON.stringify(DEFAULT_PRIZES));
-  activePrizeId = 'p1';
-  renderPrizesTable();
-  renderPrizeSelect();
-}
-
 function savePrizeSettings(){
+  if (!prizeAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
   renderPrizeSelect();
   closeModal('prizeModal');
   saveStateToStorage();
+  if (lotteryMode === 'prize') onLotteryModeChange();
+  alert('✅ 獎項設定已成功更新！');
 }
 
-/* ================= 人員名冊模組 ================= */
-function loadDemoRoster(){
-  var demo = [
-    "A01 王大明 研發部", "A02 李小華 研發部", "A03 張偉國 生管部", "A04 陳美玲 生管部",
-    "A05 林志豪 製造部", "A06 郭建宏 製造部", "A07 楊雅婷 品保部", "A08 蔡文彬 品保部",
-    "A09 吳佳蓉 業務部", "A10 許振發 總經理室", "A11 鄭家豪 研發部", "A12 賴冠宇 生管部",
-    "A13 謝佩君 財務部", "A14 劉俊賢 業務部", "A15 潘志強 製造部", "A16 葉秀英 品保部",
-    "A17 曾建彰 研發部", "A18 蘇雅雯 總經理室", "A19 彭聖哲 製造部", "A20 邱麗華 業務部",
-    "A21 廖家興 生管部", "A22 莊凱婷 品保部", "A23 洪振華 研發部", "A24 游志偉 製造部",
-    "A25 柯美惠 財務部", "A26 羅文傑 業務部", "A27 蕭家榮 生管部", "A28 杜雅君 研發部",
-    "A29 鍾志明 製造部", "A30 許瑞興 總裁室"
-  ];
-  document.getElementById('rosterText').value = demo.join('\n');
-  document.getElementById('rosterCountHint').textContent = '示範名單：共 30 人';
+/* ================= 人員名冊模組（含範本切換與試算表雙向同步） ================= */
+var PRESET_ROSTER_TEMPLATES = {
+  'demo': {
+    name: '許瑞興示範名單 (30人)',
+    text: [
+      "A01 王大明 研發部", "A02 李小華 研發部", "A03 張偉國 生管部", "A04 陳美玲 生管部",
+      "A05 林志豪 製造部", "A06 郭建宏 製造部", "A07 楊雅婷 品保部", "A08 蔡文彬 品保部",
+      "A09 吳佳蓉 業務部", "A10 許振發 總經理室", "A11 鄭家豪 研發部", "A12 賴冠宇 生管部",
+      "A13 謝佩君 財務部", "A14 劉俊賢 業務部", "A15 潘志強 製造部", "A16 葉秀英 品保部",
+      "A17 曾建彰 研發部", "A18 蘇雅雯 總經理室", "A19 彭聖哲 製造部", "A20 邱麗華 業務部",
+      "A21 廖家興 生管部", "A22 莊凱婷 品保部", "A23 洪振華 研發部", "A24 游志偉 製造部",
+      "A25 柯美惠 財務部", "A26 羅文傑 業務部", "A27 蕭家榮 生管部", "A28 杜雅君 研發部",
+      "A29 鍾志明 製造部", "A30 許瑞興 總裁室"
+    ].join('\n')
+  },
+  'tailing': {
+    name: '🏢 公司年終尾牙全體名單 (40人範本)',
+    text: (function(){
+      var list = [];
+      var depts = ['研發處', '生管處', '製造一課', '製造二課', '品保處', '業務處', '財務行政處'];
+      for (var i = 1; i <= 40; i++){
+        var d = depts[i % depts.length];
+        list.push('EMP' + (100 + i) + ' 員工' + i + ' ' + d);
+      }
+      return list.join('\n');
+    })()
+  }
+};
+
+function getCustomRosterTemplates(){
+  try {
+    return JSON.parse(localStorage.getItem('lottery_custom_roster_templates') || '{}');
+  } catch(e){ return {}; }
+}
+
+function saveCustomRosterTemplates(tpls){
+  try {
+    localStorage.setItem('lottery_custom_roster_templates', JSON.stringify(tpls));
+  } catch(e){}
+}
+
+function renderRosterTemplateOptions(selectedKey){
+  var sel = document.getElementById('rosterTemplateSelect');
+  if (!sel) return;
+  var custom = getCustomRosterTemplates();
+  var html = '';
+  Object.keys(PRESET_ROSTER_TEMPLATES).forEach(function(k){
+    html += '<option value="' + k + '">' + PRESET_ROSTER_TEMPLATES[k].name + '</option>';
+  });
+  var customKeys = Object.keys(custom);
+  if (customKeys.length > 0){
+    html += '<optgroup label="── 自訂已儲存名冊 ──">';
+    customKeys.forEach(function(k){
+      html += '<option value="' + k + '">📁 ' + custom[k].name + '</option>';
+    });
+    html += '</optgroup>';
+  }
+  sel.innerHTML = html;
+  if (selectedKey) sel.value = selectedKey;
+  updateRosterDeleteBtnState();
+}
+
+function updateRosterDeleteBtnState(){
+  var sel = document.getElementById('rosterTemplateSelect');
+  var btnDel = document.getElementById('btnDeleteRosterTpl');
+  if (!sel || !btnDel) return;
+  var isCustom = sel.value.indexOf('custom_') === 0;
+  btnDel.disabled = !isCustom;
+}
+
+function onRosterTemplateSelect(val){
+  var custom = getCustomRosterTemplates();
+  var tpl = PRESET_ROSTER_TEMPLATES[val] || custom[val];
+  if (!tpl) return;
+  document.getElementById('rosterText').value = tpl.text;
+  var count = tpl.text.split('\n').filter(function(s){ return s.trim(); }).length;
+  document.getElementById('rosterCountHint').textContent = '目前名單：共 ' + count + ' 人';
+  updateRosterDeleteBtnState();
+}
+
+function saveNewRosterTemplate(){
+  var txt = document.getElementById('rosterText').value.trim();
+  if (!txt){ alert('名冊內容為空，無法另存！'); return; }
+  var name = prompt('請輸入新名冊名稱（例如：業務部春酒名冊、現場來賓名冊等）：');
+  if (!name || !name.trim()) return;
+  name = name.trim();
+  var custom = getCustomRosterTemplates();
+  var key = 'custom_' + Date.now();
+  custom[key] = {
+    name: name,
+    text: txt
+  };
+  saveCustomRosterTemplates(custom);
+  renderRosterTemplateOptions(key);
+  updateRosterDeleteBtnState();
+  alert('✅ 名冊「' + name + '」已成功儲存！日後可直接從下拉選單快速切換。');
+}
+
+function deleteRosterTemplate(){
+  var sel = document.getElementById('rosterTemplateSelect');
+  var val = sel.value;
+  if (val.indexOf('custom_') !== 0){ alert('內建預設名單不可刪除！'); return; }
+  var custom = getCustomRosterTemplates();
+  var target = custom[val];
+  if (!target) return;
+  if (!confirm('確定要刪除名冊「' + target.name + '」嗎？')) return;
+  delete custom[val];
+  saveCustomRosterTemplates(custom);
+  renderRosterTemplateOptions('demo');
+  onRosterTemplateSelect('demo');
+  alert('已成功刪除該名冊');
 }
 
 function clearRosterInput(){
@@ -1308,8 +1664,33 @@ function applyRoster(){
   saveStateToStorage();
 }
 
+function uploadRosterToCloud(){
+  if (!CLOUD_API_URL){ alert('尚未設定雲端 GAS API 網址，請先至「雲端同步設定」確認！'); return; }
+  var lines = document.getElementById('rosterText').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  if (lines.length === 0){ alert('名冊內容為空，無法上傳！'); return; }
+  var rosterList = lines.map(function(line){
+    var parts = line.split(/[\s\t,，]+/);
+    if (parts.length >= 3) return { id: parts[0], name: parts[1], dept: parts.slice(2).join(' ') };
+    if (parts.length === 2) return { id: '', name: parts[0], dept: parts[1] };
+    return { id: '', name: parts[0], dept: '' };
+  });
+  if (!confirm('即將將目前名冊（共 ' + rosterList.length + ' 筆）寫入 Google 試算表的「名冊」工作表。\n原先內容將被覆寫，是否確認？')) return;
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'uploadRoster', roster: rosterList })
+  }).then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res.ok){
+        alert('✅ 成功上傳 ' + res.count + ' 筆名冊至 Google 試算表的「名冊」工作表！\n您現在打開 Google 試算表就能看到完整的同仁名單。');
+      } else {
+        alert('上傳失敗：' + (res.error || '未知錯誤'));
+      }
+    }).catch(function(err){ alert('連線失敗：' + err.message); });
+}
+
 function fetchRosterFromCloud(){
-  if (!CLOUD_API_URL){ alert('尚未設定雲端 GAS API 網址'); return; }
+  if (!CLOUD_API_URL){ alert('尚未設定雲端 GAS API 網址，請先至「雲端同步設定」確認！'); return; }
   fetch(CLOUD_API_URL + '?action=getRoster')
     .then(function(r){ return r.json(); })
     .then(function(res){
@@ -1317,8 +1698,9 @@ function fetchRosterFromCloud(){
         var lines = res.roster.map(function(x){ return [x.id, x.name, x.dept].filter(Boolean).join(' '); });
         document.getElementById('rosterText').value = lines.join('\n');
         document.getElementById('rosterCountHint').textContent = '從 Google 試算表載入：' + lines.length + ' 人';
+        alert('✅ 成功從 Google 試算表載入 ' + lines.length + ' 筆人員名單！');
       } else {
-        alert('試算表中未找到「名冊」或「Roster」工作表，或工作表內沒有資料。');
+        alert('試算表中的「名冊」工作表目前尚無資料。\n💡 後端已自動為您在試算表建立了「名冊」工作表與標題欄位，您可以直接在試算表中貼上同仁名單，或點擊下方「📤 上傳目前名冊到 Google 試算表」將網頁上的名單寫入試算表！');
       }
     }).catch(function(err){ alert('連線失敗：' + err.message); });
 }
@@ -1369,16 +1751,75 @@ function setupGrid(){
 function renderEmptyGrid(){
   var g = document.getElementById('grid');
   g.innerHTML = '';
-  g.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(52px, 1fr))';
-  for (var i = 0; i < total; i++){
-    var el = document.createElement('div');
-    el.className = 'cell';
-    el.dataset.idx = i;
-    var r = Math.floor(i / cols) + 1, c = (i % cols) + 1;
-    el.innerHTML = '<span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
-    el.addEventListener('click', onCellClick);
-    g.appendChild(el);
-    cellRefs.push(el);
+  cellRefs = [];
+
+  if (seatMode === 'table'){
+    // 桌人模式：宴會桌次立體卡片呈現
+    g.style.display = 'block';
+    var tablesWrap = document.createElement('div');
+    tablesWrap.className = 'tables-grid';
+    tablesWrap.style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
+
+    for (var t = 0; t < rows; t++){
+      var tableCard = document.createElement('div');
+      tableCard.className = 'table-card';
+
+      var head = document.createElement('div');
+      head.className = 'table-card-head';
+      head.innerHTML = '<span>🪑 第 ' + (t + 1) + ' 桌</span><span class="table-seats-count">(' + cols + ' 位)</span>';
+      tableCard.appendChild(head);
+
+      var seatsGrid = document.createElement('div');
+      seatsGrid.className = 'table-seats-grid';
+      var seatCols = cols <= 4 ? cols : (cols <= 8 ? Math.ceil(cols / 2) : (cols <= 12 ? Math.ceil(cols / 2) : 5));
+      seatsGrid.style.gridTemplateColumns = 'repeat(' + seatCols + ', minmax(48px, 1fr))';
+
+      for (var s = 0; s < cols; s++){
+        var i = t * cols + s;
+        var el = document.createElement('div');
+        el.className = 'cell table-seat-cell';
+        el.dataset.idx = i;
+        if (excluded[i]) el.classList.add('excluded');
+        if (excludeMode) el.classList.add('exclude-selectable');
+
+        var drawn = drawnMap[i];
+        if (drawn){
+          el.classList.add('filled');
+          el.innerHTML = '<span class="cell-name">' + drawn.name + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
+        } else {
+          el.innerHTML = '<span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
+        }
+        el.addEventListener('click', onCellClick);
+        seatsGrid.appendChild(el);
+        cellRefs[i] = el;
+      }
+      tableCard.appendChild(seatsGrid);
+      tablesWrap.appendChild(tableCard);
+    }
+    g.appendChild(tablesWrap);
+  } else {
+    // 傳統矩陣行列模式
+    g.style.display = 'grid';
+    g.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(52px, 1fr))';
+    for (var i = 0; i < total; i++){
+      var el = document.createElement('div');
+      el.className = 'cell';
+      el.dataset.idx = i;
+      if (excluded[i]) el.classList.add('excluded');
+      if (excludeMode) el.classList.add('exclude-selectable');
+
+      var r = Math.floor(i / cols) + 1, c = (i % cols) + 1;
+      var drawn = drawnMap[i];
+      if (drawn){
+        el.classList.add('filled');
+        el.innerHTML = '<span class="cell-name">' + drawn.name + '</span><span class="coord">' + r + '-' + c + '</span>';
+      } else {
+        el.innerHTML = '<span class="coord">' + r + '-' + c + '</span>';
+      }
+      el.addEventListener('click', onCellClick);
+      g.appendChild(el);
+      cellRefs.push(el);
+    }
   }
 }
 
@@ -1831,7 +2272,15 @@ function renderWheel(){
   var cx = w / 2, cy = h / 2, r = w / 2 - 14;
   ctx.clearRect(0, 0, w, h);
 
-  var candidates = (pool && pool.length > 0) ? pool : (useRoster ? roster : [{ name: '1 號', num: 1 }]);
+  // 確保候選池完整：若尚未開始抽或 pool 為空，自動產生完整候選名單！
+  var candidates = (pool && pool.length > 0) ? pool : buildCandidatePool();
+  if (!candidates || candidates.length === 0){
+    candidates = [];
+    var maxN = total > 0 ? total : 30;
+    for (var k = 1; k <= maxN; k++){
+      candidates.push({ num: k, name: k + ' 號' });
+    }
+  }
   var count = candidates.length;
   if (count === 0) return;
 
@@ -1857,17 +2306,53 @@ function renderWheel(){
     ctx.lineWidth = count > 30 ? 1 : 2;
     ctx.stroke();
 
+    // 扇形文字（中獎號碼與姓名）
     ctx.save();
     ctx.rotate(startAngle + step / 2);
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    var fontSize = count > 35 ? 10 : (count > 20 ? 12 : 14);
-    ctx.font = 'bold ' + fontSize + 'px sans-serif';
-    var label = candidates[i].name || (candidates[i].num + '');
-    if (label.length > 6) label = label.slice(0, 5) + '…';
-    ctx.fillText(label, r - 14, 0);
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 3;
+
+    var item = candidates[i];
+    var label = '';
+    if (count <= 25){
+      label = (item.num ? '#' + item.num + ' ' : '') + (item.name || '');
+      ctx.font = 'bold 13px sans-serif';
+    } else if (count <= 45){
+      label = (item.name && item.name !== item.num + ' 號') ? item.name : ('#' + item.num);
+      ctx.font = 'bold 11px sans-serif';
+    } else {
+      label = '#' + item.num;
+      ctx.font = 'bold 9.5px sans-serif';
+    }
+    if (label.length > 8) label = label.slice(0, 7) + '…';
+    ctx.fillText(label, r - 12, 0);
     ctx.restore();
+  }
+  ctx.restore();
+
+  // 繪製轉盤外框金色邊緣與裝飾鉚釘燈號
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#f59e0b';
+  ctx.stroke();
+
+  var pinCount = Math.min(count, 36);
+  for (var p = 0; p < pinCount; p++){
+    var pAngle = wheelRotation + p * (Math.PI * 2 / pinCount);
+    var px = cx + Math.cos(pAngle) * (r + 4);
+    var py = cy + Math.sin(pAngle) * (r + 4);
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#fde68a';
+    ctx.fill();
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -2178,8 +2663,63 @@ function exportGridAsPng(){
   a.click();
 }
 
-/* ================= Telegram 推播模組 ================= */
+/* ================= Telegram 推播模組（含管理者密碼鎖定） ================= */
+var tgAdminUnlocked = false;
+
+function unlockTgAdmin(){
+  if (tgAdminUnlocked){
+    lockTgAdmin();
+    return;
+  }
+  var pw = prompt('請輸入管理者密碼進行解鎖：');
+  if (!pw) return;
+  if (checkAdminPasswordInput(pw)){
+    tgAdminUnlocked = true;
+    applyTgAdminLockState();
+    alert('🔓 管理者解鎖成功！Token 與 Chat ID 已解除遮蔽，開放推播操作。');
+  } else {
+    alert('❌ 管理者密碼不正確！');
+  }
+}
+
+function lockTgAdmin(){
+  tgAdminUnlocked = false;
+  applyTgAdminLockState();
+}
+
+function applyTgAdminLockState(){
+  var bar = document.getElementById('tgAdminBar');
+  var status = document.getElementById('tgLockStatus');
+  var btn = document.getElementById('btnUnlockTg');
+  var tokenInput = document.getElementById('tgTokenInput');
+  var chatInput = document.getElementById('tgChatInput');
+  var autoNotify = document.getElementById('tgAutoNotify');
+  var btnTest = document.getElementById('btnTestTg');
+  var btnBroadcast = document.getElementById('btnBroadcastTg');
+
+  if (tgAdminUnlocked){
+    if (bar) bar.classList.add('unlocked');
+    if (status) status.textContent = '🔓 管理者已解鎖：已明文顯示金鑰與群組，開放推播與修改權限';
+    if (btn) btn.textContent = '🔒 重新上鎖';
+    if (tokenInput){ tokenInput.type = 'text'; tokenInput.disabled = false; }
+    if (chatInput){ chatInput.type = 'text'; chatInput.disabled = false; }
+    if (autoNotify) autoNotify.disabled = false;
+    if (btnTest) btnTest.disabled = false;
+    if (btnBroadcast) btnBroadcast.disabled = false;
+  } else {
+    if (bar) bar.classList.remove('unlocked');
+    if (status) status.textContent = '🔒 權限保護中：Token、Chat ID 與推播功能僅限管理者操作';
+    if (btn) btn.textContent = '🔑 管理者解鎖';
+    if (tokenInput){ tokenInput.type = 'password'; tokenInput.disabled = true; }
+    if (chatInput){ chatInput.type = 'password'; chatInput.disabled = true; }
+    if (autoNotify) autoNotify.disabled = true;
+    if (btnTest) btnTest.disabled = true;
+    if (btnBroadcast) btnBroadcast.disabled = true;
+  }
+}
+
 function testTelegram(){
+  if (!tgAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
   var token = document.getElementById('tgTokenInput').value.trim();
   var chatId = document.getElementById('tgChatInput').value.trim();
   if (!token || !chatId){ alert('請填寫 Token 與 Chat ID'); return; }
@@ -2190,6 +2730,7 @@ function testTelegram(){
 }
 
 function broadcastWinnersToTelegram(){
+  if (!tgAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
   if (drawHistory.length === 0){ alert('目前尚無中獎紀錄'); return; }
   var token = document.getElementById('tgTokenInput').value.trim();
   var chatId = document.getElementById('tgChatInput').value.trim();
@@ -2569,22 +3110,35 @@ function groupIndexForCell(idx, num){
 }
 
 function applyGroupColors(){
+  var isPrize = lotteryMode === 'prize';
   var palette = darkMode ? GROUP_COLORS_DARK : GROUP_COLORS_LIGHT;
+
   Object.keys(drawnMap).forEach(function(k){
     var idx = parseInt(k, 10);
     var info = drawnMap[idx];
     var cellEl = cellRefs[idx];
     if (!info || !cellEl) return;
-    var gi = groupIndexForCell(idx, info.num);
-    if (gi !== null){
-      var color = palette[gi % palette.length];
-      cellEl.style.backgroundColor = hexToRgba(color, 0.22);
+
+    if (isPrize){
+      // 活動獎項模式：依獎項等級自動尊貴上色（特獎金黃色、頭獎桃紅、貳獎紫色等）
+      var p = prizes.find(function(x){ return x.name === info.prize; });
+      var color = (p && p.color) || '#f59e0b';
+      cellEl.style.backgroundColor = hexToRgba(color, 0.24);
       cellEl.style.borderColor = color;
-      cellEl.style.color = color;
+      cellEl.style.color = darkMode ? '#ffffff' : '#0f172a';
     } else {
-      cellEl.style.backgroundColor = '';
-      cellEl.style.borderColor = '';
-      cellEl.style.color = '';
+      // 隨機挑人/排位模式：依選定之分組規則上色
+      var gi = groupIndexForCell(idx, info.num);
+      if (gi !== null){
+        var color = palette[gi % palette.length];
+        cellEl.style.backgroundColor = hexToRgba(color, 0.22);
+        cellEl.style.borderColor = color;
+        cellEl.style.color = color;
+      } else {
+        cellEl.style.backgroundColor = '';
+        cellEl.style.borderColor = '';
+        cellEl.style.color = '';
+      }
     }
   });
   renderGroupResults();
