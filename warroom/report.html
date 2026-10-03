@@ -12,15 +12,22 @@
   <!-- Google Fonts: Noto Sans TC & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
   <script>
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            sans: ['"Noto Sans TC"', '"Inter"', 'sans-serif'],
-            mono: ['"Share Tech Mono"', 'monospace'],
+            sans: ['"Noto Sans TC"', '"Microsoft JhengHei"', 'sans-serif'],
+            mono: ['"Roboto Mono"', 'Consolas', 'monospace'],
+          },
+          colors: {
+            // 品牌配色：與圖面／標準文件查詢一致 (許瑞興紅 + 沉穩中性灰)
+            blue:   { 50: '#fdf2f3', 100: '#fbe4e7', 200: '#f6c6cd', 300: '#ee9aa7', 400: '#e1667a', 500: '#d43a52', 600: '#c8102e', 700: '#a60d26', 800: '#870d22', 900: '#6f0e20', 950: '#3e040e' },
+            indigo: { 50: '#fdf2f3', 100: '#fbe4e7', 200: '#f6c6cd', 300: '#ee9aa7', 400: '#e1667a', 500: '#d43a52', 600: '#c8102e', 700: '#a60d26', 800: '#870d22', 900: '#6f0e20', 950: '#3e040e' },
+            sky:    { 50: '#f4f4f5', 100: '#e4e4e7', 200: '#d4d4d8', 300: '#a1a1aa', 400: '#71717a', 500: '#52525b', 600: '#3f3f46', 700: '#27272a', 800: '#18181b', 900: '#111113', 950: '#09090b' },
+            slate:  { 50: '#fafafa', 100: '#f4f4f5', 200: '#e4e4e7', 300: '#d4d4d8', 400: '#a1a1aa', 500: '#71717a', 600: '#52525b', 700: '#3f3f46', 800: '#27272a', 900: '#18181b', 950: '#111113' }
           }
         }
       }
@@ -31,8 +38,8 @@
     * { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
     .status-radio:checked + label {
-      border-color: #2563eb; background-color: #eff6ff;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15); transform: translateY(-1px);
+      border-color: #c8102e; background-color: #fdf2f3;
+      box-shadow: 0 4px 12px rgba(200, 16, 46, 0.15); transform: translateY(-1px);
     }
     .status-radio:checked + label .status-indicator { transform: scale(1.15); }
 
@@ -41,11 +48,11 @@
     .brand-logo .logo-chip { background:transparent; padding:0; }
     .brand-logo img { filter:drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
     .brand-logo img { height:30px; width:auto; display:block; }
-    .brand-logo span { margin-top:2px; font-size:8.5px; font-weight:700; letter-spacing:1.5px; color:#bfdbfe; white-space:nowrap; }
+    .brand-logo span { margin-top:2px; font-size:8.5px; font-weight:700; letter-spacing:1.5px; color:#d4d4d8; white-space:nowrap; }
 
     /* 版本徽章 */
-    .version-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-family:ui-monospace,monospace; font-weight:600;
-      color:#e0f2fe; background:rgba(15,23,42,.35); border:1px solid rgba(186,230,253,.35); padding:1px 8px; border-radius:20px; cursor:pointer; user-select:none; }
+    .version-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-family:"Roboto Mono",ui-monospace,monospace; font-weight:600;
+      color:#f4f4f5; background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.25); padding:1px 8px; border-radius:20px; cursor:pointer; user-select:none; }
     .version-badge:hover { background:rgba(2,132,199,.45); color:#fff; }
 
     /* 線上人數（與電腦挑人抽籤系統同樣的呈現方式） */
@@ -69,17 +76,17 @@
 
     /* 本機回報識別卡片（跟許瑞興訂單管理系統「本機打單識別」同樣做法） */
     .device-notice-box { display:flex; justify-content:space-between; align-items:center; gap:8px;
-      background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%); border:1.5px solid #7dd3fc; border-radius:12px;
+      background:linear-gradient(135deg,#fdf2f3 0%,#fbe4e7 100%); border:1.5px solid #f6c6cd; border-radius:12px;
       padding:9px 12px; cursor:pointer; transition:all .2s ease; user-select:none; }
-    .device-notice-box:hover { border-color:#0284c7; }
+    .device-notice-box:hover { border-color:#c8102e; }
     .device-notice-box.unconfigured { background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%); border-color:#f59e0b; animation:pulse-border 2s infinite; }
     @keyframes pulse-border { 0%,100% { border-color:#f59e0b; box-shadow:0 0 0 0 rgba(245,158,11,.4); } 50% { border-color:#d97706; box-shadow:0 0 0 4px rgba(245,158,11,.2); } }
-    .btn-device-edit { font-size:12px; font-weight:700; background:#fff; color:#0284c7; border:1px solid #bae6fd; border-radius:8px; padding:4px 10px; white-space:nowrap; }
+    .btn-device-edit { font-size:12px; font-weight:700; background:#fff; color:#c8102e; border:1px solid #f6c6cd; border-radius:8px; padding:4px 10px; white-space:nowrap; }
 
     /* 歷史選單快速點選 */
     .hist-chip { font-size:12px; padding:3px 10px; border-radius:999px; background:#f1f5f9; border:1px solid #e2e8f0; color:#334155; white-space:nowrap; }
     .hist-chip:active { transform:scale(.96); }
-    .hist-chip.on { background:#dbeafe; border-color:#60a5fa; color:#1d4ed8; font-weight:700; }
+    .hist-chip.on { background:#fbe4e7; border-color:#e1667a; color:#a60d26; font-weight:700; }
 
     .dropdown-manage-item { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 8px; border-bottom:1px solid #e2e8f0; font-size:13px; }
     .dropdown-manage-item:last-child { border-bottom:none; }
@@ -92,7 +99,7 @@
     .tg-join:hover{background:#1c86ba}
     .tg-qr{background:#fff;border:1px solid #229ED9;border-radius:6px;color:#1c86ba;font-size:12.5px;font-weight:700;padding:4px 10px;white-space:nowrap}
     .tg-x{background:none;border:none;color:#5b8db0;padding:0 4px;font-size:14px;margin-left:auto}
-    .tg-when h4{margin:14px 0 6px;font-size:14px;font-weight:700;color:#0c3360} .tg-when h4:first-child{margin-top:0}
+    .tg-when h4{margin:14px 0 6px;font-size:14px;font-weight:700;color:#27272a} .tg-when h4:first-child{margin-top:0}
     .tg-when ul{margin:0;padding-left:20px;line-height:1.8;font-size:13px;list-style:disc}
     .tg-when .no{color:#64748b}
     .tg-when pre{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font:12.5px/1.7 "Noto Sans TC",sans-serif;white-space:pre-wrap;margin:0}
@@ -107,7 +114,7 @@
   <!-- ========================================== -->
   <!-- 頂部 App Bar：HSH Logo + 系統名稱 + 版本 -->
   <!-- ========================================== -->
-  <header class="w-full bg-gradient-to-r from-[#071e3d] via-[#0c3360] to-[#16487e] text-white shadow-md sticky top-0 z-30">
+  <header class="w-full text-white shadow-md sticky top-0 z-30" style="background:linear-gradient(135deg,#18181b 0%,#27272a 55%,#4a0d18 100%);border-bottom:3px solid #c8102e">
     <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between gap-3">
       <div class="flex items-center gap-3 min-w-0">
         <div class="brand-logo">
@@ -343,7 +350,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
-        前往「智慧製造戰情室」大螢幕看盤
+        前往「許瑞興機台回報戰情室」大螢幕看盤
       </a>
       <div class="text-[11px] text-slate-400 mt-1">© 許瑞興工業 HSH · Since 1960 ·
         <a href="javascript:void(0)" onclick="openChangelog()" class="text-sky-600 underline">📜 查看歷史改版記錄</a>
@@ -390,7 +397,7 @@
   <!-- ========================================== -->
   <div id="identityModal" class="modal-wrap" style="z-index:60;">
     <div class="w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl">
-      <h3 id="idTitle" class="font-bold text-[17px] text-[#0c3360] mb-1.5">👤 設定本機回報識別</h3>
+      <h3 id="idTitle" class="font-bold text-[17px] text-[#27272a] mb-1.5">👤 設定本機回報識別</h3>
       <div id="idDesc" class="text-[13px] text-slate-600 leading-relaxed mb-3"></div>
       <label class="block text-[13px] font-bold text-slate-700 mb-1">使用部門 <span class="text-red-500">*</span></label>
       <input type="text" id="idDept" list="dl_dept" maxlength="40" onfocus="this.select()" placeholder="點選或輸入部門（例：現場廠務）"
@@ -493,7 +500,7 @@
   <!-- ========================================== -->
   <div id="changelogModal" class="modal-wrap">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col" style="max-height:85vh;">
-      <div class="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-[#0c3360] to-[#16487e] text-white">
+      <div class="flex items-center justify-between px-5 py-3 text-white" style="background:linear-gradient(135deg,#27272a,#4a0d18)">
         <h3 class="font-bold text-[15px]">📜 系統歷史改版記錄</h3>
         <button type="button" onclick="closeChangelog()" class="text-white/80 text-xl font-bold px-1">&times;</button>
       </div>
@@ -543,9 +550,14 @@
     // ==========================================
     // 版本與改版記錄
     // ==========================================
-    const APP_VERSION = 'v2.5.0';
+    const APP_VERSION = 'v2.6.0';
     const BACKEND_MIN_VERSION = 'v2.5.0';
     const CHANGELOG = [
+      { v: 'v2.6.0', date: '2026-10-04', notes: [
+        '【全系統】風格統一為許瑞興品牌版（與圖面／標準文件查詢一致）：字體改用思源黑體與 Roboto Mono，頂部改為深灰帶酒紅漸層與品牌紅底線',
+        '【戰情室】更名為「許瑞興機台回報戰情室」並換上 HSH Logo；青藍發光改為中性深灰＋許瑞興紅點綴，正常／故障／保養的綠、紅、黃狀態色不變',
+        '【回報頁】主色改為許瑞興紅、灰階改為沉穩中性灰；底部連結改為「前往許瑞興機台回報戰情室」'
+      ] },
       { v: 'v2.5.0', date: '2026-10-02', notes: [
         '【回報頁】新增「📷 掃描 QR/條碼」報工：作業員可直接調用鏡頭掃描機台 QR Code 或條碼，自動精準帶入機台編號，完全免打字防呆',
         '【回報頁】新增「📸 故障停機拍照上傳」：選取故障停機時自動展開拍照區，支援手機鏡頭拍照、前端高解析 Canvas 壓縮（150~300KB），自動備份至 Google Drive「機台故障照片」資料夾',
@@ -559,7 +571,7 @@
         '【全系統】新增 Telegram 通知：機台回報送出後，Telegram 群組會即時收到通知（機台、狀態、回報人、生產數量、異常代碼、備註、裝置、時間），跟圖面查詢系統同一個群組',
         '【回報頁】上方新增 Telegram 群組資訊列：「➕ 加入群組」按鈕、掃碼加入的 QR Code，以及「什麼時候會收到通知？」說明（依後端目前的通知設定自動顯示）',
         '【戰情室】標題列新增「📣 Telegram」按鈕，同樣可加入群組、掃 QR Code、查看通知說明',
-        '【後端】故障停機 🔴、例行保養 🟡、正常報工 🟢 用不同圖示，群組裡一眼就能看出異常；通知裡附「查看智慧製造戰情室」連結（需搭配後端 Code.gs v2.4.0，並在指令碼屬性設定 TG_TOKEN、TG_CHAT_ID）'
+        '【後端】故障停機 🔴、例行保養 🟡、正常報工 🟢 用不同圖示，群組裡一眼就能看出異常；通知裡附「查看許瑞興機台回報戰情室」連結（需搭配後端 Code.gs v2.4.0，並在指令碼屬性設定 TG_TOKEN、TG_CHAT_ID）'
       ] },
       { v: 'v2.3.0', date: '2026-10-02', notes: [
         '【全系統】管理員閒置自動登出改為 30 分鐘（跟圖面查詢、訂單管理、電子簽核系統一致）：點擊、鍵盤、移動滑鼠、捲動、觸控都算有操作',
@@ -782,7 +794,7 @@
     const DROPDOWN_DEFAULTS = {
       Machine_ID: ['CNC-001', 'CNC-002', 'CNC-003'],
       Error_Code: ['無', 'E01卡料', 'E02過熱', 'E03刀具'],
-      Dept: ['現場廠務', '生技課', '品管課', '資訊課', '倉庫']
+      Dept: ['現場廠務', '工務課', '生技課', '品管課', '資訊課', '倉庫']
     };
     const FIELD_LABEL = { Machine_ID: '機台編號', Error_Code: '異常代碼', Dept: '使用部門' };
     const FIELD_INPUT = { Machine_ID: 'machineId', Error_Code: 'errorCode' };
@@ -1535,15 +1547,15 @@
         <h4>💬 訊息範例</h4>
         <pre>🔴 機台狀態回報｜故障停機
 🏭 機台：<b>CNC-002</b>
-👷 回報人：[生技課] 王小明
+👷 回報人：[工務課] 王小明
 📦 生產數量：0
 ⚠️ 異常代碼：E01卡料
 📝 備註：送料口卡住，已通知維修
 📱 裝置：手機 · Android 14 · Chrome 129
 🕒 時間：2026-10-02 14:30:00
 
-查看智慧製造戰情室</pre>
-        <div class="text-[12px] text-slate-500 mt-2">※ 🔴 故障停機、🟡 例行保養、🟢 正常報工；點「查看智慧製造戰情室」可直接打開戰情室。</div>`;
+查看許瑞興機台回報戰情室</pre>
+        <div class="text-[12px] text-slate-500 mt-2">※ 🔴 故障停機、🟡 例行保養、🟢 正常報工；點「查看許瑞興機台回報戰情室」可直接打開戰情室。</div>`;
       document.getElementById('tgWhenModal').classList.add('show');
     }
 
