@@ -769,7 +769,10 @@
       <select id="rosterTemplateSelect" onchange="onRosterTemplateSelect(this.value)" style="flex:1;min-width:180px;font-size:13px;padding:5px 8px;">
         <option value="demo">許瑞興示範名單 (30人)</option>
       </select>
-      <button class="tool-btn" onclick="saveNewRosterTemplate()">💾 另存為新名冊</button>
+      <button class="tool-btn" onclick="saveNewRosterTemplate()">💾 另存名冊</button>
+      <button class="tool-btn" onclick="syncTemplatesFromCloud(true)" title="從 Google 試算表同步其他電腦的名冊">☁️ 雲端同步</button>
+      <button class="tool-btn" onclick="exportTemplatesBackup()" title="匯出成備份檔帶到別台電腦">📤 備份</button>
+      <button class="tool-btn" onclick="importTemplatesBackup()" title="匯入備份檔">📥 匯入</button>
       <button class="tool-btn" id="btnDeleteRosterTpl" onclick="deleteRosterTemplate()" style="color:#dc2626;" disabled>🗑️ 刪除名冊</button>
     </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">
@@ -807,7 +810,10 @@
           <option value="preset_dept">🍽️ 部門聚餐精簡版 (3獎 17名)</option>
           <option value="preset_class">🎓 課堂活動激勵版 (3獎 10名)</option>
         </select>
-        <button class="tool-btn" id="btnSavePrizeTpl" onclick="saveNewPrizeTemplate()" disabled>💾 另存為新範本</button>
+        <button class="tool-btn" id="btnSavePrizeTpl" onclick="saveNewPrizeTemplate()" disabled>💾 另存範本</button>
+        <button class="tool-btn" onclick="syncTemplatesFromCloud(true)" title="從 Google 試算表同步其他電腦的獎項">☁️ 雲端同步</button>
+        <button class="tool-btn" onclick="exportTemplatesBackup()" title="匯出成備份檔帶到別台電腦">📤 備份</button>
+        <button class="tool-btn" onclick="importTemplatesBackup()" title="匯入備份檔">📥 匯入</button>
         <button class="tool-btn" id="btnDeletePrizeTpl" onclick="deletePrizeTemplate()" style="color:#dc2626;" disabled>🗑️ 刪除範本</button>
       </div>
       <button class="tool-btn highlight" id="btnAddPrizeRow" onclick="addNewPrizeRow()" disabled>＋ 新增獎項</button>
@@ -1162,7 +1168,7 @@ var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181',
 /* 改版紀錄清單 */
 var CHANGELOG = [
   { v: 'v2.1.0', date: '2026-10-03', notes: [
-    '🔐 權限管理升級：獎項編輯/刪除與範本儲存需管理者密碼（預設 k8825252）解鎖；Telegram 金鑰自動遮蔽，推播操作僅限管理者解鎖後可用。',
+    '🔐 權限管理升級：獎項編輯/刪除與範本儲存需管理者密碼解鎖；Telegram 金鑰自動遮蔽，推播操作僅限管理者解鎖後可用。',
     '💾 獎項與名冊雙模組範本庫：支援自由命名另存新範本與隨時下拉選單切換（如尾牙春酒版、部門聚餐版、課堂激勵版）。',
     '☁️ Google 試算表面冊雙向同步：無名冊工作表時自動建立範本，支援網頁名冊一鍵上傳覆寫試算表，以及從試算表即時載入。',
     '🍽️ 桌人模式升級宴會桌次視覺：宴會桌卡片立體排列，桌號、每桌人數與個別座位獨立呈現，極佳臨場感！',
@@ -1191,6 +1197,7 @@ window.addEventListener('DOMContentLoaded', function(){
   setupGrid();
   renderChangelog();
   initCloudConfig();
+  syncTemplatesFromCloud(false);
   detectEnv();
   detectIp_().then(function(){ startPresence(); });
 
@@ -1375,14 +1382,16 @@ function saveNewPrizeTemplate(){
   name = name.trim();
   var custom = getCustomPrizeTemplates();
   var key = 'custom_' + Date.now();
+  var prizeList = JSON.parse(JSON.stringify(prizes));
   custom[key] = {
     name: name,
-    prizes: JSON.parse(JSON.stringify(prizes))
+    prizes: prizeList
   };
   saveCustomPrizeTemplates(custom);
   renderPrizeTemplateOptions(key);
   updatePrizeDeleteBtnState();
-  alert('✅ 獎項範本「' + name + '」已成功儲存！日後可隨時於選單中切換套用。');
+  cloudSaveTemplate_('prize', key, name, prizeList);
+  alert('✅ 獎項範本「' + name + '」已成功儲存！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表，換別台電腦也能看得到！' : ''));
 }
 
 function deletePrizeTemplate(){
@@ -1396,6 +1405,7 @@ function deletePrizeTemplate(){
   if (!confirm('確定要刪除範本「' + target.name + '」嗎？刪除後無法復原。')) return;
   delete custom[val];
   saveCustomPrizeTemplates(custom);
+  cloudDeleteTemplate_('prize', val);
   renderPrizeTemplateOptions('preset_standard');
   onPrizeTemplateSelect('preset_standard');
   alert('已成功刪除該獎項範本');
@@ -1617,7 +1627,8 @@ function saveNewRosterTemplate(){
   saveCustomRosterTemplates(custom);
   renderRosterTemplateOptions(key);
   updateRosterDeleteBtnState();
-  alert('✅ 名冊「' + name + '」已成功儲存！日後可直接從下拉選單快速切換。');
+  cloudSaveTemplate_('roster', key, name, txt);
+  alert('✅ 名冊「' + name + '」已成功儲存！' + (CLOUD_API_URL ? '\n☁️ 已同步儲存至 Google 雲端試算表，換別台電腦也能看得到！' : ''));
 }
 
 function deleteRosterTemplate(){
@@ -1630,6 +1641,7 @@ function deleteRosterTemplate(){
   if (!confirm('確定要刪除名冊「' + target.name + '」嗎？')) return;
   delete custom[val];
   saveCustomRosterTemplates(custom);
+  cloudDeleteTemplate_('roster', val);
   renderRosterTemplateOptions('demo');
   onRosterTemplateSelect('demo');
   alert('已成功刪除該名冊');
@@ -2887,6 +2899,128 @@ function cloudUndoLastDraw_(){
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'undoLastDraw', sessionId: CLOUD_SESSION_ID })
   }).catch(function(){});
+}
+
+function cloudSaveTemplate_(category, key, name, data){
+  if (!CLOUD_API_URL) return;
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      token: CLOUD_API_TOKEN,
+      action: 'saveTemplate',
+      category: category,
+      key: key,
+      name: name,
+      data: data
+    })
+  }).catch(function(){});
+}
+
+function cloudDeleteTemplate_(category, key){
+  if (!CLOUD_API_URL) return;
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      token: CLOUD_API_TOKEN,
+      action: 'deleteTemplate',
+      category: category,
+      key: key
+    })
+  }).catch(function(){});
+}
+
+function syncTemplatesFromCloud(notify){
+  if (!CLOUD_API_URL){
+    if (notify) alert('尚未設定雲端 GAS API 網址，請先至「雲端同步設定」確認！');
+    return;
+  }
+  fetch(CLOUD_API_URL + '?action=getTemplates')
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res.ok && res.templates){
+        var count = 0;
+        if (res.templates.prize && Object.keys(res.templates.prize).length > 0){
+          var pCustom = getCustomPrizeTemplates();
+          Object.keys(res.templates.prize).forEach(function(k){
+            pCustom[k] = res.templates.prize[k];
+            count++;
+          });
+          saveCustomPrizeTemplates(pCustom);
+          renderPrizeTemplateOptions();
+        }
+        if (res.templates.roster && Object.keys(res.templates.roster).length > 0){
+          var rCustom = getCustomRosterTemplates();
+          Object.keys(res.templates.roster).forEach(function(k){
+            rCustom[k] = res.templates.roster[k];
+            count++;
+          });
+          saveCustomRosterTemplates(rCustom);
+          renderRosterTemplateOptions();
+        }
+        if (notify) alert('✅ 雲端同步成功！已從 Google 試算表載入 ' + count + ' 個自訂範本，跨電腦隨時可用。');
+      } else {
+        if (notify) alert('Google 試算表目前尚無其他自訂範本。');
+      }
+    }).catch(function(err){
+      if (notify) alert('雲端同步失敗：' + err.message);
+    });
+}
+
+function exportTemplatesBackup(){
+  var backup = {
+    version: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    prizeTemplates: getCustomPrizeTemplates(),
+    rosterTemplates: getCustomRosterTemplates()
+  };
+  var json = JSON.stringify(backup, null, 2);
+  var blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '抽籤系統範本備份_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function importTemplatesBackup(){
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.onchange = function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      try {
+        var data = JSON.parse(evt.target.result);
+        var pCount = 0, rCount = 0;
+        if (data.prizeTemplates){
+          var pCustom = getCustomPrizeTemplates();
+          Object.keys(data.prizeTemplates).forEach(function(k){
+            pCustom[k] = data.prizeTemplates[k];
+            pCount++;
+          });
+          saveCustomPrizeTemplates(pCustom);
+          renderPrizeTemplateOptions();
+        }
+        if (data.rosterTemplates){
+          var rCustom = getCustomRosterTemplates();
+          Object.keys(data.rosterTemplates).forEach(function(k){
+            rCustom[k] = data.rosterTemplates[k];
+            rCount++;
+          });
+          saveCustomRosterTemplates(rCustom);
+          renderRosterTemplateOptions();
+        }
+        alert('✅ 匯入成功！已還原 ' + pCount + ' 個獎項範本與 ' + rCount + ' 個名冊範本。');
+      } catch(err){
+        alert('匯入失敗：檔案格式不符合 JSON');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 /* ================= 線上人數完整實裝（與許瑞興訂單/戰情室一致） ================= */
