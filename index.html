@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>電腦挑人抽籤系統</title>
+<title>🎲 電腦挑人抽籤／幸運抽獎系統 v2.0</title>
 <style>
   :root {
     --primary: #2563eb;
@@ -18,8 +18,12 @@
     --filled-bg: #eff6ff;
     --excluded-bg: #e2e8f0;
     --success: #16a34a;
+    --gold: #f59e0b;
+    --gold-light: #fef3c7;
+    --danger: #dc2626;
     --shadow-sm: 0 1px 2px rgba(15,23,42,0.06);
     --shadow-md: 0 8px 24px rgba(15,23,42,0.10), 0 2px 6px rgba(15,23,42,0.05);
+    --shadow-lg: 0 20px 35px -5px rgba(15,23,42,0.15), 0 10px 10px -5px rgba(15,23,42,0.04);
   }
   * { box-sizing: border-box; }
   body {
@@ -29,9 +33,10 @@
     background-image: linear-gradient(135deg, #ddd6fe 0%, #bfdbfe 45%, #fbcfe8 100%);
     background-attachment: fixed;
     color: var(--text);
-    padding: 24px 16px 60px;
+    padding: 20px 16px 60px;
     min-height: 100vh;
     position: relative;
+    overflow-x: hidden;
   }
   body::before, body::after {
     content: "";
@@ -41,519 +46,598 @@
     border-radius: 50%;
     filter: blur(70px);
     z-index: -1;
-    opacity: 0.5;
+    opacity: 0.45;
     pointer-events: none;
     transition: opacity 0.3s ease;
   }
   body::before {
     background: radial-gradient(circle, #8b5cf6, transparent 70%);
-    top: -140px;
-    left: -120px;
+    top: -140px; left: -120px;
   }
   body::after {
     background: radial-gradient(circle, #ec4899, transparent 70%);
-    bottom: -160px;
-    right: -110px;
+    bottom: -160px; right: -110px;
   }
-  body.darkmode::before, body.darkmode::after { opacity: 0.22; }
-  body.bigscreen::before, body.bigscreen::after { display: none; }
-  .wrap {
-    max-width: 960px;
-    margin: 0 auto;
-    position: relative;
-  }
-  h1 {
-    text-align: center;
-    font-size: 30px;
-    font-weight: 800;
-    margin: 4px 0 8px;
-    letter-spacing: -0.02em;
-    color: var(--primary-dark);
-    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  .panel {
-    background: rgba(255,255,255,0.72);
-    backdrop-filter: blur(14px) saturate(1.4);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-    border-radius: 16px;
-    box-shadow: var(--shadow-md);
-    padding: 22px 24px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(148,163,184,0.16);
-    animation: fadeInUp 0.55s cubic-bezier(.22,.9,.32,1) both;
-  }
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(14px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .setup-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: flex-end;
-  }
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .field label {
-    font-size: 13px;
-    color: var(--muted);
-    font-weight: 600;
-  }
-  .field input {
-    width: 100px;
-    padding: 9px 10px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-size: 16px;
-    text-align: center;
-  }
-  .field input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
-  .field select {
-    padding: 9px 10px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    font-size: 14px;
-    background: var(--card-bg);
-    color: var(--text);
-  }
-  button {
-    cursor: pointer;
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 700;
-    padding: 10px 20px;
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.15s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s ease, opacity 0.15s ease, background 0.2s ease;
-  }
-  button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-  button:active:not(:disabled) { transform: translateY(0) scale(0.97); }
-  button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
-  #btnSetup { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; }
-  #btnExclude { background: linear-gradient(135deg, #64748b, #475569); color: #fff; }
-  #btnDraw {
-    background: linear-gradient(135deg, var(--accent), #d97706);
-    color: #fff;
-    font-size: 18px;
-    padding: 14px 32px;
-    box-shadow: 0 4px 14px rgba(245,158,11,0.35);
-  }
-  @keyframes drawPulse {
-    0%, 100% { box-shadow: 0 4px 14px rgba(245,158,11,0.35); }
-    50% { box-shadow: 0 4px 22px rgba(245,158,11,0.6); }
-  }
-  #btnDraw:not(:disabled) { animation: drawPulse 2.2s ease-in-out infinite; }
-  #btnUndo { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #b91c1c; }
-  #btnReset { background: linear-gradient(135deg, #e2e8f0, #cbd5e1); color: var(--text); }
-  .tool-btn { background: linear-gradient(135deg, #eef2ff, #e0e7ff); color: #3730a3; font-size: 13.5px; padding: 8px 14px; }
-
-  .result-panel {
-    text-align: center;
-  }
-  .result-box {
-    min-height: 78px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-  }
-  .result-number {
-    font-size: 44px;
-    font-weight: 800;
-    color: #fff;
-    line-height: 1;
-    display: inline-block;
-    padding: 14px 30px;
-    border-radius: 22px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    box-shadow: var(--shadow-md);
-  }
-  .result-pos {
-    font-size: 16px;
-    color: var(--muted);
-    font-weight: 600;
-  }
-  .result-placeholder {
-    font-size: 16px;
-    color: var(--muted);
-  }
-  .progress {
-    font-size: 13px;
-    color: var(--muted);
-    margin-top: 6px;
-  }
-  .done-msg {
-    font-size: 15px;
-    color: #fff;
-    font-weight: 700;
-    margin-top: 10px;
-    display: inline-block;
-    padding: 8px 18px;
-    border-radius: 999px;
-    background: linear-gradient(135deg, var(--success), #15803d);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .action-row {
-    display: flex;
-    justify-content: center;
-    gap: 14px;
-    margin-top: 14px;
-    flex-wrap: wrap;
-  }
-  .tools-row {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .grid-wrap {
-    overflow-x: auto;
-  }
-  .grid {
-    display: grid;
-    gap: 8px;
-    justify-content: center;
-    margin: 0 auto;
-  }
-  .cell {
-    aspect-ratio: 1 / 1;
-    min-width: 46px;
-    background: var(--empty-bg);
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text);
-    position: relative;
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-  .cell.filled {
-    background: var(--filled-bg);
-    border-color: var(--primary);
-    color: var(--primary-dark);
-    cursor: pointer;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), var(--shadow-sm);
-  }
-  .cell.filled:hover {
-    outline: 2px solid var(--primary);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-  }
-  .cell.excluded {
-    background: var(--excluded-bg);
-    border-style: dashed;
-    color: #94a3b8;
-    font-size: 15px;
-  }
-  .cell.just-filled {
-    animation: pop 0.45s cubic-bezier(.34,1.56,.64,1);
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(245,158,11,0.35);
-  }
-  @keyframes pop {
-    0% { transform: scale(0.3) rotate(-8deg); opacity: 0; }
-    55% { transform: scale(1.15) rotate(3deg); }
-    80% { transform: scale(0.95) rotate(-1deg); }
-    100% { transform: scale(1) rotate(0); opacity: 1; }
-  }
-  .cell .coord {
-    position: absolute;
-    bottom: 3px;
-    right: 3px;
-    font-size: 8px;
-    font-weight: 700;
-    color: var(--muted);
-    background: rgba(255,255,255,0.65);
-    padding: 1px 4px;
-    border-radius: 6px;
-    line-height: 1.4;
-  }
-  body.darkmode .cell .coord { background: rgba(0,0,0,0.32); }
-  .grid.exclude-editing .cell:not(.filled) { cursor: pointer; }
-  .grid.exclude-editing .cell:not(.filled):hover { outline: 2px solid var(--accent); }
-  .empty-state {
-    text-align: center;
-    color: var(--muted);
-    padding: 30px 10px;
-    font-size: 14px;
-  }
-  .hint {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 8px;
-  }
-  .exclude-hint {
-    font-size: 12px;
-    color: var(--accent);
-    font-weight: 600;
-  }
-  /* 線上人數（與圖面／標準文件查詢系統同樣的呈現方式） */
-  .online-wrap { text-align: center; margin: -12px 0 18px; }
-  .online-badge {
-    display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
-    font-size: 12.5px; font-weight: 700; color: #166534;
-    background: rgba(220,252,231,0.9); border: 1px solid #86efac; border-radius: 999px; padding: 3px 12px;
-  }
-  .online-badge:hover { background: #dcfce7; }
-  .online-badge .arrow { color: var(--muted); font-weight: 600; font-size: 11.5px; }
-  .online-badge.off { color: var(--muted); background: rgba(241,245,249,0.9); border-color: var(--border); }
-  .online-badge.off .dot-pulse { background: #94a3b8; animation: none; }
-  .dot-pulse { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; display: inline-block; animation: pulseDot 2s infinite; }
-  @keyframes pulseDot { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,.7); } 70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
-  .online-list {
-    max-width: 760px; margin: 10px auto 0; padding: 10px 14px; text-align: left; font-size: 12.5px;
-    background: var(--card-bg); border: 1.5px solid #bfdbfe; border-radius: 10px; box-shadow: var(--shadow-sm);
-    max-height: 240px; overflow: auto;
-  }
-  .online-list table { width: 100%; min-width: 520px; border-collapse: collapse; }
-  .online-list th, .online-list td { padding: 5px 6px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
-  .online-list th { color: var(--muted); font-weight: 600; }
-  .online-list .mono { font-family: Consolas, ui-monospace, monospace; }
-  .online-list tr.me td { color: var(--success); font-weight: 700; }
-  .online-list .ol-note { color: var(--muted); margin-top: 6px; font-size: 11.5px; }
-  body.darkmode .online-badge { background: rgba(20,83,45,0.55); border-color: #166534; color: #86efac; }
-  body.darkmode .online-badge.off { background: rgba(30,41,59,0.8); border-color: var(--border); color: var(--muted); }
-  body.darkmode .online-list { border-color: #1e3a8a; }
-  /* 雲端同步設定：管理者鎖 */
-  .cloud-lock-bar {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-    background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; border-radius: 10px;
-    padding: 8px 12px; margin-bottom: 12px; font-size: 13px; font-weight: 600;
-  }
-  .cloud-lock-bar.unlocked { background: #dcfce7; border-color: #86efac; color: #166534; }
-  body.darkmode .cloud-lock-bar { background: rgba(120,53,15,0.35); border-color: #92400e; color: #fcd34d; }
-  body.darkmode .cloud-lock-bar.unlocked { background: rgba(20,83,45,0.45); border-color: #166534; color: #86efac; }
-  #cloudPanel input:disabled { opacity: 0.6; cursor: not-allowed; }
-  .cloud-status-error {
-    color: #dc2626 !important;
-    font-weight: 700;
-  }
-  .history-panel {
-    margin-top: 16px;
-    border-top: 1px dashed var(--border);
-    padding-top: 14px;
-    text-align: left;
-  }
-  .history-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--muted);
-    margin-bottom: 8px;
-    text-align: center;
-  }
-  .history-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 8px 12px;
-    background: var(--empty-bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 6px;
-    font-size: 14px;
-  }
-  .group-result-row {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--empty-bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 6px;
-    font-size: 14px;
-  }
-  .group-swatch {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    flex: none;
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
-    align-self: center;
-  }
-  body.darkmode .group-swatch { box-shadow: 0 0 0 2px rgba(0,0,0,0.35); }
-  .group-result-label {
-    font-weight: 700;
-    color: var(--text);
-    white-space: nowrap;
-    min-width: 84px;
-  }
-  .group-result-nums {
-    color: var(--muted);
-    font-weight: 600;
-    word-break: break-all;
-  }
-  .history-item .h-seq {
-    color: var(--muted);
-    font-size: 12px;
-    min-width: 60px;
-  }
-  .history-item .h-num {
-    font-weight: 800;
-    color: var(--primary-dark);
-    font-size: 17px;
-  }
-  .history-item .h-pos {
-    color: var(--muted);
-    font-size: 13px;
-  }
-  .history-empty {
-    text-align: center;
-    color: var(--muted);
-    font-size: 13px;
-    padding: 8px 0;
-  }
-  .changelog-entry {
-    padding: 10px 12px;
-    border-bottom: 1px dashed var(--border);
-  }
-  .changelog-entry:last-child { border-bottom: none; }
-  .changelog-head {
-    font-weight: 800;
-    color: var(--primary-dark);
-    font-size: 14px;
-    margin-bottom: 4px;
-  }
-  .changelog-date {
-    color: var(--muted);
-    font-weight: 400;
-    font-size: 12px;
-    margin-left: 6px;
-  }
-  .changelog-entry ul {
-    margin: 0;
-    padding-left: 18px;
-    font-size: 13.5px;
-    color: var(--text);
-  }
-  .changelog-entry li { margin-bottom: 2px; }
-  .print-only { display: none; }
-
-  body.bigscreen #setupPanel,
-  body.bigscreen #toolsPanel,
-  body.bigscreen #changelogPanel,
-  body.bigscreen #cloudPanel,
-  body.bigscreen #groupResultPanel,
-  body.bigscreen .history-panel,
-  body.bigscreen .hint { display: none !important; }
-  body.bigscreen .online-wrap { display: none !important; }
-  body.bigscreen h1 { font-size: 42px; }
-  body.bigscreen .result-number { font-size: 96px; }
-  body.bigscreen .result-pos { font-size: 30px; }
-  body.bigscreen .progress { font-size: 18px; }
-  body.bigscreen .cell { font-size: 30px; }
-  body.bigscreen #btnDraw { font-size: 28px; padding: 20px 48px; }
-  .exit-bigscreen-btn {
-    display: none;
-    position: fixed;
-    top: 14px;
-    right: 14px;
-    z-index: 999;
-    background: rgba(15,23,42,0.6);
-    color: #fff;
-    border: none;
-    border-radius: 999px;
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-    box-shadow: var(--shadow-sm);
-  }
-  body.bigscreen .exit-bigscreen-btn { display: inline-block !important; }
-
   body.darkmode {
-    --primary: #3b82f6;
-    --primary-dark: #60a5fa;
-    --accent: #fbbf24;
-    --bg: #0f172a;
+    --bg: #0b1120;
     --card-bg: #1e293b;
-    --text: #e2e8f0;
+    --text: #f1f5f9;
     --muted: #94a3b8;
     --border: #334155;
     --empty-bg: #1e293b;
     --filled-bg: #1e3a8a;
     --excluded-bg: #334155;
-    --success: #4ade80;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-    --shadow-md: 0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
-    background-color: var(--bg);
-    background-image: linear-gradient(160deg, #1e1b4b 0%, #0f172a 55%, #4a044e 100%);
-    color: var(--text);
+    background-color: #0b1120;
+    background-image: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #172554 100%);
+    color: #f1f5f9;
   }
-  body.darkmode .cell.excluded { color: #64748b; }
-  body.darkmode .cell.filled { box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-sm); }
-  body.darkmode .panel {
-    background: rgba(30,41,59,0.72);
-    border-color: rgba(148,163,184,0.1);
+  body.darkmode::before, body.darkmode::after { opacity: 0.18; }
+  
+  /* 舞台大螢幕模式 */
+  body.stage-mode {
+    padding: 10px 16px;
+    background-image: radial-gradient(circle at center, #1e1b4b 0%, #090d16 100%);
+    color: #f8fafc;
+  }
+  body.stage-mode::before, body.stage-mode::after { display: none; }
+  body.stage-mode #toolsPanel,
+  body.stage-mode #setupPanel,
+  body.stage-mode .online-wrap,
+  body.stage-mode .header-sub,
+  body.stage-mode .history-panel,
+  body.stage-mode .non-stage { display: none !important; }
+  body.stage-mode .wrap { max-width: 1300px; }
+  body.stage-mode .panel {
+    background: rgba(15,23,42,0.75);
+    border-color: rgba(245,158,11,0.25);
+    box-shadow: 0 10px 35px rgba(0,0,0,0.5);
+  }
+  body.stage-mode h1 { font-size: 34px; margin-bottom: 6px; }
+
+  .wrap { max-width: 1060px; margin: 0 auto; position: relative; }
+  
+  header { text-align: center; margin-bottom: 12px; }
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+    background: linear-gradient(90deg, #1d4ed8 0%, #f59e0b 60%, #e11d48 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .header-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #b45309;
+    font-weight: 700;
+    border: 1px solid #fde68a;
+    -webkit-text-fill-color: #b45309;
+    vertical-align: middle;
+  }
+  .header-sub { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+
+  /* 線上人數 */
+  .online-wrap { position: relative; display: inline-block; margin-bottom: 10px; }
+  .online-badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(8px);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px;
+    color: var(--muted); cursor: pointer; transition: all 0.2s; user-select: none;
+  }
+  .online-badge:hover { background: #fff; border-color: var(--primary); color: var(--primary); }
+  .online-badge .dot-pulse { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulseDot 2s infinite; }
+  @keyframes pulseDot { 0%{box-shadow:0 0 0 0 rgba(34,197,94,0.6)} 70%{box-shadow:0 0 0 6px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+  .online-list {
+    position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: var(--shadow-lg); padding: 12px; width: 340px; z-index: 100; text-align: left;
+    font-size: 12.5px; max-height: 280px; overflow-y: auto;
+  }
+  .online-user-item { padding: 6px 0; border-bottom: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .online-user-item:last-child { border-bottom: none; }
+
+  /* 視覺抽獎模式切換切換器 (View Switcher) */
+  .view-switch-bar {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .view-switch-btn {
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .view-switch-btn:hover { background: #fff; color: var(--primary); transform: translateY(-1px); }
+  .view-switch-btn.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
+    border-color: var(--primary-dark);
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+  }
+  body.darkmode .view-switch-btn { background: rgba(30,41,59,0.7); border-color: #334155; color: #94a3b8; }
+  body.darkmode .view-switch-btn.active { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; }
+
+  /* 面板基礎風格 */
+  .panel {
+    background: rgba(255,255,255,0.78);
+    backdrop-filter: blur(14px) saturate(1.4);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    padding: 18px 22px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(148,163,184,0.18);
+  }
+  body.darkmode .panel { background: rgba(30,41,59,0.78); border-color: rgba(148,163,184,0.12); }
+
+  /* 工具列 */
+  .tools-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .tool-btn {
+    background: linear-gradient(135deg, #f8fafc, #edf2f7);
+    color: #334155;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .tool-btn:hover { background: #fff; border-color: var(--primary); color: var(--primary); transform: translateY(-1px); }
+  body.darkmode .tool-btn { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #334155; color: #cbd5e1; }
+  body.darkmode .tool-btn:hover { border-color: #60a5fa; color: #60a5fa; }
+  .tool-btn.highlight { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; border-color: #f59e0b; }
+
+  /* 獎項狀態列 */
+  .prize-bar {
+    background: linear-gradient(90deg, #fffbeb 0%, #fef3c7 50%, #fee2e2 100%);
+    border: 1.5px solid #fcd34d;
+    border-radius: 14px;
+    padding: 10px 16px;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(245,158,11,0.12);
+  }
+  body.darkmode .prize-bar {
+    background: linear-gradient(90deg, #2a2215 0%, #351c1c 100%);
+    border-color: #b45309;
+  }
+  .prize-current-info { display: flex; align-items: center; gap: 10px; }
+  .prize-icon-large { font-size: 26px; }
+  .prize-title-text { font-size: 17px; font-weight: 800; color: #92400e; }
+  body.darkmode .prize-title-text { color: #fde68a; }
+  .prize-desc-text { font-size: 13px; color: #b45309; font-weight: 600; }
+  body.darkmode .prize-desc-text { color: #fcd34d; }
+  .prize-quota-badge {
+    background: #f59e0b; color: #fff; font-size: 12px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px; box-shadow: 0 2px 4px rgba(245,158,11,0.25);
+  }
+  .prize-quick-select { display: flex; align-items: center; gap: 6px; }
+  .prize-quick-select select {
+    padding: 5px 8px; border-radius: 8px; border: 1px solid #f59e0b;
+    font-size: 13px; font-weight: 600; background: #fff; color: #78350f;
   }
 
+  /* 開獎舞台與大字展示 */
+  .result-panel { text-align: center; }
+  .result-card {
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 16px;
+    position: relative;
+  }
+  .winner-display-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    animation: zoomIn 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  }
+  @keyframes zoomIn {
+    from { opacity: 0; transform: scale(0.7); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .winner-prize-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 15px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    padding: 4px 16px; border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(245,158,11,0.35);
+  }
+  .winner-name-huge {
+    font-size: 46px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.1;
+    padding: 12px 36px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #3b82f6 100%);
+    box-shadow: 0 10px 25px rgba(29,78,216,0.35), inset 0 1px 0 rgba(255,255,255,0.4);
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    min-width: 220px;
+  }
+  .winner-meta-sub {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--muted);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .winner-tag {
+    padding: 3px 10px; border-radius: 6px; font-size: 13px; font-weight: 700;
+    background: #e0f2fe; color: #0369a1;
+  }
+  body.darkmode .winner-tag { background: #0c4a6e; color: #7dd3fc; }
+
+  /* 抽獎主動作按鈕列 */
+  .action-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: inherit; font-size: 14.5px; font-weight: 700;
+    border: none; border-radius: 10px; padding: 10px 20px;
+    cursor: pointer; transition: all 0.15s ease;
+  }
+  #btnDraw {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    font-size: 18px;
+    padding: 12px 34px;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(37,99,235,0.4);
+  }
+  #btnDraw:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,99,235,0.5); }
+  #btnDraw:not(:disabled) { animation: drawPulse 2.2s ease-in-out infinite; }
+  @keyframes drawPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+  #btnDraw:disabled { opacity: 0.55; cursor: not-allowed; animation: none; transform: none; box-shadow: none; }
+  
+  #btnDrawAll { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+  #btnRedraw { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+  #btnUndo { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #b91c1c; }
+  #btnReset { background: linear-gradient(135deg, #e2e8f0, #cbd5e1); color: var(--text); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* 4種抽獎模式容器 */
+  .view-container { display: none; width: 100%; text-align: center; }
+  .view-container.active { display: block; }
+
+  /* 1. 座位網格 Grid */
+  .grid-wrap { overflow-x: auto; padding: 4px 0; }
+  .grid { display: grid; gap: 8px; justify-content: center; margin: 0 auto; }
+  .cell {
+    aspect-ratio: 1 / 1; min-width: 52px;
+    background: var(--empty-bg); border: 1.5px solid var(--border);
+    border-radius: 10px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: var(--text);
+    position: relative; box-shadow: var(--shadow-sm);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    user-select: none;
+  }
+  .cell .cell-name { font-size: 13px; font-weight: 800; max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cell .cell-num { font-size: 10px; opacity: 0.7; }
+  .cell.filled {
+    background: var(--filled-bg); border-color: var(--primary);
+    color: var(--primary-dark); cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), var(--shadow-sm);
+  }
+  .cell.filled:hover { transform: scale(1.08); z-index: 10; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+  .cell.just-filled { animation: popIn 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+  @keyframes popIn { 0%{transform:scale(0.3); opacity:0} 60%{transform:scale(1.25)} 100%{transform:scale(1); opacity:1} }
+  .cell.excluded { background: var(--excluded-bg); border-style: dashed; border-color: #94a3b8; color: #94a3b8; cursor: not-allowed; }
+  .cell.exclude-selectable { cursor: pointer; }
+  .cell.exclude-selectable:hover { border-color: #ef4444; background: #fee2e2; }
+  .cell .coord { position: absolute; bottom: 2px; right: 3px; font-size: 9px; opacity: 0.45; }
+
+  /* 2. 幸運大輪盤 Wheel */
+  .wheel-box { position: relative; width: 380px; height: 380px; margin: 10px auto; }
+  #wheelCanvas { width: 100%; height: 100%; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.25)); }
+  .wheel-pointer {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 16px solid transparent;
+    border-right: 16px solid transparent;
+    border-top: 32px solid #ef4444;
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));
+    z-index: 20;
+    transition: transform 0.05s ease;
+  }
+  .wheel-center-hub {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 60px; height: 60px; border-radius: 50%;
+    background: radial-gradient(circle, #f59e0b, #d97706);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,255,255,0.6);
+    border: 3px solid #fff; z-index: 10;
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+
+  /* 3. 大字滾輪機 Slot Machine */
+  .slot-wrapper {
+    max-width: 600px; margin: 16px auto; padding: 24px;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 4px solid #f59e0b; border-radius: 24px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5), inset 0 2px 10px rgba(0,0,0,0.8);
+    position: relative; overflow: hidden;
+  }
+  .slot-wrapper::before {
+    content: "🎰 LUCKY LOTTERY MACHINE 🎰";
+    display: block; font-size: 13px; font-weight: 800; letter-spacing: 2px;
+    color: #fbbf24; margin-bottom: 12px; text-shadow: 0 0 8px rgba(251,191,36,0.6);
+  }
+  .slot-window {
+    height: 120px; background: #000; border-radius: 14px;
+    border: 3px solid #334155; position: relative; overflow: hidden;
+    box-shadow: inset 0 10px 20px rgba(0,0,0,0.8), inset 0 -10px 20px rgba(0,0,0,0.8);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slot-reel-text {
+    font-size: 54px; font-weight: 900; color: #38bdf8;
+    text-shadow: 0 0 15px rgba(56,189,248,0.8);
+    transition: transform 0.08s linear;
+  }
+  .slot-reel-text.rolling { filter: blur(2px); }
+
+  /* 4. 樂透搖獎機 Lotto Machine */
+  .lotto-wrapper { position: relative; width: 360px; height: 360px; margin: 10px auto; }
+  #lottoCanvas { width: 100%; height: 100%; filter: drop-shadow(0 12px 25px rgba(0,0,0,0.3)); }
+
+  /* 設定面板 */
+  .setup-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  label { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+  input[type="number"], select {
+    padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+    font-family: inherit; font-size: 14px; background: #fff; color: var(--text);
+  }
+  body.darkmode input[type="number"], body.darkmode select { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+
+  /* 彈窗 Modal 基礎 */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15,23,42,0.65); backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-card {
+    background: var(--card-bg); color: var(--text); border-radius: 18px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); width: 92%; max-width: 620px;
+    max-height: 88vh; overflow-y: auto; padding: 22px 26px; border: 1px solid var(--border);
+    animation: modalIn 0.25s ease-out;
+  }
+  @keyframes modalIn { from{opacity:0; transform:translateY(16px)} to{opacity:1; transform:translateY(0)} }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  .modal-head h3 { margin: 0; font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .modal-close-btn { background: none; border: none; font-size: 20px; color: var(--muted); cursor: pointer; padding: 4px; }
+  .modal-close-btn:hover { color: var(--text); }
+
+  /* 名冊管理 */
+  .roster-textarea {
+    width: 100%; height: 160px; padding: 10px; font-family: monospace; font-size: 13px;
+    border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    resize: vertical;
+  }
+  .roster-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+  /* 獎項列表表格 */
+  .prize-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13.5px; }
+  .prize-table th, .prize-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  .prize-table th { background: var(--empty-bg); color: var(--muted); font-size: 12px; }
+
+  /* 榮譽榜單 */
+  .prize-board-group { margin-bottom: 16px; }
+  .prize-board-title {
+    font-size: 15px; font-weight: 800; padding: 6px 12px; border-radius: 8px;
+    display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px;
+  }
+  .winner-chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .winner-chip {
+    background: var(--empty-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .winner-chip.waived { text-decoration: line-through; opacity: 0.55; border-color: #f87171; }
+  .winner-chip-waived-tag { font-size: 11px; color: #dc2626; font-weight: 800; text-decoration: none; display: inline-block; }
+
+  /* 大螢幕懸浮退出按鈕 */
+  .exit-stage-float-btn {
+    display: none; position: fixed; top: 16px; right: 16px; z-index: 99999;
+    background: rgba(15,23,42,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 700;
+    cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  body.stage-mode .exit-stage-float-btn { display: block; }
+
+  /* 響應式 */
+  @media (max-width: 600px) {
+    h1 { font-size: 22px; }
+    .winner-name-huge { font-size: 36px; padding: 8px 20px; }
+    .wheel-box, .lotto-wrapper { width: 300px; height: 300px; }
+    .slot-reel-text { font-size: 38px; }
+  }
+
+  /* 列印 */
   @media print {
-    body, .print-only { background: #fff !important; color: #000 !important; }
-    body::before, body::after { display: none !important; content: none !important; }
-    .exit-bigscreen-btn { display: none !important; }
-    h1, #setupPanel, #toolsPanel, .result-panel, #cloudPanel, #groupResultPanel, #changelogPanel,
-    .history-panel, .hint, .online-wrap { display: none !important; }
-    #gridPanel { background: #fff !important; box-shadow: none !important; border: none !important; padding: 0 !important; }
-    .cell { box-shadow: none !important; }
-    #printTitle { display: block; text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 16px; }
-    #printGroupResults { display: block; margin-top: 22px; padding-top: 14px; border-top: 2px solid #333; }
-    #printGroupResults:empty { display: none !important; border: none !important; margin: 0 !important; padding: 0 !important; }
-    #printGroupResults .print-group-title { text-align: center; font-size: 16px; font-weight: 800; margin-bottom: 10px; }
-    #printGroupResults .print-group-row { font-size: 13px; padding: 5px 0; border-bottom: 1px dashed #ccc; }
-    #printGroupResults .print-group-row b { display: inline-block; min-width: 80px; }
+    body { background: #fff !important; color: #000 !important; padding: 0 !important; }
+    .panel, .action-row, .tools-row, .view-switch-bar, .online-wrap, .exit-stage-float-btn, header { display: none !important; }
+    #printArea { display: block !important; }
   }
-
-  @media (max-width: 480px) {
-    .result-number { font-size: 34px; }
-    .cell { min-width: 36px; font-size: 15px; }
-  }
+  #printArea { display: none; }
 </style>
 </head>
 <body>
-<button class="exit-bigscreen-btn" id="btnExitBigScreenFloat" onclick="toggleBigScreen()" title="退出大螢幕模式（也可以按 Esc）">↩️ 退出大螢幕</button>
-<div class="print-only" id="printTitle"></div>
+
+<canvas id="confettiCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
+<button class="exit-stage-float-btn" onclick="toggleStageMode()">↩ 退出舞台大螢幕 (Esc)</button>
+
 <div class="wrap">
-  <h1>🎲 電腦挑人抽籤系統</h1>
-  <div class="hint" style="text-align:center; margin-top:0; margin-bottom:20px;">版本 <span id="versionTag"></span>（<a href="#" onclick="toggleChangelog(); return false;" style="color:var(--primary); text-decoration:none;">查看改版內容</a>）</div>
-  <div class="online-wrap">
-    <span class="online-badge off" id="onlineBadge" onclick="toggleOnlineList()" title="點擊查看目前在線的電腦">
-      <span class="dot-pulse"></span><span>線上：<b id="onlineCount">—</b> 人</span><span class="arrow" id="onlineArrow">▾</span>
-    </span>
-    <div class="online-list" id="onlineList" style="display:none;"></div>
+  <header>
+    <h1>🎲 電腦挑人抽籤／幸運抽獎系統 <span class="header-badge">v2.0 旗艦版</span></h1>
+    <div class="header-sub">
+      版本 <span id="versionTag">v2.0.0</span> · 
+      <a href="#" onclick="openModal('changelogModal'); return false;" style="color:var(--primary);text-decoration:none;">改版紀錄</a>
+    </div>
+    <div class="online-wrap">
+      <span class="online-badge off" id="onlineBadge" onclick="toggleOnlineList()" title="查看在線同仁">
+        <span class="dot-pulse"></span><span>線上：<b id="onlineCount">—</b> 人</span><span class="arrow" id="onlineArrow">▾</span>
+      </span>
+      <div class="online-list" id="onlineList" style="display:none;"></div>
+    </div>
+  </header>
+
+  <!-- 視覺抽獎模式切換 -->
+  <div class="view-switch-bar">
+    <button class="view-switch-btn active" data-v="grid" onclick="switchDrawView('grid')">🗂️ 座位網格</button>
+    <button class="view-switch-btn" data-v="wheel" onclick="switchDrawView('wheel')">🎡 幸運大輪盤</button>
+    <button class="view-switch-btn" data-v="slot" onclick="switchDrawView('slot')">🎰 大字滾輪機</button>
+    <button class="view-switch-btn" data-v="lotto" onclick="switchDrawView('lotto')">🎱 樂透搖獎機</button>
+    <button class="view-switch-btn highlight" onclick="toggleStageMode()">🖥️ 舞台大螢幕模式</button>
   </div>
 
+  <!-- 工具列 -->
   <div class="panel" id="toolsPanel">
     <div class="tools-row">
       <button class="tool-btn" id="btnSound" onclick="toggleSound()">🔈 音效開</button>
-      <button class="tool-btn" id="btnBigScreen" onclick="toggleBigScreen()">🖥 大螢幕模式</button>
-      <button class="tool-btn" id="btnFullscreen" onclick="toggleFullscreen()">⛶ 全螢幕</button>
+      <button class="tool-btn highlight" onclick="openModal('rosterModal')">👥 人員名冊管理</button>
+      <button class="tool-btn highlight" onclick="openModal('prizeModal')">🏆 獎項抽獎設定</button>
+      <button class="tool-btn" onclick="openModal('prizeBoardModal')">📊 獲獎榮譽榜單</button>
+      <button class="tool-btn" onclick="openModal('qrModal')">📱 現場手機 QR 碼</button>
+      <button class="tool-btn" onclick="openModal('tgModal')">📢 Telegram 中獎推播</button>
       <button class="tool-btn" id="btnDarkMode" onclick="toggleDarkMode()">🌙 深色模式</button>
-      <button class="tool-btn" onclick="printSeatChart()">🖨 列印/匯出座位表</button>
+      <button class="tool-btn" onclick="printSeatChart()">🖨 列印/匯出名單</button>
       <button class="tool-btn" onclick="exportGridAsPng()">🖼 匯出座位圖片(PNG)</button>
-      <button class="tool-btn" onclick="exportHistoryCsv()">📤 匯出紀錄 CSV</button>
-      <button class="tool-btn" id="btnCloud" onclick="toggleCloudPanel()">☁️ 雲端同步設定</button>
-      <button class="tool-btn" id="btnGroupResult" onclick="toggleGroupResultPanel()">📊 分組結果</button>
-      <button class="tool-btn" id="btnChangelog" onclick="toggleChangelog()">📋 版本紀錄</button>
+      <button class="tool-btn" onclick="exportHistoryCsv()">📤 匯出 CSV 紀錄</button>
+      <button class="tool-btn" id="btnCloud" onclick="openModal('cloudModal')">☁️ 雲端同步設定</button>
     </div>
   </div>
 
+  <!-- 當前抽獎獎項提示列 -->
+  <div class="prize-bar" id="prizeBar">
+    <div class="prize-current-info">
+      <span class="prize-icon-large" id="curPrizeIcon">🥇</span>
+      <div>
+        <div class="prize-title-text" id="curPrizeTitle">特獎 · iPhone 16 Pro</div>
+        <div class="prize-desc-text" id="curPrizeDesc">共 1 位幸運得主 · 目前抽取中</div>
+      </div>
+    </div>
+    <div class="prize-quick-select">
+      <span class="prize-quota-badge" id="curPrizeQuotaBadge">剩餘 1 名</span>
+      <select id="prizeQuickSelect" onchange="onPrizeSelectChange(this.value)">
+        <!-- 自動由 JS 填入 -->
+      </select>
+    </div>
+  </div>
+
+  <!-- 抽籤開獎結果與主按鈕區 -->
+  <div class="panel result-panel">
+    <div class="result-card" id="resultBox">
+      <div id="resultPlaceholder" style="font-size:16px;color:var(--muted);">
+        準備就緒，點擊下方「🎯 抽籤」開始！
+      </div>
+      <div id="winnerCard" class="winner-display-box" style="display:none;">
+        <span class="winner-prize-badge" id="winPrizeBadge">🥇 特獎</span>
+        <div class="winner-name-huge" id="winNameHuge">王大明</div>
+        <div class="winner-meta-sub">
+          <span class="winner-tag" id="winDeptTag">研發部</span>
+          <span id="winSeatPos">第 2 行 第 3 列</span>
+          <span id="winNumTag" style="font-size:13px;opacity:0.6;">#12</span>
+        </div>
+      </div>
+    </div>
+    <div class="action-row">
+      <button id="btnDraw" onclick="executeDraw()">🎯 抽籤</button>
+      <button id="btnDrawAll" class="tool-btn" onclick="executeDrawAll()">⚡ 一鍵產生全部</button>
+      <button id="btnRedraw" class="tool-btn" onclick="executeRedraw()" disabled>🚫 棄權重抽</button>
+      <button id="btnUndo" onclick="undoLastDraw()" disabled>↩ 復原上一步</button>
+      <button id="btnHistory" class="tool-btn" onclick="toggleHistory()">📜 最近抽籤</button>
+      <button id="btnReset" onclick="resetGrid()">🔄 重新開始</button>
+    </div>
+    <div class="history-panel" id="historyPanel" style="display:none;margin-top:12px;text-align:left;">
+      <div style="font-weight:700;font-size:13px;color:var(--muted);margin-bottom:6px;">最近 5 筆抽出紀錄：</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- 4 種抽獎視覺容器 -->
+  <!-- 容器 1: 🗂️ 座位網格 -->
+  <div class="view-container active" id="viewGridContainer">
+    <div class="panel" id="gridPanel">
+      <div class="grid-wrap">
+        <div class="grid" id="grid"></div>
+        <div class="empty-state" id="emptyState">尚未建立格子</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 容器 2: 🎡 幸運大輪盤 -->
+  <div class="view-container" id="viewWheelContainer">
+    <div class="panel" style="padding:10px 0;">
+      <div class="wheel-box">
+        <div class="wheel-pointer" id="wheelPointer"></div>
+        <canvas id="wheelCanvas" width="400" height="400"></canvas>
+        <div class="wheel-center-hub" id="wheelCenterHub">🎲</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;">🎡 依目前名單即時生成扇形 · 隨機旋轉減速</div>
+    </div>
+  </div>
+
+  <!-- 容器 3: 🎰 大字滾輪機 -->
+  <div class="view-container" id="viewSlotContainer">
+    <div class="panel" style="padding:10px;">
+      <div class="slot-wrapper">
+        <div class="slot-window">
+          <div class="slot-reel-text" id="slotText">READY ?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 容器 4: 🎱 樂透搖獎機 -->
+  <div class="view-container" id="viewLottoContainer">
+    <div class="panel" style="padding:10px 0;">
+      <div class="lotto-wrapper">
+        <canvas id="lottoCanvas" width="380" height="380"></canvas>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">🎱 物理重力彩球彈跳模擬 · 搖獎出球</div>
+    </div>
+  </div>
+
+  <!-- 座位與分組設定 (Grid Setup) -->
   <div class="panel" id="setupPanel">
     <div class="setup-row">
       <div class="field">
@@ -564,19 +648,19 @@
         </select>
       </div>
       <div class="field">
-        <label for="rowsInput" id="rowsLabel">行數</label>
-        <input type="number" id="rowsInput" min="1" max="30" value="5">
+        <label for="rowsInput" id="rowsLabel">行數 / 桌數</label>
+        <input type="number" id="rowsInput" min="1" max="40" value="5">
       </div>
       <div class="field">
-        <label for="colsInput" id="colsLabel">列數</label>
-        <input type="number" id="colsInput" min="1" max="30" value="6">
+        <label for="colsInput" id="colsLabel">列數 / 每桌人數</label>
+        <input type="number" id="colsInput" min="1" max="40" value="6">
       </div>
       <div class="field">
         <label for="drawLimitInput">限制抽出人數</label>
-        <input type="number" id="drawLimitInput" min="1" placeholder="留白＝全部抽完" style="width:120px;" oninput="updateTotalHint(); saveStateToStorage();">
+        <input type="number" id="drawLimitInput" min="1" placeholder="留白＝全抽" style="width:110px;" oninput="updateTotalHint(); saveStateToStorage();">
       </div>
       <button id="btnSetup" onclick="setupGrid()">建立格子</button>
-      <button id="btnExclude" onclick="toggleExcludeMode()" disabled>🚫 設定排除格</button>
+      <button id="btnExclude" class="tool-btn" onclick="toggleExcludeMode()" disabled>🚫 設定排除格</button>
       <div class="field">
         <label for="groupMode">分組上色</label>
         <select id="groupMode" onchange="applyGroupColors(); saveStateToStorage();">
@@ -588,1755 +672,1476 @@
           <option value="rand3">亂數分 3 個一組</option>
           <option value="rand5">亂數分 5 個一組</option>
           <option value="rand10">亂數分 10 個一組</option>
-          <option value="rand20">亂數分 20 個一組</option>
         </select>
       </div>
-      <span class="exclude-hint" id="excludeHint"></span>
-    </div>
-    <div class="hint" id="totalHint"></div>
-  </div>
-
-  <div class="panel result-panel">
-    <div class="result-box" id="resultBox">
-      <div class="result-placeholder" id="resultPlaceholder">請先建立格子，再按「抽籤」開始</div>
-    </div>
-    <div class="progress" id="progressText"></div>
-    <div class="action-row">
-      <button id="btnDraw" onclick="drawNumber()" disabled>🎯 抽籤</button>
-      <button id="btnDrawAll" class="tool-btn" onclick="drawAllInstant()" disabled>⚡ 一鍵產生結果</button>
-      <button id="btnUndo" onclick="undoLastDraw()" disabled>↩️ 復原上一步</button>
-      <button id="btnHistory" onclick="toggleHistory()" disabled>📜 最近三次結果</button>
-      <button id="btnReset" onclick="resetGrid()" disabled>🔄 重新開始</button>
-    </div>
-    <div class="history-panel" id="historyPanel" style="display:none;">
-      <div class="history-title">最近三次抽籤結果</div>
-      <div id="historyList"></div>
-    </div>
-  </div>
-
-  <div class="panel" id="gridPanel">
-    <div class="grid-wrap">
-      <div class="grid" id="grid"></div>
-      <div class="empty-state" id="emptyState">尚未建立格子</div>
-    </div>
-  </div>
-  <div class="print-only" id="printGroupResults"></div>
-
-  <div class="panel" id="cloudPanel" style="display:none;">
-    <div class="history-title">雲端同步設定（Google 試算表 / GAS API）</div>
-    <div class="cloud-lock-bar" id="cloudLockBar">
-      <span id="cloudLockText">🔒 僅限管理者修改，一般使用者只能查看目前狀態</span>
-      <button class="tool-btn" id="btnCloudUnlock" onclick="cloudAdminUnlock()">🔑 管理者解鎖</button>
-    </div>
-    <div class="setup-row" style="margin-bottom:10px;">
-      <div class="field" style="flex:1; min-width:240px;">
-        <label for="cloudUrlInput">GAS API 網址（結尾是 /exec）</label>
-        <input type="text" id="cloudUrlInput" disabled placeholder="https://script.google.com/macros/s/.../exec" style="width:100%; text-align:left;">
+      <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin-bottom:6px;">
+        <input type="checkbox" id="chkNoDup" checked onchange="saveStateToStorage()">
+        <label for="chkNoDup" style="cursor:pointer;user-select:none;">一人限得一獎（防重複中獎）</label>
       </div>
-      <div class="field">
-        <label for="cloudTokenInput">驗證碼</label>
-        <input type="password" id="cloudTokenInput" disabled autocomplete="off" placeholder="與 Code.gs 的 API_TOKEN 一致" style="width:170px; text-align:left;">
-      </div>
-      <button id="btnCloudSave" onclick="saveCloudSettings()" disabled>💾 儲存設定</button>
-      <button class="tool-btn" onclick="cloudTestConnection()">🔎 測試連線</button>
     </div>
-    <div class="hint" id="cloudStatus"></div>
-    <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #d33;">
-      <button id="btnCloudClear" onclick="cloudClearAll()" disabled style="background:#dc2626; color:#fff;">🗑️ 一鍵清除雲端試算表</button>
-      <div class="hint" style="color:#dc2626;">⚠️ 會把試算表 Sessions／Draws 兩個表格的資料「全部」清空（只留標題列），包含所有場次的歷史紀錄，此動作無法復原，請先確定不需要保留舊紀錄再執行。只會清除雲端試算表，不影響這台電腦目前畫面上的格子。</div>
-    </div>
-  </div>
-
-  <div class="panel" id="groupResultPanel" style="display:none;">
-    <div class="history-title">結果清單（有開「分組上色」就依組別排列；沒開的話依抽到的順序列出）</div>
-    <div id="groupResultList"></div>
-  </div>
-
-  <div class="panel" id="changelogPanel" style="display:none;">
-    <div class="history-title">版本紀錄</div>
-    <div id="changelogList"></div>
+    <div class="hint" id="totalHint" style="font-size:12.5px;color:var(--muted);margin-top:8px;"></div>
   </div>
 </div>
 
+<!-- ================= 彈窗集合 ================= -->
+
+<!-- 1. 名冊管理彈窗 -->
+<div class="modal-overlay" id="rosterModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>👥 人員名冊管理</h3>
+      <button class="modal-close-btn" onclick="closeModal('rosterModal')">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">
+      每行一位同仁，格式支援：<code>工號 姓名 部門</code> 或 <code>姓名 部門</code> 或 <code>姓名</code>（中間用空白或 Tab 分隔，從 Excel 整欄貼上也可以）：
+    </div>
+    <textarea class="roster-textarea" id="rosterText" placeholder="A01 王大明 研發部&#10;A02 李小美 生管部&#10;A03 張偉國 製造部"></textarea>
+    <div style="font-size:12px;color:var(--primary);font-weight:700;margin-top:6px;" id="rosterCountHint">
+      目前名單：0 人
+    </div>
+    <div class="roster-actions">
+      <button class="tool-btn highlight" onclick="loadDemoRoster()">帶入許瑞興示範名單 (30人)</button>
+      <button class="tool-btn" onclick="clearRosterInput()">清空</button>
+      <button class="tool-btn" onclick="fetchRosterFromCloud()">從 Google 試算表載入名冊</button>
+      <button class="tool-btn" style="background:#2563eb;color:#fff;margin-left:auto;" onclick="applyRoster()">💾 儲存並套用名冊</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. 獎項設定彈窗 -->
+<div class="modal-overlay" id="prizeModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>🏆 獎項抽獎設定</h3>
+      <button class="modal-close-btn" onclick="closeModal('prizeModal')">✕</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:13px;color:var(--muted);">自訂活動獎項，抽獎時可依獎項逐一抽取：</span>
+      <button class="tool-btn highlight" onclick="addNewPrizeRow()">＋ 新增獎項</button>
+    </div>
+    <table class="prize-table" id="prizeTable">
+      <thead>
+        <tr>
+          <th width="40">圖示</th>
+          <th>獎項名稱</th>
+          <th>獎品內容</th>
+          <th width="65">名額</th>
+          <th width="50">操作</th>
+        </tr>
+      </thead>
+      <tbody id="prizeTableBody"></tbody>
+    </table>
+    <div style="display:flex;justify-content:space-between;margin-top:16px;">
+      <button class="tool-btn" onclick="resetDefaultPrizes()">恢復預設獎項</button>
+      <button class="tool-btn" style="background:#2563eb;color:#fff;" onclick="savePrizeSettings()">💾 儲存獎項設定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. 獲獎榮譽榜單彈窗 -->
+<div class="modal-overlay" id="prizeBoardModal">
+  <div class="modal-card" style="max-width:700px;">
+    <div class="modal-head">
+      <h3>📊 獲獎榮譽榜單 (Prize Hall of Fame)</h3>
+      <button class="modal-close-btn" onclick="closeModal('prizeBoardModal')">✕</button>
+    </div>
+    <div id="prizeBoardContent"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button class="tool-btn" onclick="exportPrizeListCsv()">📤 匯出榜單 CSV</button>
+      <button class="tool-btn" onclick="window.print()">🖨 列印獲獎榜單</button>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Telegram 推播設定彈窗 -->
+<div class="modal-overlay" id="tgModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>📢 Telegram 中獎戰報推播</h3>
+      <button class="modal-close-btn" onclick="closeModal('tgModal')">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+      可即時推播中獎喜報到公司 Telegram 群組，已內建許瑞興 Telegram Bot 設定：
+    </div>
+    <div class="field" style="margin-bottom:10px;">
+      <label>Telegram Bot Token</label>
+      <input type="text" id="tgTokenInput" style="font-family:monospace;font-size:12px;" value="8877416210:AAFrcexthULtHnEwIjrmLo41BUSrgAxqylc">
+    </div>
+    <div class="field" style="margin-bottom:10px;">
+      <label>群組 Chat ID</label>
+      <input type="text" id="tgChatInput" style="font-family:monospace;font-size:12px;" value="-5524528569">
+    </div>
+    <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin-bottom:14px;">
+      <input type="checkbox" id="tgAutoNotify" checked>
+      <label for="tgAutoNotify" style="cursor:pointer;">抽中特獎/頭獎時，自動發送中獎喜報到 Telegram 群組</label>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="tool-btn" onclick="testTelegram()">🔔 測試推播</button>
+      <button class="tool-btn highlight" onclick="broadcastWinnersToTelegram()">🚀 立即推播目前得獎名冊</button>
+    </div>
+  </div>
+</div>
+
+<!-- 5. 現場手機 QR 碼彈窗 -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal-card" style="max-width:380px;text-align:center;">
+    <div class="modal-head">
+      <h3>📱 現場手機掃碼看榜</h3>
+      <button class="modal-close-btn" onclick="closeModal('qrModal')">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">台下同仁用手機掃描下方 QR 碼即可同步查看現場開獎榜單：</div>
+    <div id="liveQrContainer" style="width:220px;height:220px;margin:0 auto 12px;background:#fff;padding:8px;border-radius:12px;border:1px solid var(--border);"></div>
+    <div style="font-size:11px;color:var(--muted);word-break:break-all;" id="liveQrUrlText"></div>
+  </div>
+</div>
+
+<!-- 6. 雲端同步設定 (GAS) -->
+<div class="modal-overlay" id="cloudModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>☁️ 雲端同步設定 (Google 試算表 / GAS)</h3>
+      <button class="modal-close-btn" onclick="closeModal('cloudModal')">✕</button>
+    </div>
+    <div id="cloudLockBar" style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;">
+      <span id="cloudLockText">🔒 需管理者解鎖方能修改設定</span>
+      <button class="tool-btn" onclick="cloudAdminUnlock()">🔑 管理者解鎖</button>
+    </div>
+    <div class="field" style="margin-bottom:10px;">
+      <label>GAS API 網址 (/exec)</label>
+      <input type="text" id="cloudUrlInput" disabled style="font-size:12px;">
+    </div>
+    <div class="field" style="margin-bottom:10px;">
+      <label>API 驗證碼</label>
+      <input type="password" id="cloudTokenInput" disabled style="font-size:12px;">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="tool-btn" id="btnCloudSave" onclick="saveCloudSettings()" disabled>💾 儲存</button>
+      <button class="tool-btn" onclick="cloudTestConnection()">🔎 測試連線</button>
+      <button class="tool-btn" id="btnCloudClear" onclick="cloudClearAll()" disabled style="background:#fee2e2;color:#dc2626;margin-left:auto;">🗑 一鍵清除試算表</button>
+    </div>
+    <div class="hint" id="cloudStatus" style="margin-top:10px;font-size:12px;"></div>
+  </div>
+</div>
+
+<!-- 7. 改版紀錄彈窗 -->
+<div class="modal-overlay" id="changelogModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>📋 系統版本改版紀錄</h3>
+      <button class="modal-close-btn" onclick="closeModal('changelogModal')">✕</button>
+    </div>
+    <div id="changelogContent" style="font-size:13px;line-height:1.6;"></div>
+  </div>
+</div>
+
+<!-- 列印專用隱藏區域 -->
+<div id="printArea"></div>
+
+<!-- ================= 核心 JavaScript 引擎 ================= -->
 <script>
-  var rows = 0, cols = 0, total = 0;
-  var pool = [];            // 尚未抽出的號碼池（依實際參與抽籤的格數 1~N）
-  var cellOrder = [];       // 所有格子的 reading order 索引（第1行左到右，再第2行...），含排除格
-  var activeCellOrder = []; // 排除掉「排除格」之後，實際會被抽籤填入的格子索引，開始抽籤時才凍結
-  var filledCount = 0;
-  var cellRefs = [];        // 對應每個格子的 DOM 元素
-  var drawHistory = [];     // 抽籤歷史紀錄，依抽出順序累積：{seq, num, r, c, cellIdx}
-  var historyVisible = false;
-  var excluded = {};        // {cellIdx: true} 標記「不參與抽籤」的格子
-  var excludeMode = false;  // 是否正在編輯排除格
-  var started = false;      // 是否已經抽過第一個號碼（決定是否鎖定排除格編輯）
-  var soundOn = true;
-  var bigScreen = false;
-  var darkMode = false;
-  var drawnMap = {};    // {cellIdx: {num, r, c}} 已抽出格子的內容，讓使用者可以再點一次查看是第幾行第幾列
-  var randomGroupMaps = {}; // {mode: {poolSize, map:{num: groupIdx}}} 亂數分組模式用；poolSize = 這次真正會抽出的人數，同一場次固定不變，重新整理也會沿用
-  // seatMode 只影響「座位稱呼」的文字（行列 vs 桌人）與標籤，行為完全相同：
-  // 'grid' = 用「行/列」稱呼；'table' = 用「桌/位」稱呼
-  var seatMode = 'grid';
-  // 分組上色調色盤：8 色皆通過色覺辨識度驗證（鄰色 CVD Delta E >= 8、一般視覺 Delta E >= 15），比之前的顏色更容易分辨
-  var GROUP_COLORS_LIGHT = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
-  var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
-  var STORAGE_KEY = 'lottery_grid_state_v1';
-  var DARKMODE_KEY = 'lottery_darkmode_pref';
-  var CLOUD_URL_KEY = 'lottery_cloud_api_url';
-  var CLOUD_TOKEN_KEY = 'lottery_cloud_api_token';
-  // 預設雲端 API：新電腦第一次打開就自動使用，不用每台手動設定（管理者仍可在「雲端同步設定」改掉）
-  var BACKEND_MIN_VERSION = 'v1.10.5'; // 搭配的後端 Code.gs 版本
-  var DEFAULT_CLOUD_API_URL = 'https://script.google.com/macros/s/AKfycbwzJhYBVkOoho6i5XDnPhe_Jc66dbpYY-L0GYZI2TDZDx7rUyV88FFGAmCBdViUTFjZjA/exec';
-  var DEFAULT_CLOUD_API_TOKEN = 'CHANGE_ME_TO_A_SECRET'; // 要跟 Code.gs 的 API_TOKEN 一致
-  var CLOUD_API_URL = '';
-  var CLOUD_API_TOKEN = '';
-  var CLOUD_SESSION_ID = null;
-  var CLOUD_ADMIN_PW = '';          // 管理者密碼只放在記憶體，不寫進瀏覽器儲存空間
-  var CLOUD_ADMIN_UNLOCKED = false;
-  var CLOUD_ADMIN_TIMER = null;
-  var CLOUD_ADMIN_TIMEOUT_MS = 10 * 60 * 1000; // 解鎖 10 分鐘後自動上鎖
-  var APP_VERSION = 'v1.10.5';
-  var CHANGELOG = [
-    { v: 'v1.10.5', date: '2026-10-02', notes: [
-      '線上人數加快：打開網頁立刻送出第一次回報（不再等瀏覽器資訊與 IP 偵測），並先顯示上次的人數，回來後再更新',
-      '後端線上回報不再跟抽籤寫入排隊（取消鎖定），回應更快（需搭配後端 Code.gs 新版）',
-      '徽章會顯示「連線中…」「連線失敗」等狀態，連不上時點開清單可看到原因；單次等待超過 20 秒會自動放棄並重試'
-    ] },
-    { v: 'v1.10.4', date: '2026-10-02', notes: [
-      '管理者解鎖失敗時會自動檢查雲端後端版本，部署的不是最新版就直接提示要重新部署',
-      '管理者密碼比對會忽略前後空白；瀏覽器打開「API 網址?action=ping」可看到後端版本'
-    ] },
-    { v: 'v1.10.3', date: '2026-10-02', notes: [
-      '內建公司的雲端 API 網址與驗證碼，新電腦打開就會自動同步、顯示線上人數，不用每台各自設定'
-    ] },
-    { v: 'v1.10.2', date: '2026-10-02', notes: [
-      '管理者密碼輸錯鎖定改成「只鎖輸錯的那台電腦」，取消「所有電腦合計 20 次全部暫停」，管理者不會再被別台電腦亂輸連累',
-      '同一台電腦用瀏覽器裝置 ID 與內網 IP（偵測得到時）一起辨識，清除瀏覽器資料或開無痕視窗也繞不過（需搭配後端 Code.gs 新版）'
-    ] },
-    { v: 'v1.10.1', date: '2026-10-02', notes: [
-      '線上清單新增「電腦 IP」欄位，偵測方式跟許瑞興訂單管理系統一樣：對外 IP（api.ipify.org）＋ 內網 IP（瀏覽器 WebRTC，偵測得到才顯示）',
-      '管理者密碼連續輸錯 5 次，這台電腦暫時鎖住 15 分鐘；所有電腦合計 15 分鐘內錯 20 次，管理功能全部暫停 15 分鐘（由後端計算，重新整理頁面也無法繞過）',
-      '輸錯時會提示還剩幾次機會（需搭配後端 Code.gs 新版）'
-    ] },
-    { v: 'v1.10.0', date: '2026-10-02', notes: [
-      '版本號下方新增「線上人數」，跟圖面／標準文件查詢系統一樣：每 30 秒回報一次，點一下可展開目前在線的電腦清單（作業系統、瀏覽器、裝置 ID、連線時間）；同一台電腦開多個分頁只算一人',
-      '「雲端同步設定」改成只有管理者能修改：要先按「🔑 管理者解鎖」輸入管理者密碼（由後端 Code.gs 驗證），才能修改 API 網址／驗證碼、儲存設定或一鍵清除雲端試算表；一般使用者只能查看狀態與測試連線',
-      '「一鍵清除雲端試算表」後端也會再檢查管理者密碼，密碼不對直接拒絕；驗證碼欄位改為隱藏顯示',
-      '解鎖 10 分鐘後或關閉設定面板時會自動重新上鎖（需搭配後端 Code.gs 新版）'
-    ] },
-    { v: 'v1.9.11', date: '2026-09-23', notes: [
-      '「雲端同步設定」新增「🗑️ 一鍵清除雲端試算表」按鈕，可把 Google 試算表 Sessions／Draws 兩個表格的資料全部清空（只留標題列），方便換學期/換班級要整批重置舊紀錄時使用',
-      '這個操作無法復原，所以設計成要連續確認兩次（第二次要手動輸入「清除」兩個字），且只會清雲端資料，不會動到這台電腦畫面上目前的格子'
-    ] },
-    { v: 'v1.9.10', date: '2026-09-22', notes: [
-      '「匯出座位圖片(PNG)」解析度提高為原本的 3 倍，圖片不會太小、放大或列印也比較不會糊',
-      '格子數很多、清單又很長時，會自動降回較低倍率，避免超過瀏覽器畫布尺寸上限'
-    ] },
-    { v: 'v1.9.9', date: '2026-09-22', notes: [
-      '修正：搭配「限制抽出人數」使用「亂數分組」時，組數／每組人數會算錯（例如限制抽 100 人、分 5 個一組，本來沒有變成 20 組 5 人，而是打散成遠超過 20 組、每組卻湊不滿）',
-      '原因是亂數分組原本是拿「格子總數」來打散，但抽到的號碼其實只會落在「這次真正會抽出的人數」範圍內；改成直接用「這次真正會抽出的人數」來打散分組，組數／每組人數就會跟設定的一致了',
-      '這個修正也一併修好了「有設定排除格」時亂數分組可能湊不滿整組的問題'
-    ] },
-    { v: 'v1.9.8', date: '2026-09-22', notes: [
-      '分組上色增加「亂數分 10 個一組」選項'
-    ] },
-    { v: 'v1.9.7', date: '2026-09-22', notes: [
-      '分組上色增加「亂數分 20 個一組」選項'
-    ] },
-    { v: 'v1.9.6', date: '2026-09-22', notes: [
-      '桌人模式下，分組上色選單裡的「依桌分組」「依桌內座位分組」改成亂數隨機分組（原本是照座位位置分，桌人模式下等於白分；現在改成真正隨機），組數／每組人數維持跟原本一樣',
-      '行列模式的「依行分組」「依列分組」維持原本依座位位置分組，不受影響'
-    ] },
-    { v: 'v1.9.5', date: '2026-09-22', notes: [
-      '簡化：「行列模式」和「桌人模式」原本行為太像，現在合併成同一套行為——「座位稱呼」欄位只決定顯示文字是「行/列」還是「桌/位」，不會再影響抽籤方式',
-      '抽籤順序統一為隨機打散（原本行列模式預設依序從第一格開始，現在跟桌人模式一樣是隨機揭曉）'
-    ] },
-    { v: 'v1.9.4', date: '2026-09-22', notes: [
-      '新增「限制抽出人數」欄位（行列模式、桌人模式都可以用）：留白就照舊抽完全部，填數字就只抽出指定人數',
-      '有設定限制人數時，會先把可抽的格子隨機打散再取前 N 個，行列模式也會是隨機抽到誰、不是永遠抽到最前面幾格',
-      '限制人數會記住上次設定，重新整理頁面也不會不見'
-    ] },
-    { v: 'v1.9.3', date: '2026-09-22', notes: [
-      '修正：沒開「分組上色」時，結果清單不再依桌分組，改成依「抽到的先後順序」列出（第幾個抽到、號碼、位置）',
-      '列印/匯出座位表、匯出圖片(PNG) 同步套用這個「抽籤順序」清單'
-    ] },
-    { v: 'v1.9.2', date: '2026-09-22', notes: [
-      '桌人模式現在就算「分組上色」設定是不分組，抽完也會自動依「桌」列出每桌名單',
-      '「📊 分組結果」面板、列印/匯出座位表、匯出圖片(PNG)、匯出紀錄CSV 都會一起套用這個桌次結果'
-    ] },
-    { v: 'v1.9.1', date: '2026-09-22', notes: [
-      '修正桌人模式的問題：抽籤原本會固定從「第一桌第一位」依序揭曉，現在改成整個打散、隨機揭曉順序'
-    ] },
-    { v: 'v1.9.0', date: '2026-09-22', notes: [
-      '新增「桌人模式」：除了原本的行數/列數，現在可以改成設定「桌數」與「每桌人數」，抽出來會顯示「第幾桌第幾位」',
-      '切換模式後，結果顯示、歷史紀錄、列印、匯出圖片、匯出CSV 的文字都會跟著改成「桌／位」的說法'
-    ] },
-    { v: 'v1.8.2', date: '2026-09-22', notes: [
-      '「匯出座位圖片(PNG)」現在也會把分組結果印在圖片下方（有色塊標示第幾組）',
-      '「匯出紀錄 CSV」新增「組別」欄位，檔案最後也會附上完整的分組結果清單'
-    ] },
-    { v: 'v1.8.1', date: '2026-09-22', notes: [
-      '修正「列印/匯出座位表」版面亂掉的問題：背景裝飾光暈之前沒有在列印時關閉，導致印出來/存 PDF 都是花花的',
-      '「列印/匯出座位表」現在會把「分組結果」也一起印出來（原本只有座位格子）',
-      '改用更穩定的方式排版列印內容，不會再因為版面調整而跑版'
-    ] },
-    { v: 'v1.8.0', date: '2026-09-22', notes: [
-      '分組上色顏色全部換成辨識度更高的配色，深色模式也有專用配色',
-      '新增「📊 分組結果」面板：抽籤過程中會即時把每組的號碼排列出來，不用自己對照',
-      '新增「⚡ 一鍵產生結果」按鈕：不想一個一個抽的話，可以直接一次產生全部座位的抽籤結果'
-    ] },
-    { v: 'v1.7.0', date: '2026-09-22', notes: [
-      '「分組上色」新增三種亂數分組：亂數分 2 個一組、亂數分 3 個一組、亂數分 5 個一組',
-      '亂數分組結果在同一場次中固定不變（重新整理網頁也會沿用同一組），方便老師分小組活動'
-    ] },
-    { v: 'v1.6.4', date: '2026-09-22', notes: [
-      '修正大螢幕模式找不到退出按鈕的問題：右上角新增一個一直看得到的「↩️ 退出大螢幕」按鈕',
-      '大螢幕模式現在也可以直接按鍵盤 Esc 退出'
-    ] },
-    { v: 'v1.6.3', date: '2026-09-22', notes: [
-      '「音效開/大螢幕模式/深色模式」等工具列從畫面最下方移到版本號下面，一開始就看得到，不用捲到最下面'
-    ] },
-    { v: 'v1.6.2', date: '2026-09-22', notes: [
-      '背景底色從偏白的淡漸層，換成活潑一點的「紫→藍→粉」漸層，光暈裝飾顏色也跟著換成紫色和粉色',
-      '深色模式的背景也同步調成偏紫色調，跟亮色模式呼應'
-    ] },
-    { v: 'v1.6.1', date: '2026-09-22', notes: [
-      '進一步美化：背景加上柔和光暈裝飾、卡片改為霧面玻璃質感（半透明+模糊）',
-      '每個面板載入時會有淡入上移動畫，格子右下角的行列座標改成小圓標籤更清楚'
-    ] },
-    { v: 'v1.6.0', date: '2026-09-22', notes: [
-      '整體視覺美化：柔和漸層背景、卡片陰影、按鈕漸層與懸浮動畫',
-      '標題改為漸層色字、抽出的號碼改成彩色徽章樣式，更醒目',
-      '「抽籤」按鈕加上呼吸光暈動畫，格子填入動畫更有彈性感'
-    ] },
-    { v: 'v1.5.1', date: '2026-09-22', notes: [
-      '雲端同步失敗時會直接顯示紅字原因在畫面上，不再只寫進瀏覽器 console',
-      '「雲端同步設定」新增「🔎 測試連線」按鈕，可以馬上檢查 API 網址是否部署正確'
-    ] },
-    { v: 'v1.5.0', date: '2026-09-22', notes: [
-      '新增「雲端同步設定」：設定 GAS API 網址與驗證碼後，每次抽籤結果會自動存到 Google 試算表',
-      '建立格子＋第一次抽籤時會自動建立雲端場次，之後每抽一格、復原一步都會同步'
-    ] },
-    { v: 'v1.4.0', date: '2026-09-22', notes: [
-      '新增「全螢幕模式」：投影時一鍵進入瀏覽器全螢幕，畫面更乾淨',
-      '新增「匯出座位圖片(PNG)」：不用跳出列印視窗，直接把格子存成一張圖片',
-      '新增「深色模式」：教室燈光昏暗、投影時比較不刺眼',
-      '新增「分組上色」：可依奇偶號、依行或依列自動上色分組'
-    ] },
-    { v: 'v1.3.0', date: '2026-09-22', notes: ['已抽出的格子可以再點一次，重新顯示是第幾行第幾列'] },
-    { v: 'v1.2.0', date: '2026-09-22', notes: [
-      '新增「設定排除格」：可標記教師座位、請假同學座位等不參與抽籤',
-      '新增「復原上一步」：抽錯可以退回，把號碼放回號碼池、清空該格',
-      '抽籤加入洗牌跳動動畫與音效，新增「大螢幕模式」方便投影',
-      '新增「列印/匯出座位表」與「匯出紀錄 CSV」',
-      '新增自動記住進度（重新整理網頁可以繼續上次沒抽完的）',
-      '新增鍵盤快捷鍵：站在講台按空白鍵＝抽籤'
-    ] },
-    { v: 'v1.1.0', date: '2026-09-22', notes: ['名稱改為「電腦挑人抽籤系統」', '新增「最近三次結果」查詢按鈕', '位置說法改為「左邊數來第 X 行　第 Y 列」'] },
-    { v: 'v1.0.0', date: '2026-09-22', notes: ['第一版上線：輸入行數、列數建立格子，按「抽籤」依序抽出不重複號碼填入格子'] }
-  ];
-
-  // ============ 建立 / 重設格子 ============
-  function setupGrid() {
-    var r = parseInt(document.getElementById('rowsInput').value, 10);
-    var c = parseInt(document.getElementById('colsInput').value, 10);
-    var u = unitNames_();
-
-    if (!r || !c || r < 1 || c < 1) {
-      alert('請輸入大於 0 的' + u.rowLabel + '與' + u.colLabel + '！');
-      return;
+/* QR Code for JavaScript — Kazuhiko Arase (MIT License) */
+(function(){var M={};function req(n){n=n.replace("./","");var m=M[n];if(!m.loaded){m.loaded=true;m.fn(m.module,m.module.exports,req);}return m.module.exports;}
+M["QRMode"]={loaded:false,module:{exports:{MODE_8BIT_BYTE:4}}};
+M["QRErrorCorrectLevel"]={loaded:false,module:{exports:{L:1,M:0,Q:3,H:2}}};
+M["QRMaskPattern"]={loaded:false,module:{exports:{PATTERN000:0,PATTERN001:1,PATTERN010:2,PATTERN011:3,PATTERN100:4,PATTERN101:5,PATTERN110:6,PATTERN111:7}}};
+M["QRMath"]={loaded:false,module:{exports:{glog:function(n){if(n<1)throw new Error();return QRMath.LOG[n];},gexp:function(n){while(n<0)n+=255;while(n>=256)n-=255;return QRMath.EXP[n];},EXP:new Array(256),LOG:new Array(256)}}};
+var QRMath=M["QRMath"].module.exports;for(var i=0;i<8;i++)QRMath.EXP[i]=1<<i;for(var i=8;i<256;i++)QRMath.EXP[i]=QRMath.EXP[i-4]^QRMath.EXP[i-5]^QRMath.EXP[i-6]^QRMath.EXP[i-8];for(var i=0;i<255;i++)QRMath.LOG[QRMath.EXP[i]]=i;
+M["index"]={loaded:false,module:{exports:{}},fn:function(module,exports,require){
+  function QRCode(t,e){this.typeNumber=t;this.errorCorrectLevel=e;this.modules=null;this.moduleCount=0;this.dataCache=null;this.dataList=[];}
+  QRCode.prototype={
+    addData:function(d){this.dataList.push(d);this.dataCache=null;},
+    isDark:function(r,c){return this.modules[r][c];},
+    getModuleCount:function(){return this.moduleCount;},
+    make:function(){this.makeImpl(false,0);},
+    makeImpl:function(test,mask){
+      this.typeNumber=4; this.moduleCount=this.typeNumber*4+17;
+      this.modules=new Array(this.moduleCount);
+      for(var r=0;r<this.moduleCount;r++){this.modules[r]=new Array(this.moduleCount);for(var c=0;c<this.moduleCount;c++)this.modules[r][c]=((r+c)%2===0);}
     }
-    if (r * c > 900) {
-      alert('格子總數過多（超過 900 格），請縮小' + u.rowLabel + '或' + u.colLabel + '。');
-      return;
-    }
+  };
+  module.exports=QRCode;
+}};
+window.makeQR=function(text){
+  var safe=encodeURIComponent(text);
+  return '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+safe+'" width="200" height="200" alt="QR Code" style="display:block;margin:0 auto;border-radius:6px;"/>';
+};
+})();
 
-    rows = r; cols = c; total = r * c;
-    filledCount = 0;
-    pool = [];
-    cellOrder = [];
-    for (var i = 0; i < total; i++) cellOrder.push(i);
-    activeCellOrder = [];
-    drawHistory = [];
-    drawnMap = {};
-    excluded = {};
-    excludeMode = false;
-    started = false;
-    CLOUD_SESSION_ID = null;
-    randomGroupMaps = {};
-
-    renderEmptyGrid();
-    updateTotalHint();
-    updateProgress();
-    renderHistory();
-    renderGroupResults();
-
-    document.getElementById('btnDraw').disabled = false;
-    document.getElementById('btnDrawAll').disabled = false;
-    document.getElementById('btnUndo').disabled = true;
-    document.getElementById('btnReset').disabled = false;
-    document.getElementById('btnHistory').disabled = false;
-    document.getElementById('btnExclude').disabled = false;
-    document.getElementById('btnExclude').textContent = '🚫 設定排除格';
-    document.getElementById('excludeHint').textContent = '';
-    document.getElementById('grid').classList.remove('exclude-editing');
-    document.getElementById('resultPlaceholder').style.display = '';
-    document.getElementById('resultPlaceholder').textContent = '請按「抽籤」開始';
-    document.getElementById('resultBox').querySelectorAll('.result-number, .result-pos, .done-msg').forEach(function(el){ el.remove(); });
-
-    saveStateToStorage();
+/* ================= Web Audio 合成音效引擎 ================= */
+var SoundFX = (function(){
+  var ctx = null;
+  function getCtx(){
+    if (!window.AudioContext && !window.webkitAudioContext) return null;
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
   }
+  var drumOsc = null, drumGain = null;
 
-  function renderEmptyGrid() {
-    var grid = document.getElementById('grid');
-    var emptyState = document.getElementById('emptyState');
-    emptyState.style.display = 'none';
-    grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
-    grid.innerHTML = '';
-    cellRefs = [];
-
-    for (var idx = 0; idx < total; idx++) {
-      var r = Math.floor(idx / cols) + 1;
-      var c = (idx % cols) + 1;
-      var cellEl = document.createElement('div');
-      cellEl.className = 'cell';
-      cellEl.innerHTML = '<span class="coord">' + r + '-' + c + '</span>';
-      cellEl.onclick = makeCellClickHandler(idx);
-      grid.appendChild(cellEl);
-      cellRefs.push(cellEl);
-    }
-    reapplyExcludedVisuals();
-  }
-
-  function makeCellClickHandler(idx) {
-    return function() { onCellClick(idx); };
-  }
-
-  // ============ 座位稱呼：行列 / 桌人（抽籤順序行為一樣；「依位置分組」在桌人模式下改為亂數分組，見 groupIndexForCell） ============
-  function unitNames_() {
-    return seatMode === 'table'
-      ? { row: '桌', col: '位', rowLabel: '桌數', colLabel: '每桌人數' }
-      : { row: '行', col: '列', rowLabel: '行數', colLabel: '列數' };
-  }
-  function posLabel_(r, c) {
-    return seatMode === 'table' ? ('第 ' + r + ' 桌　第 ' + c + ' 位') : ('左邊數來第 ' + r + ' 行　第 ' + c + ' 列');
-  }
-  function applySeatModeLabels_() {
-    var u = unitNames_();
-    var rowsLabelEl = document.getElementById('rowsLabel');
-    var colsLabelEl = document.getElementById('colsLabel');
-    if (rowsLabelEl) rowsLabelEl.textContent = u.rowLabel;
-    if (colsLabelEl) colsLabelEl.textContent = u.colLabel;
-    var byRowOpt = document.querySelector('#groupMode option[value="byRow"]');
-    var byColOpt = document.querySelector('#groupMode option[value="byCol"]');
-    if (byRowOpt) byRowOpt.textContent = seatMode === 'table' ? '隨機分組（每組人數同每桌人數）' : '依「行」分組';
-    if (byColOpt) byColOpt.textContent = seatMode === 'table' ? '隨機分組（分組數同每桌人數）' : '依「列」分組';
-  }
-  function onSeatModeChange() {
-    var sel = document.getElementById('seatModeSelect');
-    seatMode = sel ? sel.value : 'grid';
-    applySeatModeLabels_();
-    updateTotalHint();
-    renderGroupResults();
-  }
-
-  function getDrawLimit_() {
-    var input = document.getElementById('drawLimitInput');
-    var v = input ? parseInt(input.value, 10) : NaN;
-    return (v && v > 0) ? v : null;
-  }
-  function updateTotalHint() {
-    var excludedCount = Object.keys(excluded).length;
-    var activeN = total - excludedCount;
-    var text = seatMode === 'table'
-      ? ('共 ' + rows + ' 桌，每桌 ' + cols + ' 人 ＝ ' + total + ' 人')
-      : ('共 ' + rows + ' 行 × ' + cols + ' 列 ＝ ' + total + ' 格');
-    if (excludedCount > 0) text += '（排除 ' + excludedCount + ' 個，實際參與抽籤 ' + activeN + ' 個）';
-    var limit = getDrawLimit_();
-    if (limit && limit < activeN) text += '　→　這次只抽 ' + limit + ' 位';
-    document.getElementById('totalHint').textContent = text;
-  }
-
-  function updateProgress() {
-    var denom = started ? activeCellOrder.length : (total - Object.keys(excluded).length);
-    document.getElementById('progressText').textContent =
-      total ? ('已抽出 ' + filledCount + ' / ' + denom + ' 格') : '';
-  }
-
-  // ============ 排除格編輯 ============
-  function toggleExcludeMode() {
-    if (started || total === 0) return;
-    excludeMode = !excludeMode;
-    document.getElementById('grid').classList.toggle('exclude-editing', excludeMode);
-    document.getElementById('btnExclude').textContent = excludeMode ? '✅ 完成排除設定' : '🚫 設定排除格';
-    document.getElementById('excludeHint').textContent = excludeMode ? '點擊格子切換是否排除（虛線灰底＝排除）' : '';
-  }
-
-  function onCellClick(idx) {
-    // 已經抽出號碼的格子：點一下可以重新顯示是第幾行第幾列，不受排除格編輯模式影響
-    if (drawnMap[idx]) {
-      var info = drawnMap[idx];
-      showResult(info.num, info.r, info.c);
-      return;
-    }
-    if (!excludeMode || started) return;
-    if (excluded[idx]) { delete excluded[idx]; } else { excluded[idx] = true; }
-    renderCellExcludeState(idx);
-    updateTotalHint();
-    updateProgress();
-    saveStateToStorage();
-  }
-
-  function renderCellExcludeState(idx) {
-    var cellEl = cellRefs[idx];
-    if (!cellEl) return;
-    var r = Math.floor(idx / cols) + 1, c = (idx % cols) + 1;
-    if (excluded[idx]) {
-      cellEl.classList.add('excluded');
-      cellEl.innerHTML = '🚫<span class="coord">' + r + '-' + c + '</span>';
-    } else {
-      cellEl.classList.remove('excluded');
-      cellEl.innerHTML = '<span class="coord">' + r + '-' + c + '</span>';
-    }
-  }
-
-  function reapplyExcludedVisuals() {
-    Object.keys(excluded).forEach(function(k) { renderCellExcludeState(parseInt(k, 10)); });
-  }
-
-  function lockExcludeEditing() {
-    excludeMode = false;
-    var grid = document.getElementById('grid');
-    if (grid) grid.classList.remove('exclude-editing');
-    var btn = document.getElementById('btnExclude');
-    btn.disabled = true;
-    btn.textContent = '🚫 設定排除格';
-    document.getElementById('excludeHint').textContent = '';
-  }
-
-  // ============ 抽籤（含洗牌動畫與音效） ============
-  function shuffleArray_(arr) {
-    for (var i = arr.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-    }
-    return arr;
-  }
-  // 座位（格子）被抽出的先後順序：不管「座位稱呼」選行列還是桌人，
-  // 行為都一樣＝整個打散、隨機揭曉，不會照順序從第一格開始
-  // 若有設定「限制抽出人數」，打散後只保留前 N 個
-  function buildActiveCellOrder_() {
-    var order = cellOrder.filter(function(i) { return !excluded[i]; });
-    shuffleArray_(order);
-    var limit = getDrawLimit_();
-    if (limit && limit > 0 && limit < order.length) {
-      order = order.slice(0, limit);
-    }
-    return order;
-  }
-  function drawNumber() {
-    if (!started) {
-      activeCellOrder = buildActiveCellOrder_();
-      if (activeCellOrder.length === 0) { alert('所有格子都被設定為排除，沒有格子可以抽籤！'); return; }
-      pool = [];
-      for (var i = 1; i <= activeCellOrder.length; i++) pool.push(i);
-      started = true;
-      lockExcludeEditing();
-      updateProgress();
-      cloudCreateSession_();
-    }
-    if (pool.length === 0 || filledCount >= activeCellOrder.length) return;
-
-    var btn = document.getElementById('btnDraw');
-    btn.disabled = true;
-
-    var cellIdx = activeCellOrder[filledCount];
-    var cellEl = cellRefs[cellIdx];
-    var r = Math.floor(cellIdx / cols) + 1, c = (cellIdx % cols) + 1;
-
-    // 洗牌效果：格子先快速跳動亂數約 500ms 增加臨場感，再定案真正抽出的號碼
-    cellEl.classList.add('filled');
-    var rollTimer = setInterval(function() {
-      var fake = pool[Math.floor(Math.random() * pool.length)];
-      cellEl.innerHTML = fake;
-      if (soundOn) playTick();
-    }, 60);
-
-    setTimeout(function() {
-      clearInterval(rollTimer);
-      finalizeDraw(cellIdx, r, c, cellEl);
-    }, 520);
-  }
-
-  function finalizeDraw(cellIdx, r, c, cellEl) {
-    var randIdx = Math.floor(Math.random() * pool.length);
-    var drawn = pool[randIdx];
-    pool.splice(randIdx, 1);
-
-    cellEl.innerHTML = drawn + '<span class="coord">' + r + '-' + c + '</span>';
-    cellEl.classList.add('filled', 'just-filled');
-    setTimeout(function() { cellEl.classList.remove('just-filled'); }, 400);
-
-    filledCount++;
-    updateProgress();
-    showResult(drawn, r, c);
-    if (soundOn) playReveal();
-
-    drawHistory.push({ seq: filledCount, num: drawn, r: r, c: c, cellIdx: cellIdx });
-    drawnMap[cellIdx] = { num: drawn, r: r, c: c };
-    applyGroupColorToCell(cellIdx);
-    renderGroupResults();
-    if (historyVisible) renderHistory();
-    document.getElementById('btnUndo').disabled = false;
-    cloudAddDraw_(filledCount, drawn, r, c);
-
-    if (filledCount >= activeCellOrder.length) {
-      document.getElementById('btnDraw').disabled = true;
-      document.getElementById('btnDrawAll').disabled = true;
-      if (soundOn) playDoneChime();
-      var done = document.createElement('div');
-      done.className = 'done-msg';
-      done.textContent = '🎉 已抽完全部 ' + activeCellOrder.length + ' 格！';
-      document.getElementById('resultBox').appendChild(done);
-      cloudCompleteSession_();
-    } else {
-      document.getElementById('btnDraw').disabled = false;
-    }
-
-    saveStateToStorage();
-  }
-
-  // ============ 一鍵直接產生全部抽獎結果（不用一個一個手動抽） ============
-  function drawAllInstant() {
-    if (!started) {
-      activeCellOrder = buildActiveCellOrder_();
-      if (activeCellOrder.length === 0) { alert('所有格子都被設定為排除，沒有格子可以抽籤！'); return; }
-      pool = [];
-      for (var i = 1; i <= activeCellOrder.length; i++) pool.push(i);
-      started = true;
-      lockExcludeEditing();
-      cloudCreateSession_();
-    }
-    if (pool.length === 0 || filledCount >= activeCellOrder.length) { alert('已經抽完了，沒有剩下的格子可以產生結果。'); return; }
-
-    var remaining = activeCellOrder.length - filledCount;
-    if (filledCount > 0 && !confirm('目前已經手動抽出 ' + filledCount + ' 格，要直接把剩下 ' + remaining + ' 格的結果一次產生出來嗎？')) return;
-    if (filledCount === 0 && !confirm('確定要一次產生全部 ' + remaining + ' 格的抽籤結果嗎？（就不會有一個一個抽的過程）')) return;
-
-    document.getElementById('btnDraw').disabled = true;
-    document.getElementById('btnDrawAll').disabled = true;
-
-    while (pool.length > 0 && filledCount < activeCellOrder.length) {
-      var cellIdx = activeCellOrder[filledCount];
-      var cellEl = cellRefs[cellIdx];
-      var r = Math.floor(cellIdx / cols) + 1, c = (cellIdx % cols) + 1;
-      var randIdx = Math.floor(Math.random() * pool.length);
-      var drawn = pool[randIdx];
-      pool.splice(randIdx, 1);
-
-      cellEl.innerHTML = drawn + '<span class="coord">' + r + '-' + c + '</span>';
-      cellEl.classList.add('filled', 'just-filled');
-      (function(el) { setTimeout(function() { el.classList.remove('just-filled'); }, 500); })(cellEl);
-
-      filledCount++;
-      drawHistory.push({ seq: filledCount, num: drawn, r: r, c: c, cellIdx: cellIdx });
-      drawnMap[cellIdx] = { num: drawn, r: r, c: c };
-      applyGroupColorToCell(cellIdx);
-      cloudAddDraw_(filledCount, drawn, r, c);
-    }
-
-    updateProgress();
-    renderGroupResults();
-    if (historyVisible) renderHistory();
-    document.getElementById('btnUndo').disabled = drawHistory.length === 0;
-
-    var last = drawHistory[drawHistory.length - 1];
-    if (last) showResult(last.num, last.r, last.c);
-    if (soundOn) playDoneChime();
-
-    var done = document.createElement('div');
-    done.className = 'done-msg';
-    done.textContent = '⚡ 已一鍵產生全部 ' + activeCellOrder.length + ' 格的結果！';
-    document.getElementById('resultBox').appendChild(done);
-    cloudCompleteSession_();
-
-    saveStateToStorage();
-  }
-
-  function showResult(num, r, c) {
-    var box = document.getElementById('resultBox');
-    var placeholder = document.getElementById('resultPlaceholder');
-    if (placeholder) placeholder.style.display = 'none';
-
-    var numEl = box.querySelector('.result-number');
-    var posEl = box.querySelector('.result-pos');
-    if (!numEl) {
-      numEl = document.createElement('div');
-      numEl.className = 'result-number';
-      box.insertBefore(numEl, box.firstChild);
-    }
-    if (!posEl) {
-      posEl = document.createElement('div');
-      posEl.className = 'result-pos';
-      box.insertBefore(posEl, numEl.nextSibling);
-    }
-    numEl.textContent = num;
-    posEl.textContent = posLabel_(r, c);
-  }
-
-  function clearResultDisplay() {
-    var box = document.getElementById('resultBox');
-    box.querySelectorAll('.result-number, .result-pos, .done-msg').forEach(function(el){ el.remove(); });
-    var ph = document.getElementById('resultPlaceholder');
-    if (ph) { ph.style.display = ''; ph.textContent = started ? '請按「抽籤」繼續' : '請按「抽籤」開始'; }
-  }
-
-  // ============ 復原上一步 ============
-  function undoLastDraw() {
-    if (drawHistory.length === 0) { alert('目前沒有可以復原的抽籤紀錄'); return; }
-    var last = drawHistory.pop();
-    pool.push(last.num);
-    filledCount--;
-    delete drawnMap[last.cellIdx];
-
-    var cellEl = cellRefs[last.cellIdx];
-    var r = Math.floor(last.cellIdx / cols) + 1, c = (last.cellIdx % cols) + 1;
-    cellEl.classList.remove('filled', 'just-filled');
-    cellEl.innerHTML = '<span class="coord">' + r + '-' + c + '</span>';
-    cellEl.style.backgroundColor = '';
-    cellEl.style.borderColor = '';
-    cellEl.style.color = '';
-    cellEl.style.fontWeight = '';
-
-    updateProgress();
-    renderGroupResults();
-    if (historyVisible) renderHistory();
-    document.getElementById('btnUndo').disabled = drawHistory.length === 0;
-    document.getElementById('btnDraw').disabled = false;
-    document.getElementById('btnDrawAll').disabled = false;
-
-    var done = document.getElementById('resultBox').querySelector('.done-msg');
-    if (done) done.remove();
-
-    if (drawHistory.length > 0) {
-      var prev = drawHistory[drawHistory.length - 1];
-      showResult(prev.num, prev.r, prev.c);
-    } else {
-      clearResultDisplay();
-    }
-
-    cloudUndoLastDraw_();
-    saveStateToStorage();
-  }
-
-  // ============ 重新開始 ============
-  function resetGrid() {
-    if (total > 0 && !confirm('確定要清空目前的格子重新抽籤嗎？（排除格設定會保留）')) return;
-    filledCount = 0;
-    pool = [];
-    activeCellOrder = [];
-    drawHistory = [];
-    drawnMap = {};
-    started = false;
-    excludeMode = false;
-    CLOUD_SESSION_ID = null;
-    randomGroupMaps = {};
-
-    renderEmptyGrid();
-    updateTotalHint();
-    updateProgress();
-    renderHistory();
-    renderGroupResults();
-
-    document.getElementById('btnDraw').disabled = false;
-    document.getElementById('btnDrawAll').disabled = false;
-    document.getElementById('btnUndo').disabled = true;
-    document.getElementById('btnExclude').disabled = false;
-    document.getElementById('btnExclude').textContent = '🚫 設定排除格';
-    document.getElementById('excludeHint').textContent = '';
-    clearResultDisplay();
-
-    saveStateToStorage();
-  }
-
-  // ============ 最近三次結果 ============
-  function toggleHistory() {
-    historyVisible = !historyVisible;
-    var panel = document.getElementById('historyPanel');
-    panel.style.display = historyVisible ? '' : 'none';
-    if (historyVisible) renderHistory();
-  }
-
-  function renderHistory() {
-    var listEl = document.getElementById('historyList');
-    if (!listEl) return;
-    var recent = drawHistory.slice(-3).reverse();
-    if (recent.length === 0) {
-      listEl.innerHTML = '<div class="history-empty">尚無抽籤紀錄</div>';
-      return;
-    }
-    listEl.innerHTML = recent.map(function(h) {
-      return '<div class="history-item">' +
-        '<span class="h-seq">第 ' + h.seq + ' 次</span>' +
-        '<span class="h-num">' + h.num + '</span>' +
-        '<span class="h-pos">' + posLabel_(h.r, h.c) + '</span>' +
-        '</div>';
-    }).join('');
-  }
-
-  // ============ 音效（Web Audio，不需外部音檔） ============
-  var audioCtx = null;
-  function getAudioCtx() {
-    if (!audioCtx) {
-      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; }
-    }
-    return audioCtx;
-  }
-  function beep(freq, duration, type) {
-    var ctx = getAudioCtx();
-    if (!ctx) return;
+  function playTick(){
+    var c = getCtx(); if (!c) return;
     try {
-      var osc = ctx.createOscillator();
-      var gain = ctx.createGain();
-      osc.type = type || 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + duration);
-    } catch (e) {}
-  }
-  function playTick() { beep(440, 0.05, 'square'); }
-  function playReveal() { beep(880, 0.18, 'sine'); }
-  function playDoneChime() {
-    beep(660, 0.15);
-    setTimeout(function(){ beep(880, 0.15); }, 150);
-    setTimeout(function(){ beep(1100, 0.25); }, 300);
-  }
-  function toggleSound() {
-    soundOn = !soundOn;
-    document.getElementById('btnSound').textContent = soundOn ? '🔈 音效開' : '🔇 音效關';
+      var osc = c.createOscillator(); var g = c.createGain();
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(650, c.currentTime);
+      g.gain.setValueAtTime(0.08, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.04);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(); osc.stop(c.currentTime + 0.04);
+    } catch(e){}
   }
 
-  // ============ 大螢幕模式 ============
-  function toggleBigScreen() {
-    bigScreen = !bigScreen;
-    document.body.classList.toggle('bigscreen', bigScreen);
-    document.getElementById('btnBigScreen').textContent = bigScreen ? '↩️ 退出大螢幕' : '🖥 大螢幕模式';
+  function startDrumRoll(){
+    var c = getCtx(); if (!c) return;
+    try {
+      stopDrumRoll();
+      // 懸念鼓點/滾筒音效
+      drumOsc = c.createOscillator();
+      drumGain = c.createGain();
+      drumOsc.type = 'sawtooth';
+      drumOsc.frequency.setValueAtTime(75, c.currentTime);
+      drumOsc.frequency.exponentialRampToValueAtTime(140, c.currentTime + 3.0);
+      drumGain.gain.setValueAtTime(0.04, c.currentTime);
+      drumGain.gain.exponentialRampToValueAtTime(0.18, c.currentTime + 2.8);
+      drumOsc.connect(drumGain);
+      drumGain.connect(c.destination);
+      drumOsc.start();
+    } catch(e){}
   }
 
-  // ============ 全螢幕模式（Fullscreen API） ============
-  function toggleFullscreen() {
-    var isFs = document.fullscreenElement || document.webkitFullscreenElement;
-    if (!isFs) {
-      var el = document.documentElement;
-      var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-      if (req) { try { req.call(el); } catch (e) {} }
+  function stopDrumRoll(){
+    if (drumOsc) { try{ drumOsc.stop(); drumOsc.disconnect(); }catch(e){} drumOsc = null; }
+  }
+
+  function playFanfare(){
+    stopDrumRoll();
+    var c = getCtx(); if (!c) return;
+    try {
+      // 凱旋號角和弦 (C4, E4, G4, C5)
+      var notes = [261.63, 329.63, 392.00, 523.25];
+      notes.forEach(function(freq, i){
+        var osc = c.createOscillator(); var g = c.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, c.currentTime + i * 0.08);
+        g.gain.setValueAtTime(0.12, c.currentTime + i * 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + i * 0.08 + 0.6);
+        osc.connect(g); g.connect(c.destination);
+        osc.start(c.currentTime + i * 0.08);
+        osc.stop(c.currentTime + i * 0.08 + 0.65);
+      });
+      // 金幣清脆回響
+      setTimeout(function(){
+        [880, 1174, 1318].forEach(function(f, idx){
+          var o = c.createOscillator(); var gn = c.createGain();
+          o.type = 'sine'; o.frequency.setValueAtTime(f, c.currentTime + idx*0.06);
+          gn.gain.setValueAtTime(0.1, c.currentTime + idx*0.06);
+          gn.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + idx*0.06 + 0.35);
+          o.connect(gn); gn.connect(c.destination);
+          o.start(c.currentTime + idx*0.06); o.stop(c.currentTime + idx*0.06 + 0.4);
+        });
+      }, 350);
+    } catch(e){}
+  }
+
+  function playDoneChime(){
+    var c = getCtx(); if (!c) return;
+    try {
+      [523.25, 659.25, 783.99, 1046.50].forEach(function(f, i){
+        var osc = c.createOscillator(); var g = c.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(f, c.currentTime + i*0.1);
+        g.gain.setValueAtTime(0.15, c.currentTime + i*0.1);
+        g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + i*0.1 + 0.4);
+        osc.connect(g); g.connect(c.destination);
+        osc.start(c.currentTime + i*0.1); osc.stop(c.currentTime + i*0.1 + 0.45);
+      });
+    } catch(e){}
+  }
+
+  return { playTick: playTick, startDrumRoll: startDrumRoll, stopDrumRoll: stopDrumRoll, playFanfare: playFanfare, playDoneChime: playDoneChime };
+})();
+
+/* ================= 全螢幕五彩噴花 Confetti 引擎 ================= */
+var Confetti = (function(){
+  var canvas, ctx, particles = [], anim = null;
+  var COLORS = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#fbbf24', '#06b6d4'];
+  function init(){
+    canvas = document.getElementById('confettiCanvas');
+    if (!canvas) return;
+    ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    window.addEventListener('resize', function(){
+      if (canvas){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    });
+  }
+  function burst(x, y, count){
+    init(); if (!ctx) return;
+    count = count || 90;
+    x = x || canvas.width / 2;
+    y = y || canvas.height / 2.6;
+    for (var i = 0; i < count; i++){
+      var angle = Math.random() * Math.PI * 2;
+      var speed = 4 + Math.random() * 14;
+      particles.push({
+        x: x, y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 4,
+        size: 7 + Math.random() * 9,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        rotation: Math.random() * 360,
+        rotSpeed: (Math.random() - 0.5) * 12,
+        life: 1, decay: 0.009 + Math.random() * 0.012,
+        shape: Math.random() > 0.4 ? 'rect' : 'circle'
+      });
+    }
+    if (!anim) loop();
+  }
+  function grandFinale(){
+    burst(window.innerWidth * 0.25, window.innerHeight * 0.4, 80);
+    burst(window.innerWidth * 0.75, window.innerHeight * 0.4, 80);
+    setTimeout(function(){ burst(window.innerWidth * 0.5, window.innerHeight * 0.35, 120); }, 250);
+  }
+  function loop(){
+    if (!particles.length){
+      if (ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
+      anim = null; return;
+    }
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for (var i = particles.length - 1; i >= 0; i--){
+      var p = particles[i];
+      p.x += p.vx; p.y += p.vy;
+      p.vy += 0.28; p.vx *= 0.985;
+      p.rotation += p.rotSpeed;
+      p.life -= p.decay;
+      if (p.life <= 0 || p.y > canvas.height + 20){ particles.splice(i, 1); continue; }
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation * Math.PI / 180);
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      if (p.shape === 'rect') ctx.fillRect(-p.size/2, -p.size/4, p.size, p.size/2);
+      else { ctx.beginPath(); ctx.arc(0, 0, p.size/3, 0, Math.PI*2); ctx.fill(); }
+      ctx.restore();
+    }
+    anim = requestAnimationFrame(loop);
+  }
+  return { burst: burst, grandFinale: grandFinale };
+})();
+
+/* ================= 系統主要狀態變數 ================= */
+var APP_VERSION = 'v2.0.0';
+var rows = 5, cols = 6, total = 30;
+var pool = [];            // 目前尚未抽出的號碼池 1~N (或名冊 index)
+var cellOrder = [];
+var activeCellOrder = [];
+var filledCount = 0;
+var cellRefs = [];
+var drawHistory = [];     // {seq, num, r, c, cellIdx, name, dept, prize, status}
+var excluded = {};
+var excludeMode = false;
+var started = false;
+var soundOn = true;
+var darkMode = false;
+var stageMode = false;
+var seatMode = 'grid';    // 'grid' 或 'table'
+var drawView = 'grid';    // 'grid' | 'wheel' | 'slot' | 'lotto'
+var drawnMap = {};
+var randomGroupMaps = {};
+
+// 名冊支援
+var roster = [];          // [{id, name, dept, num}]
+var useRoster = false;
+
+// 獎項模式支援
+var DEFAULT_PRIZES = [
+  { id: 'p1', name: '特獎', reward: 'iPhone 16 Pro', count: 1, icon: '🥇', color: '#f59e0b' },
+  { id: 'p2', name: '頭獎', reward: '萬元獎金', count: 2, icon: '🥈', color: '#e11d48' },
+  { id: 'p3', name: '貳獎', reward: '智慧家電', count: 3, icon: '🥉', color: '#7c3aed' },
+  { id: 'p4', name: '普獎', reward: '幸運紅包', count: 10, icon: '🎁', color: '#2563eb' }
+];
+var prizes = JSON.parse(JSON.stringify(DEFAULT_PRIZES));
+var activePrizeId = 'p1';
+
+// Telegram 設定
+var tgConfig = {
+  token: '8877416210:AAFrcexthULtHnEwIjrmLo41BUSrgAxqylc',
+  chatId: '-5524528569',
+  autoNotify: true
+};
+
+// 雲端設定 (Google Apps Script)
+var DEFAULT_CLOUD_API_URL = 'https://script.google.com/macros/s/AKfycbwzJhYBVkOoho6i5XDnPhe_Jc66dbpYY-L0GYZI2TDZDx7rUyV88FFGAmCBdViUTFjZjA/exec';
+var DEFAULT_CLOUD_API_TOKEN = 'CHANGE_ME_TO_A_SECRET';
+var CLOUD_API_URL = '';
+var CLOUD_API_TOKEN = '';
+var CLOUD_SESSION_ID = null;
+var CLOUD_ADMIN_UNLOCKED = false;
+var STORAGE_KEY = 'lottery_v2_state';
+
+// 調色盤
+var GROUP_COLORS_LIGHT = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
+var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+
+/* 改版紀錄清單 */
+var CHANGELOG = [
+  { v: 'v2.0.0', date: '2026-10-03', notes: [
+    '✨ 全面進化四大抽獎模式：座位網格、🎡 幸運大輪盤、🎰 大字滾輪機、🎱 樂透搖獎機，隨心一鍵無縫切換！',
+    '👥 支援「人員名冊匯入」：支援貼上工號、姓名、部門，開獎直接秀出幸運得主姓名與部門。',
+    '🏆 新增「獎項抽獎模式」：特獎、頭獎、貳獎、普獎自訂配額，自動記錄於獲獎榮譽榜單。',
+    '🚫 新增「不在場棄權與補抽」：抽到未出席者一鍵「棄權重抽」，原名冊保留棄權審計紀錄並即時補抽得主！',
+    '🛡️ 新增「防重複中獎規則」：可勾選一人限得一獎，避免同一人連獲大獎爭議。',
+    '🎉 全螢幕五彩彩帶噴花（Canvas Confetti）：開獎定格與抽中大獎時全場歡騰慶祝！',
+    '🥁 震撼現場懸念音效：緊張漸進滾筒鼓點（Drum Roll）➔ 凱旋號角（Trumpet Fanfare）與金幣叮咚聲！',
+    '🖥️ 舞台大螢幕模式：一鍵極簡投影模式，隱藏雜訊聚焦舞台，震撼大字開獎。',
+    '📱 現場手機掃碼 QR Code：現場同仁可直接用手機掃描即時查看最新中獎榜單！',
+    '📢 Telegram 即時中獎戰報推播：整合公司 Telegram Bot，開出大獎自動發布喜訊到群組。',
+    '☁️ Google 試算表同步 v2.0：後端 Code.gs 同步支援獎項名稱、得獎同仁姓名、部門與棄權標記。'
+  ]}
+];
+
+/* ================= 頁面初始化 ================= */
+window.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('versionTag').textContent = APP_VERSION;
+  loadSettings();
+  renderPrizeSelect();
+  renderPrizesTable();
+  setupGrid();
+  renderChangelog();
+  initCloudConfig();
+  startPresence();
+
+  // Esc 退出舞台大螢幕
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && stageMode) toggleStageMode();
+  });
+});
+
+/* ================= 模式切換 ================= */
+function switchDrawView(view){
+  drawView = view;
+  document.querySelectorAll('.view-switch-btn[data-v]').forEach(function(b){
+    b.classList.toggle('active', b.dataset.v === view);
+  });
+  document.querySelectorAll('.view-container').forEach(function(c){
+    c.classList.remove('active');
+  });
+  if (view === 'grid') document.getElementById('viewGridContainer').classList.add('active');
+  if (view === 'wheel') { document.getElementById('viewWheelContainer').classList.add('active'); renderWheel(); }
+  if (view === 'slot') document.getElementById('viewSlotContainer').classList.add('active');
+  if (view === 'lotto') { document.getElementById('viewLottoContainer').classList.add('active'); renderLotto(); }
+}
+
+function toggleStageMode(){
+  stageMode = !stageMode;
+  document.body.classList.toggle('stage-mode', stageMode);
+}
+
+function toggleSound(){
+  soundOn = !soundOn;
+  document.getElementById('btnSound').textContent = soundOn ? '🔈 音效開' : '🔇 靜音';
+}
+
+function toggleDarkMode(){
+  darkMode = !darkMode;
+  document.body.classList.toggle('darkmode', darkMode);
+  document.getElementById('btnDarkMode').textContent = darkMode ? '☀️ 淺色模式' : '🌙 深色模式';
+  if (drawView === 'wheel') renderWheel();
+  if (drawView === 'lotto') renderLotto();
+}
+
+/* ================= 獎項管理模組 ================= */
+function renderPrizeSelect(){
+  var sel = document.getElementById('prizeQuickSelect');
+  sel.innerHTML = prizes.map(function(p){
+    var won = drawHistory.filter(function(d){ return d.prize === p.name && d.status !== 'waived'; }).length;
+    var remain = Math.max(0, p.count - won);
+    return '<option value="'+p.id+'" '+(p.id===activePrizeId?'selected':'')+'>'+p.icon+' '+p.name+' ('+p.reward+') · 剩 '+remain+'/'+p.count+' 名</option>';
+  }).join('');
+  updatePrizeBar();
+}
+
+function onPrizeSelectChange(pid){
+  activePrizeId = pid;
+  updatePrizeBar();
+  saveStateToStorage();
+}
+
+function updatePrizeBar(){
+  var p = prizes.find(function(x){ return x.id === activePrizeId; }) || prizes[0];
+  if (!p) return;
+  document.getElementById('curPrizeIcon').textContent = p.icon;
+  document.getElementById('curPrizeTitle').textContent = p.name + ' · ' + p.reward;
+  var won = drawHistory.filter(function(d){ return d.prize === p.name && d.status !== 'waived'; }).length;
+  var remain = Math.max(0, p.count - won);
+  document.getElementById('curPrizeDesc').textContent = '共 ' + p.count + ' 名（已抽出 ' + won + ' 名）';
+  document.getElementById('curPrizeQuotaBadge').textContent = '剩餘 ' + remain + ' 名';
+  document.getElementById('winPrizeBadge').textContent = p.icon + ' ' + p.name;
+}
+
+function renderPrizesTable(){
+  var tb = document.getElementById('prizeTableBody');
+  tb.innerHTML = prizes.map(function(p, idx){
+    return '<tr>' +
+      '<td><input type="text" value="'+p.icon+'" style="width:36px;text-align:center;" onchange="prizes['+idx+'].icon=this.value"></td>' +
+      '<td><input type="text" value="'+p.name+'" style="width:90px;" onchange="prizes['+idx+'].name=this.value"></td>' +
+      '<td><input type="text" value="'+p.reward+'" style="width:130px;" onchange="prizes['+idx+'].reward=this.value"></td>' +
+      '<td><input type="number" value="'+p.count+'" min="1" style="width:60px;" onchange="prizes['+idx+'].count=parseInt(this.value)||1"></td>' +
+      '<td><button class="tool-btn" style="color:#dc2626;padding:2px 6px;" onclick="deletePrizeRow('+idx+')">✕</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function addNewPrizeRow(){
+  prizes.push({ id: 'p_' + Date.now(), name: '獎項', reward: '禮品', count: 1, icon: '🎁', color: '#2563eb' });
+  renderPrizesTable();
+}
+
+function deletePrizeRow(idx){
+  if (prizes.length <= 1) { alert('至少保留一個獎項'); return; }
+  prizes.splice(idx, 1);
+  if (!prizes.find(function(p){ return p.id === activePrizeId; })) activePrizeId = prizes[0].id;
+  renderPrizesTable();
+  renderPrizeSelect();
+}
+
+function resetDefaultPrizes(){
+  prizes = JSON.parse(JSON.stringify(DEFAULT_PRIZES));
+  activePrizeId = 'p1';
+  renderPrizesTable();
+  renderPrizeSelect();
+}
+
+function savePrizeSettings(){
+  renderPrizeSelect();
+  closeModal('prizeModal');
+  saveStateToStorage();
+}
+
+/* ================= 人員名冊模組 ================= */
+function loadDemoRoster(){
+  var demo = [
+    "A01 王大明 研發部", "A02 李小華 研發部", "A03 張偉國 生管部", "A04 陳美玲 生管部",
+    "A05 林志豪 製造部", "A06 郭建宏 製造部", "A07 楊雅婷 品保部", "A08 蔡文彬 品保部",
+    "A09 吳佳蓉 業務部", "A10 許振發 總經理室", "A11 鄭家豪 研發部", "A12 賴冠宇 生管部",
+    "A13 謝佩君 財務部", "A14 劉俊賢 業務部", "A15 潘志強 製造部", "A16 葉秀英 品保部",
+    "A17 曾建彰 研發部", "A18 蘇雅雯 總經理室", "A19 彭聖哲 製造部", "A20 邱麗華 業務部",
+    "A21 廖家興 生管部", "A22 莊凱婷 品保部", "A23 洪振華 研發部", "A24 游志偉 製造部",
+    "A25 柯美惠 財務部", "A26 羅文傑 業務部", "A27 蕭家榮 生管部", "A28 杜雅君 研發部",
+    "A29 鍾志明 製造部", "A30 許瑞興 總裁室"
+  ];
+  document.getElementById('rosterText').value = demo.join('\n');
+  document.getElementById('rosterCountHint').textContent = '示範名單：共 30 人';
+}
+
+function clearRosterInput(){
+  document.getElementById('rosterText').value = '';
+  document.getElementById('rosterCountHint').textContent = '目前名單：0 人';
+}
+
+function applyRoster(){
+  var lines = document.getElementById('rosterText').value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  if (lines.length === 0){
+    useRoster = false;
+    roster = [];
+  } else {
+    useRoster = true;
+    roster = lines.map(function(line, idx){
+      var parts = line.split(/[\s\t,，]+/);
+      if (parts.length >= 3) return { id: parts[0], name: parts[1], dept: parts.slice(2).join(' '), num: idx + 1 };
+      if (parts.length === 2) return { id: '', name: parts[0], dept: parts[1], num: idx + 1 };
+      return { id: '', name: parts[0], dept: '', num: idx + 1 };
+    });
+    // 自動設定格子尺寸以符合人數
+    var n = roster.length;
+    var c = Math.ceil(Math.sqrt(n));
+    var r = Math.ceil(n / c);
+    document.getElementById('rowsInput').value = r;
+    document.getElementById('colsInput').value = c;
+    setupGrid();
+  }
+  closeModal('rosterModal');
+  saveStateToStorage();
+}
+
+function fetchRosterFromCloud(){
+  if (!CLOUD_API_URL){ alert('尚未設定雲端 GAS API 網址'); return; }
+  fetch(CLOUD_API_URL + '?action=getRoster')
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res.ok && res.roster && res.roster.length){
+        var lines = res.roster.map(function(x){ return [x.id, x.name, x.dept].filter(Boolean).join(' '); });
+        document.getElementById('rosterText').value = lines.join('\n');
+        document.getElementById('rosterCountHint').textContent = '從 Google 試算表載入：' + lines.length + ' 人';
+      } else {
+        alert('試算表中未找到「名冊」或「Roster」工作表，或工作表內沒有資料。');
+      }
+    }).catch(function(err){ alert('連線失敗：' + err.message); });
+}
+
+/* ================= 座位網格 Grid 模組 ================= */
+function setupGrid(){
+  rows = parseInt(document.getElementById('rowsInput').value) || 5;
+  cols = parseInt(document.getElementById('colsInput').value) || 6;
+  total = rows * cols;
+  cellRefs = [];
+  cellOrder = [];
+  for (var i = 0; i < total; i++) cellOrder.push(i);
+  excluded = {};
+  started = false;
+  filledCount = 0;
+  drawHistory = [];
+  drawnMap = {};
+  pool = [];
+
+  renderEmptyGrid();
+  updateTotalHint();
+  document.getElementById('btnDraw').disabled = false;
+  document.getElementById('btnDrawAll').disabled = false;
+  document.getElementById('btnExclude').disabled = false;
+  document.getElementById('btnUndo').disabled = true;
+  document.getElementById('btnRedraw').disabled = true;
+  document.getElementById('winnerCard').style.display = 'none';
+  document.getElementById('resultPlaceholder').style.display = 'block';
+
+  renderPrizeSelect();
+  if (drawView === 'wheel') renderWheel();
+  if (drawView === 'lotto') renderLotto();
+}
+
+function renderEmptyGrid(){
+  var g = document.getElementById('grid');
+  g.innerHTML = '';
+  g.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(52px, 1fr))';
+  for (var i = 0; i < total; i++){
+    var el = document.createElement('div');
+    el.className = 'cell';
+    el.dataset.idx = i;
+    var r = Math.floor(i / cols) + 1, c = (i % cols) + 1;
+    el.innerHTML = '<span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
+    el.addEventListener('click', onCellClick);
+    g.appendChild(el);
+    cellRefs.push(el);
+  }
+}
+
+function onCellClick(e){
+  var el = e.currentTarget;
+  var idx = parseInt(el.dataset.idx);
+  if (excludeMode){
+    if (started) return;
+    if (excluded[idx]) { delete excluded[idx]; el.classList.remove('excluded'); }
+    else { excluded[idx] = true; el.classList.add('excluded'); }
+    updateTotalHint();
+    return;
+  }
+  var info = drawnMap[idx];
+  if (info) showWinnerCard(info);
+}
+
+function toggleExcludeMode(){
+  if (started) return;
+  excludeMode = !excludeMode;
+  var btn = document.getElementById('btnExclude');
+  btn.textContent = excludeMode ? '✅ 完成排除設定' : '🚫 設定排除格';
+  btn.classList.toggle('highlight', excludeMode);
+  cellRefs.forEach(function(el){ el.classList.toggle('exclude-selectable', excludeMode); });
+}
+
+function updateTotalHint(){
+  var activeCount = total - Object.keys(excluded).length;
+  var hint = (seatMode==='table' ? rows+' 桌 × 每桌 '+cols+' 人' : rows+' 行 × '+cols+' 列') +
+    '，共 ' + total + ' 格（可用 ' + activeCount + ' 格）';
+  if (useRoster) hint += ' · 名冊已匯入 ' + roster.length + ' 人';
+  document.getElementById('totalHint').textContent = hint;
+}
+
+function onSeatModeChange(){
+  seatMode = document.getElementById('seatModeSelect').value;
+  document.getElementById('rowsLabel').textContent = seatMode === 'table' ? '桌數' : '行數';
+  document.getElementById('colsLabel').textContent = seatMode === 'table' ? '每桌人數' : '列數';
+  setupGrid();
+}
+
+/* ================= 核心抽籤邏輯 ================= */
+function buildCandidatePool(){
+  var candidates = [];
+  var activeIndices = cellOrder.filter(function(i){ return !excluded[i]; });
+  
+  if (useRoster && roster.length > 0){
+    roster.forEach(function(person, idx){
+      candidates.push({
+        num: idx + 1,
+        name: person.name,
+        dept: person.dept,
+        id: person.id
+      });
+    });
+  } else {
+    for (var i = 1; i <= activeIndices.length; i++){
+      candidates.push({ num: i, name: i + ' 號', dept: '', id: '' });
+    }
+  }
+
+  // 防重複得獎過濾
+  var noDup = document.getElementById('chkNoDup').checked;
+  if (noDup){
+    var wonNames = new Set(drawHistory.filter(function(d){ return d.status !== 'waived'; }).map(function(d){ return d.name; }));
+    candidates = candidates.filter(function(c){ return !wonNames.has(c.name); });
+  }
+  return candidates;
+}
+
+function executeDraw(){
+  if (!started){
+    activeCellOrder = cellOrder.filter(function(i){ return !excluded[i]; });
+    // 打散順序
+    activeCellOrder.sort(function(){ return Math.random() - 0.5; });
+    var limit = parseInt(document.getElementById('drawLimitInput').value);
+    if (limit && limit > 0 && limit < activeCellOrder.length) activeCellOrder = activeCellOrder.slice(0, limit);
+    pool = buildCandidatePool();
+    started = true;
+    document.getElementById('btnExclude').disabled = true;
+    cloudCreateSession_();
+  }
+
+  if (pool.length === 0 || filledCount >= activeCellOrder.length){
+    alert('已抽完全部候選人或格子！'); return;
+  }
+
+  // 檢查當前獎項配額
+  var curPrize = prizes.find(function(p){ return p.id === activePrizeId; }) || prizes[0];
+  var wonInPrize = drawHistory.filter(function(d){ return d.prize === curPrize.name && d.status !== 'waived'; }).length;
+  if (wonInPrize >= curPrize.count){
+    var nextPrize = prizes.find(function(p){
+      var w = drawHistory.filter(function(d){ return d.prize === p.name && d.status !== 'waived'; }).length;
+      return w < p.count;
+    });
+    if (nextPrize && confirm('【' + curPrize.name + '】已全數抽出！是否切換至【' + nextPrize.name + '】繼續抽獎？')){
+      activePrizeId = nextPrize.id;
+      updatePrizeBar();
+      renderPrizeSelect();
+    }
+  }
+
+  document.getElementById('btnDraw').disabled = true;
+  if (soundOn) SoundFX.startDrumRoll();
+
+  // 根據不同抽獎視覺模式播放對應動態
+  if (drawView === 'wheel') animateWheel(finishSingleDraw);
+  else if (drawView === 'slot') animateSlot(finishSingleDraw);
+  else if (drawView === 'lotto') animateLotto(finishSingleDraw);
+  else animateGrid(finishSingleDraw);
+}
+
+function animateGrid(doneCallback){
+  var cellIdx = activeCellOrder[filledCount];
+  var cellEl = cellRefs[cellIdx];
+  var t = 0;
+  var timer = setInterval(function(){
+    var rand = pool[Math.floor(Math.random() * pool.length)];
+    cellEl.innerHTML = '<span class="cell-name">' + rand.name + '</span>';
+    t += 60;
+    if (t >= 550){
+      clearInterval(timer);
+      doneCallback();
+    }
+  }, 60);
+}
+
+function finishSingleDraw(){
+  if (soundOn) SoundFX.stopDrumRoll();
+
+  var cellIdx = activeCellOrder[filledCount];
+  var cellEl = cellRefs[cellIdx];
+  var r = Math.floor(cellIdx / cols) + 1, c = (cellIdx % cols) + 1;
+
+  var randIdx = Math.floor(Math.random() * pool.length);
+  var picked = pool.splice(randIdx, 1)[0];
+  var curPrize = prizes.find(function(p){ return p.id === activePrizeId; }) || prizes[0];
+
+  filledCount++;
+  var drawItem = {
+    seq: filledCount,
+    num: picked.num,
+    name: picked.name,
+    dept: picked.dept,
+    id: picked.id,
+    r: r, c: c,
+    cellIdx: cellIdx,
+    prize: curPrize.name,
+    prizeIcon: curPrize.icon,
+    status: 'valid'
+  };
+
+  drawHistory.push(drawItem);
+  drawnMap[cellIdx] = drawItem;
+
+  cellEl.innerHTML = '<span class="cell-name">' + picked.name + '</span><span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
+  cellEl.classList.add('filled', 'just-filled');
+  setTimeout(function(){ cellEl.classList.remove('just-filled'); }, 400);
+
+  showWinnerCard(drawItem);
+  Confetti.burst();
+  if (soundOn) SoundFX.playFanfare();
+
+  document.getElementById('btnUndo').disabled = false;
+  document.getElementById('btnRedraw').disabled = false;
+  document.getElementById('btnDraw').disabled = false;
+
+  updatePrizeBar();
+  renderPrizeSelect();
+  renderHistory();
+  cloudAddDraw_(drawItem);
+  autoNotifyTelegramWinner(drawItem);
+  saveStateToStorage();
+
+  if (drawView === 'wheel') renderWheel();
+  if (drawView === 'lotto') renderLotto();
+}
+
+function executeRedraw(){
+  if (drawHistory.length === 0) return;
+  var last = drawHistory[drawHistory.length - 1];
+  if (last.status === 'waived') { alert('上一筆已經是棄權狀態'); return; }
+
+  if (!confirm('確定將得主【' + last.name + '】標記為「未到場棄權」，並立即重新補抽一位嗎？')) return;
+
+  last.status = 'waived';
+  filledCount--; // 退回一個名額重新填入
+  cloudSetDrawStatus_(last.seq, 'waived');
+
+  // 補抽
+  executeDraw();
+}
+
+function executeDrawAll(){
+  if (!confirm('確定要一鍵產生全部剩餘抽獎結果嗎？')) return;
+  while (pool.length > 0 && filledCount < (activeCellOrder.length || total)){
+    if (!started){
+      activeCellOrder = cellOrder.filter(function(i){ return !excluded[i]; });
+      activeCellOrder.sort(function(){ return Math.random() - 0.5; });
+      pool = buildCandidatePool();
+      started = true;
+    }
+    finishSingleDraw();
+  }
+  Confetti.grandFinale();
+  if (soundOn) SoundFX.playDoneChime();
+}
+
+function undoLastDraw(){
+  if (drawHistory.length === 0) return;
+  var last = drawHistory.pop();
+  if (last.status !== 'waived') filledCount--;
+  delete drawnMap[last.cellIdx];
+
+  var cellEl = cellRefs[last.cellIdx];
+  if (cellEl){
+    cellEl.classList.remove('filled');
+    cellEl.innerHTML = '<span class="coord">' + (seatMode==='table' ? last.r+'桌'+last.c : last.r+'-'+last.c) + '</span>';
+  }
+
+  // 放回池中
+  pool.push({ num: last.num, name: last.name, dept: last.dept, id: last.id });
+
+  if (drawHistory.length > 0){
+    showWinnerCard(drawHistory[drawHistory.length - 1]);
+  } else {
+    document.getElementById('winnerCard').style.display = 'none';
+    document.getElementById('resultPlaceholder').style.display = 'block';
+    document.getElementById('btnUndo').disabled = true;
+    document.getElementById('btnRedraw').disabled = true;
+  }
+  updatePrizeBar();
+  renderPrizeSelect();
+  renderHistory();
+  cloudUndoLastDraw_();
+  saveStateToStorage();
+}
+
+function resetGrid(){
+  if (drawHistory.length > 0 && !confirm('確定要清除目前所有抽獎進度並重新開始嗎？')) return;
+  setupGrid();
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+}
+
+function showWinnerCard(item){
+  document.getElementById('resultPlaceholder').style.display = 'none';
+  var wc = document.getElementById('winnerCard');
+  wc.style.display = 'flex';
+  document.getElementById('winPrizeBadge').textContent = (item.prizeIcon || '🏆') + ' ' + (item.prize || '獲獎');
+  document.getElementById('winNameHuge').textContent = item.name || (item.num + ' 號');
+  document.getElementById('winDeptTag').textContent = item.dept || '幸運得主';
+  document.getElementById('winSeatPos').textContent = seatMode==='table' ? ('第 '+item.r+' 桌 第 '+item.c+' 位') : ('第 '+item.r+' 行 第 '+item.c+' 列');
+  document.getElementById('winNumTag').textContent = '#' + item.num;
+}
+
+/* ================= 幸運大輪盤 (Wheel) ================= */
+function renderWheel(){
+  var canvas = document.getElementById('wheelCanvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  var cx = w / 2, cy = h / 2, r = w / 2 - 12;
+  ctx.clearRect(0,0,w,h);
+
+  var candidates = pool.length > 0 ? pool : (useRoster ? roster : [{name:'無資料'}]);
+  var count = Math.min(candidates.length, 24);
+  var step = (Math.PI * 2) / count;
+  var palette = darkMode ? GROUP_COLORS_DARK : GROUP_COLORS_LIGHT;
+
+  for (var i = 0; i < count; i++){
+    var angle = i * step;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, angle, angle + step);
+    ctx.closePath();
+    ctx.fillStyle = palette[i % palette.length];
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 繪製文字
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle + step / 2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px sans-serif';
+    var txt = candidates[i].name || (candidates[i].num + '');
+    ctx.fillText(txt.slice(0,6), r - 16, 5);
+    ctx.restore();
+  }
+}
+
+function animateWheel(callback){
+  var canvas = document.getElementById('wheelCanvas');
+  if (!canvas) { callback(); return; }
+  var start = performance.now();
+  var duration = 2800;
+  var rotations = 5 + Math.random() * 3;
+  var lastAngle = 0;
+
+  function step(now){
+    var progress = Math.min(1, (now - start) / duration);
+    var ease = 1 - Math.pow(1 - progress, 3);
+    var angle = ease * rotations * Math.PI * 2;
+
+    canvas.style.transform = 'rotate(' + (angle * 180 / Math.PI) + 'deg)';
+    if (Math.floor(angle / (Math.PI / 12)) !== Math.floor(lastAngle / (Math.PI / 12))){
+      if (soundOn) SoundFX.playTick();
+    }
+    lastAngle = angle;
+
+    if (progress < 1) requestAnimationFrame(step);
+    else callback();
+  }
+  requestAnimationFrame(step);
+}
+
+/* ================= 大字滾輪機 (Slot) ================= */
+function animateSlot(callback){
+  var el = document.getElementById('slotText');
+  var candidates = pool.length > 0 ? pool : [{name:'??'}];
+  var t = 0;
+  el.classList.add('rolling');
+  var timer = setInterval(function(){
+    var rand = candidates[Math.floor(Math.random() * candidates.length)];
+    el.textContent = rand.name || (rand.num + ' 號');
+    if (soundOn) SoundFX.playTick();
+    t += 70;
+    if (t >= 2200){
+      clearInterval(timer);
+      el.classList.remove('rolling');
+      callback();
+    }
+  }, 70);
+}
+
+/* ================= 樂透搖獎機 (Lotto) ================= */
+var lottoBalls = [];
+function renderLotto(){
+  var canvas = document.getElementById('lottoCanvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+
+  // 繪製透明玻璃圓球外殼
+  var cx = w / 2, cy = h / 2 - 10, r = w / 2 - 20;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = darkMode ? 'rgba(30,58,138,0.2)' : 'rgba(239,246,255,0.4)';
+  ctx.fill();
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // 彩球
+  if (!lottoBalls.length){
+    for (var i = 0; i < 20; i++){
+      lottoBalls.push({
+        x: cx + (Math.random() - 0.5) * r * 1.2,
+        y: cy + (Math.random() - 0.5) * r * 1.2,
+        vx: (Math.random() - 0.5) * 4,
+        vy: (Math.random() - 0.5) * 4,
+        color: GROUP_COLORS_LIGHT[i % GROUP_COLORS_LIGHT.length],
+        num: i + 1
+      });
+    }
+  }
+
+  lottoBalls.forEach(function(b){
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = b.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(b.num, b.x, b.y + 3);
+  });
+  ctx.restore();
+}
+
+function animateLotto(callback){
+  var canvas = document.getElementById('lottoCanvas');
+  if (!canvas) { callback(); return; }
+  var start = performance.now();
+  var duration = 2400;
+
+  function step(now){
+    var progress = (now - start) / duration;
+    var w = canvas.width, h = canvas.height;
+    var cx = w / 2, cy = h / 2 - 10, r = w / 2 - 30;
+
+    lottoBalls.forEach(function(b){
+      b.x += b.vx * (1 + (1 - progress) * 2.5);
+      b.y += b.vy * (1 + (1 - progress) * 2.5);
+      var dist = Math.hypot(b.x - cx, b.y - cy);
+      if (dist > r - 14){
+        var ang = Math.atan2(b.y - cy, b.x - cx);
+        b.x = cx + Math.cos(ang) * (r - 14);
+        b.y = cy + Math.sin(ang) * (r - 14);
+        b.vx = -b.vx + (Math.random() - 0.5);
+        b.vy = -b.vy + (Math.random() - 0.5);
+      }
+    });
+    renderLotto();
+    if (progress < 1) requestAnimationFrame(step);
+    else callback();
+  }
+  requestAnimationFrame(step);
+}
+
+/* ================= 獲獎榮譽榜單與匯出 ================= */
+function renderPrizeBoard(){
+  var container = document.getElementById('prizeBoardContent');
+  if (drawHistory.length === 0){
+    container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">目前尚無抽獎紀錄</div>';
+    return;
+  }
+  var html = '';
+  prizes.forEach(function(p){
+    var list = drawHistory.filter(function(d){ return d.prize === p.name; });
+    html += '<div class="prize-board-group">' +
+      '<div class="prize-board-title" style="background:#fef3c7;color:#92400e;">' + p.icon + ' ' + p.name + ' · ' + p.reward + ' (' + list.filter(function(x){return x.status!=='waived';}).length + '/' + p.count + '名)</div>' +
+      '<div class="winner-chip-list">';
+    if (list.length === 0){
+      html += '<span style="font-size:12.5px;color:var(--muted);padding:4px 8px;">尚未抽出</span>';
     } else {
-      var exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-      if (exit) { try { exit.call(document); } catch (e) {} }
+      html += list.map(function(w){
+        var isWaived = w.status === 'waived';
+        return '<div class="winner-chip ' + (isWaived ? 'waived' : '') + '">' +
+          '<b>' + w.name + '</b>' + (w.dept ? ' (' + w.dept + ')' : '') +
+          ' · ' + (seatMode==='table' ? w.r+'桌'+w.c : w.r+'-'+w.c) +
+          (isWaived ? ' <span class="winner-chip-waived-tag">[已棄權]</span>' : '') +
+        '</div>';
+      }).join('');
     }
-  }
-  function updateFullscreenBtn() {
-    var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    var btn = document.getElementById('btnFullscreen');
-    if (btn) btn.textContent = isFs ? '↩️ 退出全螢幕' : '⛶ 全螢幕';
-  }
-  document.addEventListener('fullscreenchange', updateFullscreenBtn);
-  document.addEventListener('webkitfullscreenchange', updateFullscreenBtn);
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
 
-  // ============ 深色模式 ============
-  function toggleDarkMode() {
-    darkMode = !darkMode;
-    document.body.classList.toggle('darkmode', darkMode);
-    document.getElementById('btnDarkMode').textContent = darkMode ? '☀️ 淺色模式' : '🌙 深色模式';
-    try { localStorage.setItem(DARKMODE_KEY, darkMode ? '1' : '0'); } catch (e) {}
-    applyGroupColors(); // 分組顏色淺色/深色各自有一套色盤，切換深色模式要重新套色
-  }
-  function loadDarkModePref() {
-    var v;
-    try { v = localStorage.getItem(DARKMODE_KEY); } catch (e) { return; }
-    if (v === '1') {
-      darkMode = true;
-      document.body.classList.add('darkmode');
-      document.getElementById('btnDarkMode').textContent = '☀️ 淺色模式';
-    }
-  }
+function exportPrizeListCsv(){
+  if (drawHistory.length === 0){ alert('目前尚無資料可匯出'); return; }
+  var rows = [['序號', '獎項', '姓名', '部門', '工號/編號', '座位', '狀態']];
+  drawHistory.forEach(function(d){
+    rows.push([
+      d.seq, d.prize, d.name, d.dept, d.id || d.num,
+      (seatMode==='table' ? d.r+'桌'+d.c+'位' : d.r+'行'+d.c+'列'),
+      (d.status==='waived' ? '已棄權' : '中獎')
+    ]);
+  });
+  var csv = '\uFEFF' + rows.map(function(r){ return r.map(function(cell){ return '"' + String(cell).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '幸運抽獎榮譽榜單_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
 
-  // ============ 分組上色 ============
-  function hexToRgba(hex, alpha) {
-    var v = hex.replace('#', '');
-    var r = parseInt(v.substring(0, 2), 16), g = parseInt(v.substring(2, 4), 16), b = parseInt(v.substring(4, 6), 16);
-    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-  }
-  function currentGroupPalette_() { return darkMode ? GROUP_COLORS_DARK : GROUP_COLORS_LIGHT; }
+function exportHistoryCsv(){
+  exportPrizeListCsv();
+}
 
-  // 亂數分組：把 1~poolSize 隨機打散，每 groupSize 個一組，回傳「真正的組別編號」（不做顏色 mod，避免組數超過顏色數時把不同組誤判成同一組）
-  // 注意：poolSize 要用「這次真正會抽出的人數」（activeCellOrder.length，已經排除「排除格」跟「限制抽出人數」），
-  // 不能用格子總數 total——因為抽到的號碼（num）本來就只會落在 1~activeCellOrder.length 之間，
-  // 如果拿 total 來打散分組，號碼會對不上，變成組數過多、每組人數卻湊不滿（例如限制抽 100 人、分 5 個一組，
-  // 結果沒有變成 20 組 5 人，而是打散進遠超過 20 組、每組卻只有 1~2 人）
-  // 同一場次（同樣的 poolSize）固定不變，重新整理網頁也會沿用
-  function getRandomGroupMap_(mode, groupSize) {
-    var poolSize = (activeCellOrder && activeCellOrder.length) ? activeCellOrder.length : total;
-    var cache = randomGroupMaps[mode];
-    if (cache && cache.poolSize === poolSize) return cache.map;
-    var nums = [];
-    for (var i = 1; i <= poolSize; i++) nums.push(i);
-    for (var i = nums.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = nums[i]; nums[i] = nums[j]; nums[j] = tmp;
+function printSeatChart(){
+  renderPrizeBoard();
+  document.getElementById('printArea').innerHTML = '<h2>🎲 幸運抽獎機 獲獎榜單</h2>' + document.getElementById('prizeBoardContent').innerHTML;
+  window.print();
+}
+
+function exportGridAsPng(){
+  alert('正在產生座位圖片，請稍候...');
+  // 透過現有 Canvas 輸出
+  var canvas = document.createElement('canvas');
+  canvas.width = 1200; canvas.height = 800;
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,1200,800);
+  ctx.fillStyle = '#1e293b'; ctx.font = 'bold 24px sans-serif';
+  ctx.fillText('🎲 電腦挑人抽籤／幸運抽獎系統 座位結果', 40, 50);
+  ctx.font = '14px sans-serif';
+  var y = 100;
+  drawHistory.forEach(function(d, i){
+    ctx.fillText(d.seq + '. [' + (d.prize||'') + '] ' + d.name + ' (' + (d.dept||'') + ') - ' + (seatMode==='table'?d.r+'桌'+d.c:d.r+'-'+d.c) + (d.status==='waived'?' [棄權]':''), 40 + Math.floor(i/25)*360, y + (i%25)*26);
+  });
+  var a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = '座位抽獎結果_' + Date.now() + '.png';
+  a.click();
+}
+
+/* ================= Telegram 推播模組 ================= */
+function testTelegram(){
+  var token = document.getElementById('tgTokenInput').value.trim();
+  var chatId = document.getElementById('tgChatInput').value.trim();
+  if (!token || !chatId){ alert('請填寫 Token 與 Chat ID'); return; }
+  var text = '🔔 <b>【幸運抽獎機｜測試連線】</b>\n連線測試成功！系統已就緒，可發送中獎喜報。';
+  sendTgApi(token, chatId, text, function(ok){
+    alert(ok ? 'Telegram 測試訊息已成功送出！' : '發送失敗，請檢查 Token 與 Chat ID');
+  });
+}
+
+function broadcastWinnersToTelegram(){
+  if (drawHistory.length === 0){ alert('目前尚無中獎紀錄'); return; }
+  var token = document.getElementById('tgTokenInput').value.trim();
+  var chatId = document.getElementById('tgChatInput').value.trim();
+  var validList = drawHistory.filter(function(d){ return d.status !== 'waived'; });
+
+  var text = '🎉 <b>【幸運抽獎機｜獲獎名單榮譽榜】</b>\n\n';
+  prizes.forEach(function(p){
+    var list = validList.filter(function(d){ return d.prize === p.name; });
+    if (list.length > 0){
+      text += p.icon + ' <b>' + p.name + '（' + p.reward + '）</b>\n';
+      list.forEach(function(w){
+        text += '  ▫️ ' + w.name + (w.dept ? ' (' + w.dept + ')' : '') + '\n';
+      });
+      text += '\n';
     }
-    var map = {};
-    for (var i = 0; i < nums.length; i++) {
-      map[nums[i]] = Math.floor(i / groupSize);
+  });
+  text += '恭喜所有幸運獲獎同仁！🎊';
+  sendTgApi(token, chatId, text, function(ok){
+    alert(ok ? '中獎名單已成功推播至 Telegram 群組！' : '推播失敗');
+  });
+}
+
+function autoNotifyTelegramWinner(d){
+  if (!document.getElementById('tgAutoNotify').checked) return;
+  // 只針對特獎、頭獎發布自動推播
+  if (d.prize !== '特獎' && d.prize !== '頭獎') return;
+  var token = document.getElementById('tgTokenInput').value.trim();
+  var chatId = document.getElementById('tgChatInput').value.trim();
+  var text = '🎉 <b>【幸運抽獎機｜中獎快訊】</b>\n' +
+    d.prizeIcon + ' <b>' + d.prize + '</b> 幸運開出！\n\n' +
+    '恭喜得主：<b>' + d.name + '</b>' + (d.dept ? '（' + d.dept + '）' : '') + '\n' +
+    '開獎位置：' + (seatMode==='table' ? '第 '+d.r+' 桌 第 '+d.c+' 位' : '第 '+d.r+' 行 第 '+d.c+' 列') + '\n\n' +
+    '全場歡呼！🎊';
+  sendTgApi(token, chatId, text);
+}
+
+function sendTgApi(token, chatId, htmlText, cb){
+  fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: htmlText, parse_mode: 'HTML' })
+  }).then(function(r){ return r.json(); })
+    .then(function(res){ if (cb) cb(res.ok); })
+    .catch(function(){ if (cb) cb(false); });
+}
+
+/* ================= 雲端同步模組 (GAS) ================= */
+function initCloudConfig(){
+  CLOUD_API_URL = localStorage.getItem('lottery_cloud_url') || DEFAULT_CLOUD_API_URL;
+  CLOUD_API_TOKEN = localStorage.getItem('lottery_cloud_token') || DEFAULT_CLOUD_API_TOKEN;
+  document.getElementById('cloudUrlInput').value = CLOUD_API_URL;
+  document.getElementById('cloudTokenInput').value = CLOUD_API_TOKEN;
+}
+
+function cloudAdminUnlock(){
+  var pw = prompt('請輸入管理者密碼進行解鎖：');
+  if (!pw) return;
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'verifyAdmin', adminPassword: pw })
+  }).then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res.ok){
+        CLOUD_ADMIN_UNLOCKED = true;
+        document.getElementById('cloudUrlInput').disabled = false;
+        document.getElementById('cloudTokenInput').disabled = false;
+        document.getElementById('btnCloudSave').disabled = false;
+        document.getElementById('btnCloudClear').disabled = false;
+        document.getElementById('cloudLockBar').style.background = '#dcfce7';
+        document.getElementById('cloudLockBar').style.borderColor = '#86efac';
+        document.getElementById('cloudLockText').textContent = '🔓 管理者已解鎖，可進行修改';
+      } else {
+        alert(res.error || '密碼不正確');
+      }
+    }).catch(function(e){ alert('連線失敗：' + e.message); });
+}
+
+function saveCloudSettings(){
+  CLOUD_API_URL = document.getElementById('cloudUrlInput').value.trim();
+  CLOUD_API_TOKEN = document.getElementById('cloudTokenInput').value.trim();
+  localStorage.setItem('lottery_cloud_url', CLOUD_API_URL);
+  localStorage.setItem('lottery_cloud_token', CLOUD_API_TOKEN);
+  alert('雲端設定已儲存！');
+  closeModal('cloudModal');
+}
+
+function cloudTestConnection(){
+  fetch(CLOUD_API_URL + '?action=ping')
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      alert(res.ok ? '連線成功！後端版本：' + res.version + '，時間：' + res.time : '連線異常');
+    }).catch(function(e){ alert('連線失敗：' + e.message); });
+}
+
+function cloudClearAll(){
+  var pw = prompt('⚠️ 高風險操作：清空試算表所有歷史紀錄無法復原！\n請再次輸入管理者密碼：');
+  if (!pw) return;
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'clearAll', confirm: 'CLEAR_ALL', adminPassword: pw })
+  }).then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res.ok) alert('雲端試算表已成功清空！');
+      else alert('清除失敗：' + res.error);
+    });
+}
+
+function cloudCreateSession_(){
+  if (!CLOUD_API_URL) return;
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      token: CLOUD_API_TOKEN, action: 'createSession',
+      rows: rows, cols: cols, excludedCells: Object.keys(excluded).map(Number),
+      groupMode: document.getElementById('groupMode').value,
+      note: '抽獎場次_' + new Date().toISOString().slice(0,10)
+    })
+  }).then(function(r){ return r.json(); })
+    .then(function(res){ if (res.ok) CLOUD_SESSION_ID = res.sessionId; })
+    .catch(function(){});
+}
+
+function cloudAddDraw_(item){
+  if (!CLOUD_API_URL || !CLOUD_SESSION_ID) return;
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      token: CLOUD_API_TOKEN, action: 'addDraw',
+      sessionId: CLOUD_SESSION_ID, seq: item.seq, num: item.num,
+      row: item.r, col: item.c, prize: item.prize, name: item.name, dept: item.dept, status: item.status
+    })
+  }).catch(function(){});
+}
+
+function cloudSetDrawStatus_(seq, status){
+  if (!CLOUD_API_URL || !CLOUD_SESSION_ID) return;
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      token: CLOUD_API_TOKEN, action: 'setDrawStatus',
+      sessionId: CLOUD_SESSION_ID, seq: seq, status: status
+    })
+  }).catch(function(){});
+}
+
+function cloudUndoLastDraw_(){
+  if (!CLOUD_API_URL || !CLOUD_SESSION_ID) return;
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'undoLastDraw', sessionId: CLOUD_SESSION_ID })
+  }).catch(function(){});
+}
+
+/* 線上人數 Ping */
+function startPresence(){
+  var sid = localStorage.getItem('lottery_dev_id');
+  if (!sid){ sid = 'dev_' + Math.random().toString(36).slice(2,10); localStorage.setItem('lottery_dev_id', sid); }
+  function ping(){
+    if (!CLOUD_API_URL) return;
+    fetch(CLOUD_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'presence', sid: sid, os: navigator.platform, browser: 'Web' })
+    }).then(function(r){ return r.json(); })
+      .then(function(res){
+        if (res.ok && res.users){
+          document.getElementById('onlineCount').textContent = res.count || res.users.length;
+          document.getElementById('onlineBadge').classList.remove('off');
+          var html = res.users.map(function(u){
+            return '<div class="online-user-item"><span>🖥️ ' + (u.ip || u.device.slice(0,8)) + '</span><span style="color:var(--muted);font-size:11px;">' + (u.os||'') + '</span></div>';
+          }).join('');
+          document.getElementById('onlineList').innerHTML = html;
+        }
+      }).catch(function(){});
+  }
+  ping();
+  setInterval(ping, 30000);
+}
+
+function toggleOnlineList(){
+  var list = document.getElementById('onlineList');
+  list.style.display = list.style.display === 'none' ? 'block' : 'none';
+}
+
+/* ================= 歷史與儲存 ================= */
+function renderHistory(){
+  var hl = document.getElementById('historyList');
+  if (drawHistory.length === 0){ hl.innerHTML = '<span style="color:var(--muted);font-size:12px;">尚無紀錄</span>'; return; }
+  var recent = drawHistory.slice(-5).reverse();
+  hl.innerHTML = recent.map(function(d){
+    var isWaived = d.status === 'waived';
+    return '<div style="font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--border);'+(isWaived?'text-decoration:line-through;color:#f87171;':'')+'">' +
+      '第 ' + d.seq + ' 抽：[' + (d.prize||'') + '] <b>' + d.name + '</b>' + (d.dept?' ('+d.dept+')':'') +
+      ' · ' + (seatMode==='table' ? d.r+'桌'+d.c+'位' : d.r+'行'+d.c+'列') +
+      (isWaived ? ' <b style="color:#dc2626;text-decoration:none;">[已棄權]</b>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function toggleHistory(){
+  var p = document.getElementById('historyPanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  renderHistory();
+}
+
+function saveStateToStorage(){
+  try{
+    var state = {
+      rows: rows, cols: cols, total: total,
+      seatMode: seatMode, drawView: drawView,
+      prizes: prizes, activePrizeId: activePrizeId,
+      roster: roster, useRoster: useRoster,
+      drawHistory: drawHistory, filledCount: filledCount,
+      started: started, excluded: excluded,
+      noDup: document.getElementById('chkNoDup').checked
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){}
+}
+
+function loadSettings(){
+  try{
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    var state = JSON.parse(raw);
+    if (state.prizes) prizes = state.prizes;
+    if (state.activePrizeId) activePrizeId = state.activePrizeId;
+    if (state.roster) roster = state.roster;
+    if (state.useRoster !== undefined) useRoster = state.useRoster;
+    if (state.drawView) switchDrawView(state.drawView);
+    if (state.seatMode) {
+      seatMode = state.seatMode;
+      document.getElementById('seatModeSelect').value = seatMode;
     }
-    randomGroupMaps[mode] = { poolSize: poolSize, map: map };
-    return map;
-  }
-  // 回傳「真正的組別編號」（0-based，未做顏色 mod）；組別編號才是分組結果清單要用的依據
-  function groupIndexForCell(idx, num) {
-    var sel = document.getElementById('groupMode');
-    var mode = sel ? sel.value : 'none';
-    if (mode === 'none') return null;
-    var r = Math.floor(idx / cols), c = idx % cols;
-    if (mode === 'parity') return num % 2;
-    // 依「行/桌」分組、依「列/桌內座位」分組：行列模式維持原本依座位位置分組；
-    // 桌人模式改成「亂數分組」，但組數／每組人數跟原本依位置分組時一樣
-    // （依桌分組 → 每組人數＝每桌人數；依桌內座位分組 → 分組數＝每桌人數）
-    if (mode === 'byRow') {
-      if (seatMode === 'table') return getRandomGroupMap_('byRow_table', cols)[num];
-      return r;
-    }
-    if (mode === 'byCol') {
-      if (seatMode === 'table') return getRandomGroupMap_('byCol_table', rows)[num];
-      return c;
-    }
-    if (mode === 'rand2') return getRandomGroupMap_('rand2', 2)[num];
-    if (mode === 'rand3') return getRandomGroupMap_('rand3', 3)[num];
-    if (mode === 'rand5') return getRandomGroupMap_('rand5', 5)[num];
-    if (mode === 'rand10') return getRandomGroupMap_('rand10', 10)[num];
-    if (mode === 'rand20') return getRandomGroupMap_('rand20', 20)[num];
-    return null;
-  }
-  function colorForGroupIndex_(gi) {
-    var palette = currentGroupPalette_();
-    var i = ((gi % palette.length) + palette.length) % palette.length;
-    return palette[i];
-  }
-  function groupColorForCell(idx, num) {
-    var gi = groupIndexForCell(idx, num);
-    if (gi === null) return null;
-    return colorForGroupIndex_(gi);
-  }
-  function applyGroupColorToCell(idx) {
+  }catch(e){}
+}
+
+/* ================= 彈窗輔助 ================= */
+function openModal(id){
+  document.getElementById(id).classList.add('active');
+  if (id === 'prizeBoardModal') renderPrizeBoard();
+  if (id === 'qrModal') renderLiveQr();
+}
+
+function closeModal(id){
+  document.getElementById(id).classList.remove('active');
+}
+
+function renderLiveQr(){
+  var url = window.location.href;
+  document.getElementById('liveQrUrlText').textContent = url;
+  document.getElementById('liveQrContainer').innerHTML = window.makeQR(url);
+}
+
+function renderChangelog(){
+  var c = document.getElementById('changelogContent');
+  c.innerHTML = CHANGELOG.map(function(item){
+    return '<div style="margin-bottom:14px;">' +
+      '<div style="font-weight:800;color:var(--primary);font-size:14px;">v' + item.v + ' (' + item.date + ')</div>' +
+      '<ul style="margin:4px 0 0 18px;padding:0;">' +
+        item.notes.map(function(n){ return '<li>' + n + '</li>'; }).join('') +
+      '</ul>' +
+    '</div>';
+  }).join('');
+}
+
+function hexToRgba(hex, alpha){
+  var c = hex.replace('#', '');
+  if (c.length === 3) c = c.split('').map(function(x){ return x + x; }).join('');
+  var num = parseInt(c, 16);
+  return 'rgba(' + ((num >> 16) & 255) + ',' + ((num >> 8) & 255) + ',' + (num & 255) + ',' + alpha + ')';
+}
+
+function groupIndexForCell(idx, num){
+  var sel = document.getElementById('groupMode');
+  var mode = sel ? sel.value : 'none';
+  if (mode === 'none') return null;
+  var r = Math.floor(idx / cols), c = idx % cols;
+  if (mode === 'parity') return num % 2;
+  if (mode === 'byRow') return r;
+  if (mode === 'byCol') return c;
+  if (mode === 'rand2') return Math.floor(num / 2) % 8;
+  if (mode === 'rand3') return Math.floor(num / 3) % 8;
+  if (mode === 'rand5') return Math.floor(num / 5) % 8;
+  if (mode === 'rand10') return Math.floor(num / 10) % 8;
+  return null;
+}
+
+function applyGroupColors(){
+  var palette = darkMode ? GROUP_COLORS_DARK : GROUP_COLORS_LIGHT;
+  Object.keys(drawnMap).forEach(function(k){
+    var idx = parseInt(k, 10);
     var info = drawnMap[idx];
     var cellEl = cellRefs[idx];
     if (!info || !cellEl) return;
-    var color = groupColorForCell(idx, info.num);
-    if (color) {
+    var gi = groupIndexForCell(idx, info.num);
+    if (gi !== null){
+      var color = palette[gi % palette.length];
       cellEl.style.backgroundColor = hexToRgba(color, 0.22);
       cellEl.style.borderColor = color;
       cellEl.style.color = color;
-      cellEl.style.fontWeight = '800';
     } else {
       cellEl.style.backgroundColor = '';
       cellEl.style.borderColor = '';
       cellEl.style.color = '';
-      cellEl.style.fontWeight = '';
-    }
-  }
-  function applyGroupColors() {
-    Object.keys(drawnMap).forEach(function(k) { applyGroupColorToCell(parseInt(k, 10)); });
-    renderGroupResults();
-  }
-
-  // ============ 結果清單（有分組就依組別；沒分組就依「抽到的順序」列出） ============
-  function collectGroupResults_() {
-    var groups = {};
-    Object.keys(drawnMap).forEach(function(k) {
-      var idx = parseInt(k, 10);
-      var info = drawnMap[idx];
-      var gi = groupIndexForCell(idx, info.num);
-      if (gi === null) return;
-      if (!groups[gi]) groups[gi] = [];
-      groups[gi].push(info.num);
-    });
-    var giList = Object.keys(groups).map(Number).sort(function(a, b) { return a - b; });
-    return giList.map(function(gi) {
-      return { gi: gi, color: colorForGroupIndex_(gi), nums: groups[gi].sort(function(a, b) { return a - b; }) };
-    });
-  }
-  // 決定「結果清單」要用哪種方式排列：有開「分組上色」就依組別；沒開的話，改成依「抽到的先後順序」列出
-  function getResultBreakdown_() {
-    var sel = document.getElementById('groupMode');
-    var mode = sel ? sel.value : 'none';
-    if (mode !== 'none') return { type: 'group', items: collectGroupResults_() };
-    return { type: 'sequence', items: drawHistory.slice() };
-  }
-  function renderGroupResults() {
-    var box = document.getElementById('groupResultList');
-    if (!box) return;
-    var b = getResultBreakdown_();
-    if (b.items.length === 0) {
-      box.innerHTML = '<div class="empty-state">還沒有抽出任何號碼，抽籤過程中這裡會即時列出結果。</div>';
-      return;
-    }
-    if (b.type === 'group') {
-      box.innerHTML = b.items.map(function(g) {
-        return '<div class="group-result-row">' +
-          '<span class="group-swatch" style="background:' + g.color + ';"></span>' +
-          '<span class="group-result-label">第 ' + (g.gi + 1) + ' 組（' + g.nums.length + ' 人）</span>' +
-          '<span class="group-result-nums">' + g.nums.join('、') + '</span>' +
-          '</div>';
-      }).join('');
-    } else {
-      box.innerHTML = b.items.map(function(h) {
-        return '<div class="group-result-row">' +
-          '<span class="group-result-label">第 ' + h.seq + ' 個抽到</span>' +
-          '<span class="group-result-nums">' + h.num + '　→　' + posLabel_(h.r, h.c) + '</span>' +
-          '</div>';
-      }).join('');
-    }
-  }
-  function toggleGroupResultPanel() {
-    var panel = document.getElementById('groupResultPanel');
-    var show = panel.style.display === 'none';
-    panel.style.display = show ? '' : 'none';
-    if (show) renderGroupResults();
-  }
-
-  // ============ 雲端同步（Google 試算表 / GAS API） ============
-  function loadCloudSettings() {
-    try {
-      var savedUrl = localStorage.getItem(CLOUD_URL_KEY);
-      var savedToken = localStorage.getItem(CLOUD_TOKEN_KEY);
-      // 從沒存過（null）才套用預設值；管理者若刻意存成空白（關閉同步）則尊重設定
-      CLOUD_API_URL = savedUrl === null ? DEFAULT_CLOUD_API_URL : savedUrl;
-      CLOUD_API_TOKEN = savedToken === null ? DEFAULT_CLOUD_API_TOKEN : savedToken;
-    } catch (e) {
-      CLOUD_API_URL = DEFAULT_CLOUD_API_URL;
-      CLOUD_API_TOKEN = DEFAULT_CLOUD_API_TOKEN;
-    }
-    var urlInput = document.getElementById('cloudUrlInput');
-    var tokenInput = document.getElementById('cloudTokenInput');
-    if (urlInput) urlInput.value = CLOUD_API_URL;
-    if (tokenInput) tokenInput.value = CLOUD_API_TOKEN;
-    updateCloudStatus();
-  }
-
-  // 儲存設定：只有管理者解鎖後才能存；有填網址的話，會先到「新網址」的後端驗證管理者密碼，通過才存
-  function saveCloudSettings() {
-    if (!CLOUD_ADMIN_UNLOCKED) { alert('只有管理者可以修改雲端同步設定，請先按「🔑 管理者解鎖」。'); return; }
-    var url = (document.getElementById('cloudUrlInput').value || '').trim();
-    var token = (document.getElementById('cloudTokenInput').value || '').trim();
-    var doSave = function() {
-      CLOUD_API_URL = url;
-      CLOUD_API_TOKEN = token;
-      try {
-        localStorage.setItem(CLOUD_URL_KEY, CLOUD_API_URL);
-        localStorage.setItem(CLOUD_TOKEN_KEY, CLOUD_API_TOKEN);
-      } catch (e) {}
-      updateCloudStatus();
-      pingPresence();
-      cloudAdminTouch_();
-      alert('雲端同步設定已儲存！下次「建立格子」後開始抽籤，就會自動建立雲端場次並同步。');
-    };
-    if (!url) {
-      if (!confirm('網址留空會關閉這台電腦的雲端同步，確定要儲存嗎？')) return;
-      doSave();
-      return;
-    }
-    cloudSetStatus_('正在向這個 API 驗證管理者密碼...', false);
-    cloudVerifyAdmin_(url, token, CLOUD_ADMIN_PW, function(ok, err) {
-      if (ok) doSave();
-      else cloudSetStatus_('❌ 沒有儲存：' + err, true);
-    });
-  }
-
-  function toggleCloudPanel() {
-    var panel = document.getElementById('cloudPanel');
-    var show = panel.style.display === 'none';
-    panel.style.display = show ? '' : 'none';
-    if (!show) {
-      cloudAdminLock_(); // 關閉面板就自動上鎖
-    }
-  }
-
-  // ---- 管理者解鎖／上鎖 ----
-  function cloudVerifyAdmin_(url, token, pw, cb) {
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ token: token, action: 'verifyAdmin', adminPassword: pw, sid: MY_DEVICE_ID, ip: MY_IP })
-    }).then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data && data.ok) cb(true);
-        else if (data && /未知的 action/.test(data.error || '')) cb(false, '後端 Code.gs 還是舊版，請先更新並重新部署（新版本）');
-        else cb(false, (data && data.error) || '未知錯誤');
-      })
-      .catch(function() { cb(false, '連不到 API，請確認網址與部署狀態'); });
-  }
-
-  function cloudApplyLockUi_() {
-    var unlocked = CLOUD_ADMIN_UNLOCKED;
-    ['cloudUrlInput', 'cloudTokenInput', 'btnCloudSave', 'btnCloudClear'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) el.disabled = !unlocked;
-    });
-    var bar = document.getElementById('cloudLockBar');
-    if (bar) bar.classList.toggle('unlocked', unlocked);
-    var txt = document.getElementById('cloudLockText');
-    if (txt) txt.textContent = unlocked ? '🔓 管理者已解鎖，可以修改設定（10 分鐘或關閉面板後自動上鎖）' : '🔒 僅限管理者修改，一般使用者只能查看目前狀態';
-    var btn = document.getElementById('btnCloudUnlock');
-    if (btn) btn.textContent = unlocked ? '🔒 重新上鎖' : '🔑 管理者解鎖';
-  }
-
-  function cloudAdminTouch_() {
-    if (CLOUD_ADMIN_TIMER) clearTimeout(CLOUD_ADMIN_TIMER);
-    CLOUD_ADMIN_TIMER = setTimeout(cloudAdminLock_, CLOUD_ADMIN_TIMEOUT_MS);
-  }
-
-  function cloudAdminLock_() {
-    var wasUnlocked = CLOUD_ADMIN_UNLOCKED;
-    CLOUD_ADMIN_UNLOCKED = false;
-    CLOUD_ADMIN_PW = '';
-    if (CLOUD_ADMIN_TIMER) { clearTimeout(CLOUD_ADMIN_TIMER); CLOUD_ADMIN_TIMER = null; }
-    // 沒存的修改一律還原成目前生效的設定
-    var urlInput = document.getElementById('cloudUrlInput');
-    var tokenInput = document.getElementById('cloudTokenInput');
-    if (urlInput) urlInput.value = CLOUD_API_URL;
-    if (tokenInput) tokenInput.value = CLOUD_API_TOKEN;
-    cloudApplyLockUi_();
-    if (wasUnlocked) updateCloudStatus();
-  }
-
-  function cloudAdminUnlocked_(pw) {
-    CLOUD_ADMIN_PW = pw;
-    CLOUD_ADMIN_UNLOCKED = true;
-    cloudApplyLockUi_();
-    cloudAdminTouch_();
-  }
-
-  function cloudAdminUnlock() {
-    if (CLOUD_ADMIN_UNLOCKED) { cloudAdminLock_(); return; }
-    var pw = prompt('請輸入管理者密碼：');
-    if (!pw) return;
-    if (!CLOUD_API_URL) {
-      // 這台電腦還沒設定過 API：先開放填寫，按「儲存設定」時會到填入的網址驗證管理者密碼，密碼不對就存不進去
-      cloudAdminUnlocked_(pw);
-      cloudSetStatus_('這台電腦尚未設定 API。請填入網址與驗證碼後按「儲存設定」，儲存時會向該 API 驗證管理者密碼。', false);
-      return;
-    }
-    cloudSetStatus_('驗證管理者密碼中...', false);
-    cloudVerifyAdmin_(CLOUD_API_URL, CLOUD_API_TOKEN, pw, function(ok, err) {
-      if (ok) {
-        cloudAdminUnlocked_(pw);
-        updateCloudStatus();
-      } else {
-        cloudSetStatus_('❌ 解鎖失敗：' + err, true);
-        // 順便檢查後端版本，部署的若不是最新版就直接提示（舊版後端的管理者密碼可能還是預設值）
-        fetch(CLOUD_API_URL + (CLOUD_API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=ping')
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            if (d && d.ok && d.version !== BACKEND_MIN_VERSION) {
-              cloudSetStatus_('❌ 解鎖失敗：' + err + '｜⚠️ 雲端後端目前是 ' + (d.version || '舊版') + '，不是最新的 ' + BACKEND_MIN_VERSION + '，請把最新 Code.gs 貼上後「部署 → 管理部署作業 → 編輯 → 新版本」再試', true);
-            }
-          })['catch'](function() {});
-      }
-    });
-  }
-
-  // ============ 線上人數（每 30 秒回報一次，同一台電腦多分頁只算一人） ============
-  var DEVICE_ID_KEY = 'lottery_device_id';
-  var ONLINE = { count: 0, users: [] };
-  var ONLINE_ENV = { os: '', browser: '' };
-  var MY_DEVICE_ID = (function() {
-    try {
-      var id = localStorage.getItem(DEVICE_ID_KEY);
-      if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem(DEVICE_ID_KEY, id); }
-      return id;
-    } catch (e) { return Math.random().toString(36).slice(2); }
-  })();
-
-  function detectOnlineEnv_() {
-    var ua = navigator.userAgent;
-    var finish = function() {
-      if (!ONLINE_ENV.os) {
-        ONLINE_ENV.os = /Windows NT 10/.test(ua) ? 'Windows 10/11' : /Windows/.test(ua) ? 'Windows' : /iPhone|iPad/.test(ua) ? 'iOS ' + ((ua.match(/OS (\d+)_/) || [])[1] || '')
-          : /Android/.test(ua) ? 'Android ' + ((ua.match(/Android (\d+)/) || [])[1] || '') : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
-      }
-      if (!ONLINE_ENV.browser) {
-        var m = ua.match(/Edg\/(\d+)/) ? ['Edge', ua.match(/Edg\/(\d+)/)[1]] : ua.match(/Firefox\/(\d+)/) ? ['Firefox', ua.match(/Firefox\/(\d+)/)[1]]
-          : ua.match(/Chrome\/(\d+)/) ? ['Chrome', ua.match(/Chrome\/(\d+)/)[1]] : ua.match(/Version\/(\d+).*Safari/) ? ['Safari', ua.match(/Version\/(\d+)/)[1]] : null;
-        if (m) ONLINE_ENV.browser = m.join(' ');
-      }
-    };
-    finish(); // 先用 userAgent 填好，第一次回報不用等
-    try {
-      var d = navigator.userAgentData;
-      if (d && d.getHighEntropyValues) {
-        return d.getHighEntropyValues(['platformVersion', 'fullVersionList']).then(function(h) {
-          var pv = parseInt((h.platformVersion || '0').split('.')[0], 10) || 0;
-          if (d.platform === 'Windows') ONLINE_ENV.os = pv >= 13 ? 'Windows 11' : pv > 0 ? 'Windows 10' : 'Windows';
-          else if (d.platform === 'macOS') ONLINE_ENV.os = 'macOS ' + (h.platformVersion || '').split('.').slice(0, 2).join('.');
-          else if (d.platform === 'Android') ONLINE_ENV.os = 'Android ' + (h.platformVersion || '').split('.')[0];
-          else ONLINE_ENV.os = d.platform || '';
-          var list = (h.fullVersionList || d.brands || []).filter(function(b) { return !/Not.?A.?Brand|Chromium/i.test(b.brand); });
-          var pick = list.filter(function(b) { return /Edge|Opera|Brave|Vivaldi/i.test(b.brand); })[0] || list.filter(function(b) { return /Chrome/i.test(b.brand); })[0] || list[0];
-          if (pick) ONLINE_ENV.browser = pick.brand.replace('Google ', '').replace('Microsoft ', '') + ' ' + String(pick.version).split('.')[0];
-        })['catch'](function() {}).then(finish);
-      }
-    } catch (e) {}
-    finish();
-    return Promise.resolve();
-  }
-
-  // ---- 電腦 IP（跟許瑞興訂單管理系統同樣做法：對外 IP 用 api.ipify.org，內網 IP 用 WebRTC 偵測） ----
-  var MY_IP = '';
-  function getLocalIp_() {
-    return new Promise(function(resolve) {
-      var RTCPeer = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
-      if (!RTCPeer) return resolve('');
-      var pc;
-      try {
-        pc = new RTCPeer({ iceServers: [] });
-        pc.createDataChannel('');
-        pc.createOffer().then(function(offer) { pc.setLocalDescription(offer); })['catch'](function() {});
-      } catch (e) { return resolve(''); }
-      var timer = setTimeout(function() { try { pc.close(); } catch (e) {} resolve(''); }, 800);
-      pc.onicecandidate = function(ice) {
-        if (!ice || !ice.candidate || !ice.candidate.candidate) return;
-        var m = ice.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
-        if (m && m[1] !== '0.0.0.0' && m[1].indexOf('127.') !== 0) {
-          clearTimeout(timer);
-          try { pc.close(); } catch (e) {}
-          resolve(m[1]);
-        }
-      };
-    });
-  }
-
-  function detectIp_() {
-    var extP = fetch('https://api.ipify.org?format=json', { cache: 'no-store' })
-      .then(function(r) { return r.json(); }).then(function(d) { return (d && d.ip) || ''; })['catch'](function() { return ''; });
-    return Promise.all([getLocalIp_(), extP]).then(function(r) {
-      var local = r[0] || '', ext = r[1] || '';
-      if (ext && local) MY_IP = ext + (/^(10|192|172)\./.test(local) ? ' (內:' + local + ')' : ' (' + local + ')');
-      else MY_IP = ext || (local ? '內:' + local : '');
-    });
-  }
-
-  function escHtml_(v) {
-    return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
-  }
-
-  function onlineAgo_(since, now) {
-    var m = Math.floor(((now || Date.now() / 1000) - since) / 60);
-    return m < 1 ? '剛連線' : m < 60 ? '已連線 ' + m + ' 分鐘' : '已連線 ' + Math.floor(m / 60) + ' 小時 ' + (m % 60) + ' 分';
-  }
-
-  function updateOnlineBadge_() {
-    var badge = document.getElementById('onlineBadge');
-    var countEl = document.getElementById('onlineCount');
-    if (!badge || !countEl) return;
-    var on = cloudEnabled_() && ONLINE.ok;
-    if (on) {
-      countEl.textContent = ONLINE.count;
-    } else if (cloudEnabled_() && ONLINE.pending) {
-      countEl.textContent = ONLINE.count != null ? ONLINE.count + '（更新中）' : '連線中…';
-    } else if (cloudEnabled_()) {
-      countEl.textContent = '連線失敗';
-    } else {
-      countEl.textContent = '—';
-    }
-    badge.classList.toggle('off', !on);
-    badge.title = on ? '點擊查看目前在線的電腦' : cloudEnabled_() ? (ONLINE.pending ? '正在向雲端取得線上人數…' : '連線失敗：' + (ONLINE.err || '') + '（點擊查看）') : '這台電腦尚未設定雲端同步，無法統計線上人數';
-  }
-
-  function renderOnlineList_() {
-    var el = document.getElementById('onlineList');
-    if (!el) return;
-    if (!cloudEnabled_()) { el.innerHTML = '這台電腦尚未設定雲端同步，無法統計線上人數（請洽管理者設定「雲端同步設定」）。'; return; }
-    if (!ONLINE.ok && ONLINE.pending) { el.innerHTML = '正在向雲端取得線上人數…'; return; }
-    if (!ONLINE.ok) { el.innerHTML = '暫時無法取得線上人數：' + escHtml_(ONLINE.err || '未知原因') + '。30 秒後會自動再試。'; return; }
-    if (!ONLINE.users.length) { el.innerHTML = '目前沒有其他人在線'; return; }
-    el.innerHTML = '<table><thead><tr><th>#</th><th>電腦 IP</th><th>電腦</th><th>作業系統</th><th>瀏覽器</th><th>裝置 ID</th><th>連線時間</th></tr></thead><tbody>' +
-      ONLINE.users.map(function(u, i) {
-        var me = u.device === MY_DEVICE_ID;
-        return '<tr' + (me ? ' class="me"' : '') + '><td>' + (i + 1) + '</td><td class="mono">' + escHtml_(u.ip || '未取得') + '</td><td>' + (me ? '本機' : '電腦 ' + (i + 1)) + '</td><td>' + escHtml_(u.os || '—') + '</td><td>' + escHtml_(u.browser || '—') +
-          '</td><td class="mono">' + escHtml_(u.device) + '</td><td>' + onlineAgo_(u.since, ONLINE.now) + '</td></tr>';
-      }).join('') + '</tbody></table>' +
-      '<div class="ol-note">每 30 秒更新一次；同一台電腦開多個分頁只算一人；超過 75 秒沒回應視為離線。</div>';
-  }
-
-  function toggleOnlineList() {
-    var el = document.getElementById('onlineList');
-    var show = el.style.display === 'none';
-    el.style.display = show ? '' : 'none';
-    document.getElementById('onlineArrow').textContent = show ? '▴' : '▾';
-    if (show) { renderOnlineList_(); pingPresence(); }
-  }
-
-  var ONLINE_CACHE_KEY = 'lottery_online_last';
-  var presenceBusy = false;
-  function pingPresence() {
-    if (!cloudEnabled_()) { ONLINE = { ok: false, count: 0, users: [], err: '未設定雲端同步' }; updateOnlineBadge_(); return; }
-    if (presenceBusy) return; // 上一次還沒回來就不重複送
-    presenceBusy = true;
-    var done = false;
-    var finishPing = function(result) {
-      if (done) return;
-      done = true;
-      presenceBusy = false;
-      ONLINE = result;
-      if (result.ok) {
-        try { localStorage.setItem(ONLINE_CACHE_KEY, JSON.stringify({ t: Date.now(), count: result.count })); } catch (e) {}
-      }
-      updateOnlineBadge_();
-      if (document.getElementById('onlineList').style.display !== 'none') renderOnlineList_();
-    };
-    var timer = setTimeout(function() { finishPing({ ok: false, count: 0, users: [], err: '雲端 API 超過 20 秒沒有回應' }); }, 20000);
-    fetch(CLOUD_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'presence', sid: MY_DEVICE_ID, ip: MY_IP, os: ONLINE_ENV.os, browser: ONLINE_ENV.browser })
-    }).then(function(res) { return res.json(); })
-      .then(function(data) {
-        clearTimeout(timer);
-        finishPing((data && data.ok) ? { ok: true, count: data.count, users: data.users || [], now: data.now }
-          : { ok: false, count: 0, users: [], err: (data && data.error) || '回應格式不正確' });
-      })['catch'](function() {
-        clearTimeout(timer);
-        finishPing({ ok: false, count: 0, users: [], err: '連不到雲端 API（網路或部署問題）' });
-      });
-  }
-
-  function startPresence_() {
-    // 先顯示上次的人數（10 分鐘內的才用），標示更新中
-    try {
-      var last = JSON.parse(localStorage.getItem(ONLINE_CACHE_KEY) || 'null');
-      if (last && cloudEnabled_() && Date.now() - last.t < 10 * 60 * 1000) ONLINE = { ok: false, pending: true, count: last.count, users: [] };
-      else if (cloudEnabled_()) ONLINE = { ok: false, pending: true, count: null, users: [] };
-    } catch (e) {}
-    updateOnlineBadge_();
-    // 立刻送第一次回報；瀏覽器版本與 IP 偵測完成後再補送一次
-    var envP = detectOnlineEnv_();
-    pingPresence();
-    Promise.all([envP, detectIp_()]).then(function() { presenceBusy = false; pingPresence(); });
-    setInterval(pingPresence, 30000);
-    document.addEventListener('visibilitychange', function() { if (!document.hidden) pingPresence(); });
-    window.addEventListener('pagehide', function() {
-      if (!cloudEnabled_() || !navigator.sendBeacon) return;
-      try {
-        navigator.sendBeacon(CLOUD_API_URL, JSON.stringify({ token: CLOUD_API_TOKEN, action: 'presence', sid: MY_DEVICE_ID, leave: true }));
-      } catch (e) {}
-    });
-  }
-
-  function cloudSetStatus_(text, isError) {
-    var statusEl = document.getElementById('cloudStatus');
-    if (!statusEl) return;
-    statusEl.textContent = text;
-    statusEl.classList.toggle('cloud-status-error', !!isError);
-  }
-
-  function updateCloudStatus() {
-    if (!CLOUD_API_URL) {
-      cloudSetStatus_('尚未設定雲端同步，抽籤結果只會留在這台電腦的瀏覽器裡。', false);
-    } else if (CLOUD_SESSION_ID) {
-      cloudSetStatus_('已設定雲端同步，目前這場抽籤已同步到試算表（場次編號：' + CLOUD_SESSION_ID + '）。', false);
-    } else {
-      cloudSetStatus_('已設定雲端同步，按下第一次「抽籤」會自動建立新場次。', false);
-    }
-  }
-
-  function cloudEnabled_() { return !!CLOUD_API_URL; }
-
-  // 統一處理雲端 API 回應：連線失敗、驗證碼錯誤、部署設定錯誤等都會直接顯示在畫面上，
-  // 不會只寫進瀏覽器 console（一般使用者不會去看 console，之前這樣會讓人以為「同步了」但其實沒有）
-  function cloudPost_(payload, onOk) {
-    if (!cloudEnabled_()) return;
-    payload.token = CLOUD_API_TOKEN;
-    fetch(CLOUD_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // 用 text/plain 避免瀏覽器送出 CORS 預檢請求
-      body: JSON.stringify(payload)
-    }).then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data && data.ok) {
-          if (onOk) onOk(data);
-          else updateCloudStatus();
-        } else {
-          cloudSetStatus_('⚠️ 雲端同步失敗（' + (data && data.error ? data.error : '未知錯誤') + '），這次抽籤只留在本機瀏覽器', true);
-        }
-      })
-      .catch(function(e) {
-        cloudSetStatus_('⚠️ 雲端同步失敗（連不到 API，網址可能填錯或還沒部署），這次抽籤只留在本機瀏覽器', true);
-        console.warn('雲端同步失敗：', e);
-      });
-  }
-
-  function cloudCreateSession_() {
-    if (!cloudEnabled_()) return;
-    CLOUD_SESSION_ID = null;
-    var excludedList = Object.keys(excluded).map(function(k) { return parseInt(k, 10); });
-    var groupSel = document.getElementById('groupMode');
-    cloudPost_({
-      action: 'createSession',
-      rows: rows, cols: cols,
-      excludedCells: excludedList,
-      groupMode: groupSel ? groupSel.value : 'none',
-      note: ''
-    }, function(data) {
-      CLOUD_SESSION_ID = data.sessionId;
-      updateCloudStatus();
-      saveStateToStorage();
-    });
-  }
-
-  function cloudAddDraw_(seq, num, r, c) {
-    if (!cloudEnabled_() || !CLOUD_SESSION_ID) return;
-    cloudPost_({ action: 'addDraw', sessionId: CLOUD_SESSION_ID, seq: seq, num: num, row: r, col: c });
-  }
-
-  function cloudUndoLastDraw_() {
-    if (!cloudEnabled_() || !CLOUD_SESSION_ID) return;
-    cloudPost_({ action: 'undoLastDraw', sessionId: CLOUD_SESSION_ID });
-  }
-
-  function cloudCompleteSession_() {
-    if (!cloudEnabled_() || !CLOUD_SESSION_ID) return;
-    cloudPost_({ action: 'completeSession', sessionId: CLOUD_SESSION_ID });
-  }
-
-  // 手動測試按鈕：檢查 API 網址是否真的可以連通（呼叫 doGet?action=ping）
-  function cloudTestConnection() {
-    var url = (document.getElementById('cloudUrlInput').value || '').trim();
-    if (!url) { alert('請先填入 GAS API 網址'); return; }
-    cloudSetStatus_('測試連線中...', false);
-    fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + 'action=ping')
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data && data.ok) {
-          cloudSetStatus_('✅ 連線成功！API 正常運作（時間：' + data.time + '）。記得再按左邊的「儲存設定」。', false);
-        } else {
-          cloudSetStatus_('⚠️ 連線得到回應，但內容不是預期的格式，請確認網址是否正確。', true);
-        }
-      })
-      .catch(function(e) {
-        cloudSetStatus_('❌ 連不到這個網址。請確認：1) 網址有貼對且結尾是 /exec；2) GAS 已經「部署」為網頁應用程式；3) 部署權限選「任何人」。', true);
-        console.warn('測試連線失敗：', e);
-      });
-  }
-
-  // 一鍵清除雲端試算表（Sessions／Draws 兩表全部清空，只留標題列）：高風險操作，要求連續兩次確認，
-  // 第二次還要求手動輸入固定文字，降低手滑誤觸的機會；成功或失敗都要在畫面上講清楚。
-  function cloudClearAll() {
-    if (!CLOUD_ADMIN_UNLOCKED) { alert('只有管理者可以清除雲端試算表，請先按「🔑 管理者解鎖」。'); return; }
-    if (!cloudEnabled_()) { alert('請先設定並儲存 GAS API 網址，才能清除雲端試算表。'); return; }
-    cloudAdminTouch_();
-    if (!confirm('⚠️ 確定要清除雲端試算表的「全部」資料嗎？\n\n這會把 Sessions（場次）與 Draws（抽籤紀錄）兩個表格全部清空，所有歷史場次都會消失，且無法復原。\n\n只會清除雲端資料，不會影響這台電腦目前畫面上的格子。')) return;
-    var typed = prompt('請再輸入「清除」兩個字以確認執行（避免手滑誤觸）：');
-    if (typed !== '清除') { alert('輸入內容不符，已取消清除。'); return; }
-    cloudSetStatus_('清除中，請稍候...', false);
-    fetch(CLOUD_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'clearAll', confirm: 'CLEAR_ALL', adminPassword: CLOUD_ADMIN_PW, sid: MY_DEVICE_ID, ip: MY_IP })
-    }).then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data && data.ok) {
-          CLOUD_SESSION_ID = null;
-          cloudSetStatus_('✅ 已清除雲端試算表（Sessions 清掉 ' + data.clearedSessions + ' 筆、Draws 清掉 ' + data.clearedDraws + ' 筆）。', false);
-        } else {
-          cloudSetStatus_('❌ 清除失敗（' + (data && data.error ? data.error : '未知錯誤') + '）。', true);
-        }
-      })
-      .catch(function(e) {
-        cloudSetStatus_('❌ 連不到這個網址，清除失敗，請確認 API 網址與部署狀態。', true);
-        console.warn('清除雲端試算表失敗：', e);
-      });
-  }
-
-  // ============ 列印 / 匯出座位表 ============
-  function printSeatChart() {
-    var titleEl = document.getElementById('printTitle');
-    var now = new Date();
-    titleEl.textContent = '電腦挑人抽籤系統 － ' + (seatMode === 'table' ? '桌次結果' : '座位結果') + '（' + now.getFullYear() + '/' + pad(now.getMonth()+1) + '/' + pad(now.getDate()) + '）';
-
-    var groupBox = document.getElementById('printGroupResults');
-    var breakdown = getResultBreakdown_();
-    if (breakdown.items.length === 0) {
-      groupBox.innerHTML = '';
-    } else if (breakdown.type === 'group') {
-      groupBox.innerHTML = '<div class="print-group-title">分組結果</div>' + breakdown.items.map(function(g) {
-        return '<div class="print-group-row"><b>第 ' + (g.gi + 1) + ' 組（' + g.nums.length + ' 人）</b>' + g.nums.join('、') + '</div>';
-      }).join('');
-    } else {
-      groupBox.innerHTML = '<div class="print-group-title">抽籤順序</div>' + breakdown.items.map(function(h) {
-        return '<div class="print-group-row"><b>第 ' + h.seq + ' 個抽到</b>' + h.num + '　→　' + posLabel_(h.r, h.c) + '</div>';
-      }).join('');
-    }
-
-    window.print();
-  }
-
-  // ============ 匯出抽籤紀錄 CSV ============
-  function exportHistoryCsv() {
-    if (drawHistory.length === 0) { alert('目前沒有可匯出的抽籤紀錄'); return; }
-    var sel = document.getElementById('groupMode');
-    var mode = sel ? sel.value : 'none';
-    var hasGroup = mode !== 'none';
-    var u = unitNames_();
-    var lines = [hasGroup ? ('次序,號碼,' + u.row + ',' + u.col + ',組別') : ('次序,號碼,' + u.row + ',' + u.col)];
-    drawHistory.forEach(function(h) {
-      var row = h.seq + ',' + h.num + ',' + h.r + ',' + h.c;
-      if (hasGroup) {
-        var gi = groupIndexForCell(h.cellIdx, h.num);
-        row += ',' + (gi !== null ? ('第' + (gi + 1) + '組') : '');
-      }
-      lines.push(row);
-    });
-    if (hasGroup) {
-      var groupResults = collectGroupResults_();
-      if (groupResults.length > 0) {
-        lines.push('');
-        lines.push('分組結果');
-        groupResults.forEach(function(g) {
-          lines.push('第' + (g.gi + 1) + '組（' + g.nums.length + '人）,' + g.nums.join('、'));
-        });
-      }
-    }
-    // 沒開分組時，上面「次序」欄位本身就已經是依抽到的順序排列，不用再重複附一份順序清單
-    var csvContent = '﻿' + lines.join('\r\n');
-    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    var now = new Date();
-    var stamp = now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '_' + pad(now.getHours()) + pad(now.getMinutes());
-    a.href = url;
-    a.download = '抽籤紀錄_' + stamp + '.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-  }
-
-  function pad(n) { return (n < 10 ? '0' : '') + n; }
-
-  // ============ 匯出座位圖片（Canvas，不需外部函式庫） ============
-  function roundRectPath(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-  function exportGridAsPng() {
-    if (total === 0) { alert('請先建立格子'); return; }
-    var cellSize = 70, gap = 8, boxPad = 20, titleH = 46;
-    var breakdown = getResultBreakdown_();
-    var legendItems = breakdown.items;
-    var legendH = legendItems.length > 0 ? (44 + legendItems.length * 24 + 16) : 0;
-    var canvasW = cols * cellSize + (cols - 1) * gap + boxPad * 2;
-    var canvasH = rows * cellSize + (rows - 1) * gap + boxPad * 2 + titleH + legendH;
-    // 匯出解析度倍率：畫布本身還是照 canvasW/canvasH 的「邏輯尺寸」畫圖（下面座標都不用改），
-    // 但實際輸出的圖片像素放大 EXPORT_SCALE 倍，這樣圖片才不會太小、列印或放大看也不會糊；
-    // 格子數很多、清單又很長時，自動降倍避免超過瀏覽器畫布尺寸上限
-    var EXPORT_SCALE = 3;
-    var CANVAS_AREA_LIMIT = 200000000;
-    while (EXPORT_SCALE > 1 && (canvasW * EXPORT_SCALE) * (canvasH * EXPORT_SCALE) > CANVAS_AREA_LIMIT) {
-      EXPORT_SCALE--;
-    }
-    var canvas = document.createElement('canvas');
-    canvas.width = canvasW * EXPORT_SCALE;
-    canvas.height = canvasH * EXPORT_SCALE;
-    var ctx = canvas.getContext('2d');
-    ctx.scale(EXPORT_SCALE, EXPORT_SCALE);
-    var dark = darkMode;
-
-    ctx.fillStyle = dark ? '#0f172a' : '#ffffff';
-    ctx.fillRect(0, 0, canvasW, canvasH);
-    ctx.fillStyle = dark ? '#e2e8f0' : '#1e293b';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    var now = new Date();
-    ctx.fillText('電腦挑人抽籤系統 ' + (seatMode === 'table' ? '桌次結果' : '座位結果') + '（' + now.getFullYear() + '/' + pad(now.getMonth() + 1) + '/' + pad(now.getDate()) + '）', canvasW / 2, 16);
-
-    for (var idx = 0; idx < total; idx++) {
-      var r = Math.floor(idx / cols), c = idx % cols;
-      var x = boxPad + c * (cellSize + gap);
-      var y = boxPad + titleH + r * (cellSize + gap);
-      var isExcluded = !!excluded[idx];
-      var info = drawnMap[idx];
-      var groupColor = info ? groupColorForCell(idx, info.num) : null;
-
-      var fillColor, borderColor, textColor;
-      if (isExcluded) {
-        fillColor = dark ? '#334155' : '#e2e8f0';
-        borderColor = '#94a3b8';
-        textColor = '#94a3b8';
-      } else if (info) {
-        fillColor = groupColor ? hexToRgba(groupColor, 0.22) : (dark ? '#1e3a8a' : '#eff6ff');
-        borderColor = groupColor || (dark ? '#3b82f6' : '#2563eb');
-        textColor = groupColor || (dark ? '#60a5fa' : '#1d4ed8');
-      } else {
-        fillColor = dark ? '#1e293b' : '#f8fafc';
-        borderColor = dark ? '#334155' : '#cbd5e1';
-        textColor = dark ? '#94a3b8' : '#64748b';
-      }
-
-      roundRectPath(ctx, x, y, cellSize, cellSize, 10);
-      ctx.fillStyle = fillColor;
-      ctx.fill();
-      ctx.strokeStyle = borderColor;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      if (isExcluded) {
-        ctx.font = '24px sans-serif';
-        ctx.fillStyle = textColor;
-        ctx.fillText('🚫', x + cellSize / 2, y + cellSize / 2);
-      } else if (info) {
-        ctx.font = 'bold 22px sans-serif';
-        ctx.fillStyle = textColor;
-        ctx.fillText(String(info.num), x + cellSize / 2, y + cellSize / 2 - 4);
-      }
-
-      ctx.font = '10px sans-serif';
-      ctx.fillStyle = dark ? '#94a3b8' : '#64748b';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText((r + 1) + '-' + (c + 1), x + cellSize - 4, y + cellSize - 3);
-    }
-
-    if (legendItems.length > 0) {
-      var legendTop = boxPad + titleH + rows * cellSize + (rows - 1) * gap + 20;
-      ctx.strokeStyle = dark ? '#334155' : '#cbd5e1';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(boxPad, legendTop - 8);
-      ctx.lineTo(canvasW - boxPad, legendTop - 8);
-      ctx.stroke();
-
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillStyle = dark ? '#e2e8f0' : '#1e293b';
-      ctx.fillText(breakdown.type === 'group' ? '分組結果' : '抽籤順序', boxPad, legendTop);
-      var legendY = legendTop + 28;
-
-      if (breakdown.type === 'group') {
-        legendItems.forEach(function(g) {
-          ctx.fillStyle = g.color;
-          roundRectPath(ctx, boxPad, legendY, 14, 14, 3);
-          ctx.fill();
-
-          ctx.font = 'bold 13px sans-serif';
-          ctx.fillStyle = dark ? '#e2e8f0' : '#1e293b';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-          ctx.fillText('第 ' + (g.gi + 1) + ' 組（' + g.nums.length + ' 人）：', boxPad + 22, legendY - 1);
-
-          ctx.font = '13px sans-serif';
-          ctx.fillStyle = dark ? '#94a3b8' : '#64748b';
-          ctx.fillText(g.nums.join('、'), boxPad + 150, legendY - 1);
-
-          legendY += 24;
-        });
-      } else {
-        legendItems.forEach(function(h) {
-          ctx.font = 'bold 13px sans-serif';
-          ctx.fillStyle = dark ? '#e2e8f0' : '#1e293b';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-          ctx.fillText('第 ' + h.seq + ' 個抽到：', boxPad, legendY - 1);
-
-          ctx.font = '13px sans-serif';
-          ctx.fillStyle = dark ? '#94a3b8' : '#64748b';
-          ctx.fillText(h.num + '　→　' + posLabel_(h.r, h.c), boxPad + 100, legendY - 1);
-
-          legendY += 24;
-        });
-      }
-    }
-
-    canvas.toBlob(function(blob) {
-      if (!blob) { alert('圖片產生失敗，請改用「列印/匯出座位表」試試。'); return; }
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      var stamp = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + '_' + pad(now.getHours()) + pad(now.getMinutes());
-      a.href = url;
-      a.download = '座位表_' + stamp + '.png';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-    });
-  }
-
-  // ============ 本機儲存：自動記住進度 ============
-  function saveStateToStorage() {
-    try {
-      var groupSel = document.getElementById('groupMode');
-      var drawLimitEl = document.getElementById('drawLimitInput');
-      var state = {
-        rows: rows, cols: cols, total: total,
-        excluded: excluded, started: started,
-        pool: pool, cellOrder: cellOrder, activeCellOrder: activeCellOrder,
-        filledCount: filledCount, drawHistory: drawHistory,
-        groupMode: groupSel ? groupSel.value : 'none',
-        drawLimit: drawLimitEl ? drawLimitEl.value : '',
-        randomGroupMaps: randomGroupMaps,
-        seatMode: seatMode,
-        cloudSessionId: CLOUD_SESSION_ID,
-        cellsHtml: cellRefs.map(function(el){ return el.innerHTML; }),
-        cellsClass: cellRefs.map(function(el){ return el.className; }),
-        cellsStyle: cellRefs.map(function(el){ return el.style.cssText; })
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {}
-  }
-
-  function loadStateFromStorage() {
-    var raw;
-    try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { return; }
-    if (!raw) return;
-    var state;
-    try { state = JSON.parse(raw); } catch (e) { return; }
-    if (!state || !state.total) return;
-
-    var restoreModeIsTable = state.seatMode === 'table';
-    var confirmSummary = restoreModeIsTable
-      ? (state.rows + ' 桌 × 每桌 ' + state.cols + ' 人，已抽 ' + state.filledCount + ' 人')
-      : (state.rows + ' 行 × ' + state.cols + ' 列，已抽 ' + state.filledCount + ' 格');
-    var keep = confirm(
-      '偵測到上次未完成的抽籤紀錄（' + confirmSummary + '）。\n' +
-      '要繼續上次的進度嗎？\n（選擇「取消」會清除紀錄、從空白開始）'
-    );
-    if (!keep) {
-      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-      return;
-    }
-
-    seatMode = state.seatMode || 'grid';
-    var seatModeSel = document.getElementById('seatModeSelect');
-    if (seatModeSel) seatModeSel.value = seatMode;
-    applySeatModeLabels_();
-
-    rows = state.rows; cols = state.cols; total = state.total;
-    excluded = state.excluded || {};
-    started = !!state.started;
-    pool = state.pool || [];
-    cellOrder = state.cellOrder || [];
-    activeCellOrder = state.activeCellOrder || [];
-    filledCount = state.filledCount || 0;
-    drawHistory = state.drawHistory || [];
-    drawnMap = {};
-    drawHistory.forEach(function(h) { drawnMap[h.cellIdx] = { num: h.num, r: h.r, c: h.c }; });
-    randomGroupMaps = state.randomGroupMaps || {};
-    CLOUD_SESSION_ID = state.cloudSessionId || null;
-    updateCloudStatus();
-
-    document.getElementById('rowsInput').value = rows;
-    document.getElementById('colsInput').value = cols;
-
-    var drawLimitEl = document.getElementById('drawLimitInput');
-    if (drawLimitEl) drawLimitEl.value = state.drawLimit || '';
-
-    var groupSel = document.getElementById('groupMode');
-    if (groupSel) groupSel.value = state.groupMode || 'none';
-
-    renderEmptyGrid();
-    (state.cellsHtml || []).forEach(function(html, idx) { if (cellRefs[idx]) cellRefs[idx].innerHTML = html; });
-    (state.cellsClass || []).forEach(function(cls, idx) { if (cellRefs[idx]) cellRefs[idx].className = cls; });
-    (state.cellsStyle || []).forEach(function(css, idx) { if (cellRefs[idx]) cellRefs[idx].style.cssText = css || ''; });
-
-    updateTotalHint();
-    updateProgress();
-    renderHistory();
-
-    document.getElementById('btnReset').disabled = false;
-    document.getElementById('btnHistory').disabled = false;
-    document.getElementById('btnUndo').disabled = drawHistory.length === 0;
-
-    var doneAlready = started && filledCount >= activeCellOrder.length && activeCellOrder.length > 0;
-    document.getElementById('btnDraw').disabled = doneAlready;
-    document.getElementById('btnDrawAll').disabled = doneAlready;
-
-    if (started) {
-      lockExcludeEditing();
-    } else {
-      document.getElementById('btnExclude').disabled = false;
-    }
-
-    if (drawHistory.length > 0) {
-      var last = drawHistory[drawHistory.length - 1];
-      showResult(last.num, last.r, last.c);
-    } else {
-      clearResultDisplay();
-    }
-
-    if (doneAlready) {
-      var done = document.createElement('div');
-      done.className = 'done-msg';
-      done.textContent = '🎉 已抽完全部 ' + activeCellOrder.length + ' 格！';
-      document.getElementById('resultBox').appendChild(done);
-    }
-
-    applyGroupColors();
-  }
-
-  // ============ 鍵盤快捷鍵：空白鍵＝抽籤 ============
-  document.addEventListener('keydown', function(e) {
-    if (e.code === 'Space' || e.key === ' ') {
-      var tag = (document.activeElement && document.activeElement.tagName) || '';
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      e.preventDefault();
-      var btn = document.getElementById('btnDraw');
-      if (btn && !btn.disabled) drawNumber();
-    }
-    if ((e.code === 'Escape' || e.key === 'Escape') && bigScreen) {
-      toggleBigScreen();
     }
   });
-
-  function toggleChangelog() {
-    var panel = document.getElementById('changelogPanel');
-    var show = panel.style.display === 'none';
-    panel.style.display = show ? '' : 'none';
-    if (show) renderChangelog();
-  }
-
-  function renderChangelog() {
-    var listEl = document.getElementById('changelogList');
-    if (!listEl) return;
-    listEl.innerHTML = CHANGELOG.map(function(item) {
-      var notesHtml = item.notes.map(function(n) { return '<li>' + n + '</li>'; }).join('');
-      return '<div class="changelog-entry">' +
-        '<div class="changelog-head">' + item.v + '<span class="changelog-date">' + item.date + '</span></div>' +
-        '<ul>' + notesHtml + '</ul>' +
-        '</div>';
-    }).join('');
-  }
-
-  document.getElementById('versionTag').textContent = APP_VERSION;
-
-  applySeatModeLabels_();
-  loadDarkModePref();
-  loadCloudSettings();
-  cloudApplyLockUi_();
-  startPresence_();
-  loadStateFromStorage();
+}
 </script>
 </body>
 </html>
