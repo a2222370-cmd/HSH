@@ -131,7 +131,7 @@
         </div>
       </div>
 
-      <button onclick="toggleConfigModal()" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 active:scale-95 transition-all text-white flex-shrink-0" title="GAS 網址設定">
+      <button onclick="toggleConfigModal()" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 active:scale-95 transition-all text-white flex-shrink-0" title="管理員設定（需管理員密碼）">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -159,16 +159,7 @@
       <div class="online-list" id="onlineList" style="display:none;"></div>
     </div>
 
-    <!-- 提示條 -->
-    <div id="endpointNotice" class="my-3 px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800 flex items-center justify-between shadow-sm">
-      <div class="flex items-center gap-2 truncate">
-        <svg class="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span id="gasEndpointDisplay" class="truncate font-mono">GAS 端點：未設定</span>
-      </div>
-      <button onclick="toggleConfigModal()" class="text-blue-600 font-bold hover:underline flex-shrink-0 text-xs ml-2">設定</button>
-    </div>
+    <!-- GAS 端點只在管理員解鎖後的「管理員設定」裡顯示，一般使用者看不到 -->
 
     <form id="telemetryForm" onsubmit="handleFormSubmit(event)" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-5" autocomplete="off">
 
@@ -365,11 +356,11 @@
   <div id="configModal" class="modal-wrap">
     <div class="w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2"><span class="text-blue-600">⚙️</span> GAS 接收端點設定</h3>
+        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2"><span class="text-blue-600">⚙️</span> 管理員設定：GAS 接收端點</h3>
         <button type="button" onclick="toggleConfigModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">&times;</button>
       </div>
       <div class="space-y-3 text-xs">
-        <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11.5px] font-bold">🔒 只有管理員可以修改端點設定（輸入管理員密碼，由後端驗證通過才會儲存）</div>
+        <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11.5px] font-bold">🔒 此頁只有管理員看得到。要修改端點請再輸入一次管理員密碼，由新網址的後端驗證通過才會儲存</div>
         <div>
           <label class="block font-bold text-slate-700 mb-1">Google Apps Script Web App 網址：</label>
           <input type="text" id="gasUrlSettingInput" placeholder="https://script.google.com/macros/s/.../exec"
@@ -550,9 +541,12 @@
     // ==========================================
     // 版本與改版記錄
     // ==========================================
-    const APP_VERSION = 'v2.6.0';
+    const APP_VERSION = 'v2.6.1';
     const BACKEND_MIN_VERSION = 'v2.5.0';
     const CHANGELOG = [
+      { v: 'v2.6.1', date: '2026-10-04', notes: [
+        '【回報頁】隱藏 Google Apps Script 端點網址：畫面上不再顯示「GAS 端點」提示條；右上角 ⚙️ 改為「管理員設定」，需先輸入管理員密碼解鎖才看得到與修改端點，上鎖或閒置登出時自動關閉'
+      ] },
       { v: 'v2.6.0', date: '2026-10-04', notes: [
         '【全系統】風格統一為許瑞興品牌版（與圖面／標準文件查詢一致）：字體改用思源黑體與 Roboto Mono，頂部改為深灰帶酒紅漸層與品牌紅底線',
         '【戰情室】更名為「許瑞興機台回報戰情室」並換上 HSH Logo；青藍發光改為中性深灰＋許瑞興紅點綴，正常／故障／保養的綠、紅、黃狀態色不變',
@@ -916,6 +910,8 @@
         .finally(() => { btn.disabled = false; btn.textContent = '解鎖'; document.getElementById('adminPwInput').value = ''; });
     }
     function renderDropdownAdminBar() {
+      // 管理員上鎖、閒置登出或通行證過期時，立刻關閉端點設定視窗
+      if (!RADMIN.token) { const cm = document.getElementById('configModal'); if (cm) cm.classList.remove('show'); }
       const bar = document.getElementById('ddAdminBar');
       if (!bar) return;
       bar.innerHTML = RADMIN.token
@@ -1388,6 +1384,7 @@
 
     function refreshEndpointDisplay() {
       const displayEl = document.getElementById('gasEndpointDisplay');
+      if (!displayEl) return; // 端點不再顯示於畫面上
       const activeUrl = getActiveGasUrl();
       const shortUrl = activeUrl.length > 32 ? activeUrl.substring(0, 30) + '...' : activeUrl;
       displayEl.textContent = 'GAS 端點：' + shortUrl;
@@ -1402,6 +1399,8 @@
     }
     function toggleConfigModal() {
       const modal = document.getElementById('configModal');
+      // 端點設定只有管理員看得到：未解鎖時先要求輸入管理員密碼
+      if (!modal.classList.contains('show') && !RADMIN.token) { requireAdmin(toggleConfigModal); return; }
       if (!modal.classList.contains('show')) {
         document.getElementById('gasUrlSettingInput').value = getActiveGasUrl();
         document.getElementById('cfgAdminPw').value = '';
