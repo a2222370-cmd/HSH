@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>許瑞興工業｜抽籤／幸運抽獎系統</title>
+<script>
+  (function(){
+    try {
+      var saved = localStorage.getItem('hsh_ui_theme') || 'safety-blue';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch(e){}
+  })();
+</script>
 <link rel="icon" id="favicon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -207,27 +215,155 @@
     align-items: center;
     gap: 8px;
   }
-  .top-theme-btn {
+  .top-theme-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: #e0f2fe;
     background: rgba(15,23,42,.45);
-    border: 1px solid rgba(186,230,253,.3);
-    padding: 3px 10px;
+    border: 1px solid rgba(186,230,253,.35);
+    padding: 3px 8px;
     border-radius: 20px;
-    cursor: pointer;
-    user-select: none;
     transition: all .2s;
-    white-space: nowrap;
   }
-  .top-theme-btn:hover {
+  .top-theme-badge:hover {
     background: rgba(2,132,199,.35);
     border-color: #38bdf8;
-    color: #fff;
-    transform: translateY(-1px);
+  }
+  .top-theme-select {
+    background: transparent;
+    border: none;
+    color: #e0f2fe;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    padding: 0 2px;
+  }
+  .top-theme-select option {
+    background: #0f172a;
+    color: #f8fafc;
+  }
+
+  /* 1. safety-blue: Safety 經典藍 (原廠外銷深海軍藍) */
+  html[data-theme="safety-blue"] header, body[data-theme="safety-blue"] header {
+    background: linear-gradient(135deg,#071e3d 0%,#0c3360 55%,#16487e 100%) !important;
+  }
+  html[data-theme="safety-blue"] .brand-decor-line, body[data-theme="safety-blue"] .brand-decor-line {
+    background: linear-gradient(90deg,#38bdf8 0%,#0284c7 45%,#f59e0b 85%,#fbbf24 100%) !important;
+  }
+  html[data-theme="safety-blue"] .brand-title .tag, body[data-theme="safety-blue"] .brand-title .tag {
+    color: #7dd3fc !important;
+  }
+  html[data-theme="safety-blue"] nav.view-switch-bar button.active,
+  html[data-theme="safety-blue"] .view-switch-btn.active,
+  body[data-theme="safety-blue"] nav.view-switch-bar button.active,
+  body[data-theme="safety-blue"] .view-switch-btn.active {
+    border-bottom-color: #38bdf8 !important;
+    color: #fff !important;
+  }
+
+  /* 2. carbon-dark: 極致深碳黑 (工業碳黑配熱血紅) */
+  html[data-theme="carbon-dark"] header, body[data-theme="carbon-dark"] header {
+    background: linear-gradient(135deg,#18181b 0%,#27272a 55%,#4a0d18 100%) !important;
+  }
+  html[data-theme="carbon-dark"] .brand-decor-line, body[data-theme="carbon-dark"] .brand-decor-line {
+    background: linear-gradient(90deg,#ef4444 0%,#dc2626 50%,#b91c1c 100%) !important;
+  }
+  html[data-theme="carbon-dark"] .brand-title .tag, body[data-theme="carbon-dark"] .brand-title .tag {
+    color: #fca5a5 !important;
+  }
+  html[data-theme="carbon-dark"] nav.view-switch-bar button.active,
+  html[data-theme="carbon-dark"] .view-switch-btn.active,
+  body[data-theme="carbon-dark"] nav.view-switch-bar button.active,
+  body[data-theme="carbon-dark"] .view-switch-btn.active {
+    border-bottom-color: #ef4444 !important;
+    color: #fff !important;
+  }
+  html[data-theme="carbon-dark"] .top-theme-badge, body[data-theme="carbon-dark"] .top-theme-badge {
+    background: rgba(24,24,27,.6);
+    border-color: rgba(239,68,68,.35);
+  }
+  html[data-theme="carbon-dark"] .top-theme-badge:hover, body[data-theme="carbon-dark"] .top-theme-badge:hover {
+    background: rgba(239,68,68,.25);
+    border-color: #ef4444;
+  }
+
+  /* 3. steel-slate: 鋼鐵精密灰 (冷軋鋼索五金) */
+  html[data-theme="steel-slate"] header, body[data-theme="steel-slate"] header {
+    background: linear-gradient(135deg,#0f172a 0%,#1e293b 55%,#334155 100%) !important;
+  }
+  html[data-theme="steel-slate"] .brand-decor-line, body[data-theme="steel-slate"] .brand-decor-line {
+    background: linear-gradient(90deg,#94a3b8 0%,#64748b 50%,#cbd5e1 100%) !important;
+  }
+  html[data-theme="steel-slate"] .brand-title .tag, body[data-theme="steel-slate"] .brand-title .tag {
+    color: #cbd5e1 !important;
+  }
+  html[data-theme="steel-slate"] nav.view-switch-bar button.active,
+  html[data-theme="steel-slate"] .view-switch-btn.active,
+  body[data-theme="steel-slate"] nav.view-switch-bar button.active,
+  body[data-theme="steel-slate"] .view-switch-btn.active {
+    border-bottom-color: #94a3b8 !important;
+    color: #fff !important;
+  }
+  html[data-theme="steel-slate"] .top-theme-badge, body[data-theme="steel-slate"] .top-theme-badge {
+    background: rgba(30,41,59,.6);
+    border-color: rgba(148,163,184,.35);
+  }
+  html[data-theme="steel-slate"] .top-theme-badge:hover, body[data-theme="steel-slate"] .top-theme-badge:hover {
+    background: rgba(100,116,139,.3);
+    border-color: #94a3b8;
+  }
+
+  /* 4. emerald-green: ESG 翡翠綠 (森林深綠) */
+  html[data-theme="emerald-green"] header, body[data-theme="emerald-green"] header {
+    background: linear-gradient(135deg,#064e3b 0%,#065f46 55%,#0f766e 100%) !important;
+  }
+  html[data-theme="emerald-green"] .brand-decor-line, body[data-theme="emerald-green"] .brand-decor-line {
+    background: linear-gradient(90deg,#34d399 0%,#10b981 50%,#059669 100%) !important;
+  }
+  html[data-theme="emerald-green"] .brand-title .tag, body[data-theme="emerald-green"] .brand-title .tag {
+    color: #6ee7b7 !important;
+  }
+  html[data-theme="emerald-green"] nav.view-switch-bar button.active,
+  html[data-theme="emerald-green"] .view-switch-btn.active,
+  body[data-theme="emerald-green"] nav.view-switch-bar button.active,
+  body[data-theme="emerald-green"] .view-switch-btn.active {
+    border-bottom-color: #34d399 !important;
+    color: #fff !important;
+  }
+  html[data-theme="emerald-green"] .top-theme-badge, body[data-theme="emerald-green"] .top-theme-badge {
+    background: rgba(6,78,59,.6);
+    border-color: rgba(52,211,153,.35);
+  }
+  html[data-theme="emerald-green"] .top-theme-badge:hover, body[data-theme="emerald-green"] .top-theme-badge:hover {
+    background: rgba(16,185,129,.3);
+    border-color: #34d399;
+  }
+
+  /* 5. warm-amber: 匠心琥珀金 (一甲子鑄造銅金暖棕) */
+  html[data-theme="warm-amber"] header, body[data-theme="warm-amber"] header {
+    background: linear-gradient(135deg,#271c19 0%,#451a03 55%,#78350f 100%) !important;
+  }
+  html[data-theme="warm-amber"] .brand-decor-line, body[data-theme="warm-amber"] .brand-decor-line {
+    background: linear-gradient(90deg,#f59e0b 0%,#d97706 50%,#fbbf24 100%) !important;
+  }
+  html[data-theme="warm-amber"] .brand-title .tag, body[data-theme="warm-amber"] .brand-title .tag {
+    color: #fde68a !important;
+  }
+  html[data-theme="warm-amber"] nav.view-switch-bar button.active,
+  html[data-theme="warm-amber"] .view-switch-btn.active,
+  body[data-theme="warm-amber"] nav.view-switch-bar button.active,
+  body[data-theme="warm-amber"] .view-switch-btn.active {
+    border-bottom-color: #f59e0b !important;
+    color: #fff !important;
+  }
+  html[data-theme="warm-amber"] .top-theme-badge, body[data-theme="warm-amber"] .top-theme-badge {
+    background: rgba(69,26,3,.6);
+    border-color: rgba(245,158,11,.35);
+  }
+  html[data-theme="warm-amber"] .top-theme-badge:hover, body[data-theme="warm-amber"] .top-theme-badge:hover {
+    background: rgba(217,119,6,.3);
+    border-color: #f59e0b;
   }
   .top-version-badge {
     display: inline-flex;
@@ -827,7 +963,16 @@
     </div>
     <div class="brand-right">
       <div class="top-actions-row">
-        <button class="top-theme-btn" id="themeToggle" onclick="toggleDarkMode()" title="切換深色／淺色模式">🌙 深色</button>
+        <div class="top-theme-badge" title="切換系統版面配色風格 (經典藍/深碳黑/鋼鐵灰/翡翠綠/琥珀金)">
+          <span style="font-size: 11px;">🎨</span>
+          <select id="themeSelectorLottery" onchange="switchHshTheme(this.value)" class="top-theme-select">
+            <option value="safety-blue">經典藍</option>
+            <option value="carbon-dark">深碳黑</option>
+            <option value="steel-slate">鋼鐵灰</option>
+            <option value="emerald-green">翡翠綠</option>
+            <option value="warm-amber">琥珀金</option>
+          </select>
+        </div>
         <div class="top-version-badge" id="onlineBadge" onclick="toggleOnlineList()" title="點擊查看目前在線同仁清單">
           <span class="dot-pulse" id="onlineDot"></span>
           <span class="online">線上: <b id="onlineCount">1</b> 人</span>
@@ -1519,6 +1664,7 @@ var CHANGELOG = [
 
 /* ================= 頁面初始化 ================= */
 window.addEventListener('DOMContentLoaded', function(){
+  initHshTheme();
   document.getElementById('versionTag').textContent = APP_VERSION;
   loadSettings();
   renderPrizeTemplateOptions(currentPrizeTemplateKey);
@@ -1616,15 +1762,52 @@ function toggleSound(){
   document.getElementById('btnSound').textContent = soundOn ? '🔈 音效開' : '🔇 靜音';
 }
 
-function toggleDarkMode(){
-  darkMode = !darkMode;
-  document.body.classList.toggle('darkmode', darkMode);
+/* ---------- 5 色版面風格主題切換 (許瑞興全系統標準) ---------- */
+function initHshTheme() {
+  var saved = 'safety-blue';
+  try {
+    saved = localStorage.getItem('hsh_ui_theme') || 'safety-blue';
+  } catch(e){}
+  switchHshTheme(saved, false);
+  window.addEventListener('storage', function(e){
+    if (e.key === 'hsh_ui_theme' && e.newValue) {
+      switchHshTheme(e.newValue, false);
+    }
+  });
+}
+
+function switchHshTheme(themeKey, save) {
+  if (save === undefined) save = true;
+  var validThemes = ['safety-blue', 'carbon-dark', 'steel-slate', 'emerald-green', 'warm-amber'];
+  if (validThemes.indexOf(themeKey) === -1) themeKey = 'safety-blue';
+  document.documentElement.setAttribute('data-theme', themeKey);
+  document.body.setAttribute('data-theme', themeKey);
+  var isDark = (themeKey === 'carbon-dark');
+  document.documentElement.classList.toggle('dark', isDark);
+  document.body.classList.toggle('dark', isDark);
+  document.body.classList.toggle('darkmode', isDark);
+  darkMode = isDark;
   var btn1 = document.getElementById('btnDarkMode');
   if (btn1) btn1.textContent = darkMode ? '☀️ 淺色模式' : '🌙 深色模式';
-  var btn2 = document.getElementById('themeToggle');
-  if (btn2) btn2.textContent = darkMode ? '☀️ 淺色' : '🌙 深色';
-  if (drawView === 'wheel') renderWheel();
-  if (drawView === 'lotto') renderLotto();
+  var sel = document.getElementById('themeSelectorLottery');
+  if (sel && sel.value !== themeKey) sel.value = themeKey;
+  if (save) {
+    try { localStorage.setItem('hsh_ui_theme', themeKey); } catch(e){}
+  }
+  if (typeof drawView !== 'undefined') {
+    if (drawView === 'wheel' && typeof renderWheel === 'function') renderWheel();
+    if (drawView === 'lotto' && typeof renderLotto === 'function') renderLotto();
+  }
+  if (typeof applyGroupColors === 'function') applyGroupColors();
+}
+
+function toggleDarkMode(){
+  var cur = document.documentElement.getAttribute('data-theme') || 'safety-blue';
+  if (cur === 'carbon-dark') {
+    switchHshTheme('safety-blue');
+  } else {
+    switchHshTheme('carbon-dark');
+  }
 }
 
 /* ================= 名冊管理模組（含管理者密碼鎖定與範本庫） ================= */
@@ -2683,7 +2866,8 @@ function buildCandidatePool(){
       var seatShort = seatMode === 'table' ? (r + '桌' + c) : (r + '-' + c);
       candidates.push({
         num: seq + 1,
-        name: seatText,
+        // 隨機排位：抽的是「人」（1～N 號），抽中後才分派到空位；對號入座：座位本身就是抽籤對象
+        name: seatAssignMode === 'random' ? ((seq + 1) + ' 號') : seatText,
         seatShort: seatShort,
         seatIndex: idx,
         r: r,
@@ -2797,7 +2981,8 @@ function finishDrawWithIndex(chosenIdx){
   filledCount++;
   var seatPos = seatMode === 'table' ? ('第 ' + r + ' 桌 第 ' + c + ' 位') : ('第 ' + r + ' 行 第 ' + c + ' 列');
   var seatShort = seatMode === 'table' ? (r + '桌' + c) : (r + '-' + c);
-  var displayName = (useRoster && picked && picked.name) ? picked.name : seatPos;
+  var isRandomNoRoster = !useRoster && seatAssignMode === 'random';
+  var displayName = (useRoster && picked && picked.name) ? picked.name : (isRandomNoRoster ? (picked.num + ' 號') : seatPos);
 
   var drawItem = {
     seq: filledCount,
@@ -2817,7 +3002,7 @@ function finishDrawWithIndex(chosenIdx){
   drawnMap[cellIdx] = drawItem;
 
   if (cellEl){
-    cellEl.innerHTML = '<span class="cell-name">' + (useRoster ? picked.name : seatShort) + '</span><span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
+    cellEl.innerHTML = '<span class="cell-name">' + (useRoster ? picked.name : (isRandomNoRoster ? (picked.num + ' 號') : seatShort)) + '</span><span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
     cellEl.classList.add('filled', 'just-filled');
     setTimeout(function(){ cellEl.classList.remove('just-filled'); }, 400);
   }
@@ -2849,6 +3034,13 @@ function finishDrawWithIndex(chosenIdx){
   }
 }
 
+// 抽中項目的名稱是否只是座位文字（對號入座、無名冊時）；隨機排位會是「N 號」或名冊姓名
+function isSeatLabel_(d){
+  if (!d || !d.name) return true;
+  var seats = [d.r + '-' + d.c, d.r + '桌' + d.c, d.r + '桌' + d.c + '位', '第 ' + d.r + ' 桌 第 ' + d.c + ' 位', '第 ' + d.r + ' 行 第 ' + d.c + ' 列'];
+  return seats.indexOf(d.name) !== -1;
+}
+
 function renderSlotWinner(item){
   var seatPos = seatMode === 'table' ? ('第 ' + item.r + ' 桌 第 ' + item.c + ' 位') : ('第 ' + item.r + ' 行 第 ' + item.c + ' 列');
   var el = document.getElementById('slotText');
@@ -2872,7 +3064,7 @@ function renderSlotWinnersStrip(){
   var recent = validList.slice(-20).reverse();
   strip.innerHTML = recent.map(function(d){
     var pos = seatMode === 'table' ? (d.r + '桌' + d.c + '位') : (d.r + '-' + d.c);
-    var label = (useRoster && d.name && d.name !== pos) ? (d.name + ' (' + pos + ')') : ('第 ' + pos);
+    var label = !isSeatLabel_(d) ? (d.name + ' (' + pos + ')') : ('第 ' + pos);
     return '<span class="slot-winner-chip">' +
       (d.prize ? d.prizeIcon + ' ' : '') + '<b>' + label + '</b>' +
     '</span>';
@@ -2896,7 +3088,7 @@ function renderLottoChute(lastItem){
   var seatPos = seatMode === 'table' ? ('第 ' + last.r + ' 桌 第 ' + last.c + ' 位') : ('第 ' + last.r + ' 行 第 ' + last.c + ' 列');
   var seatShort = seatMode === 'table' ? (last.r + '桌' + last.c) : (last.r + '-' + last.c);
   var icon = document.getElementById('lottoBallIcon');
-  if (icon) icon.textContent = useRoster ? (last.name ? last.name.slice(0, 2) : '幸運') : seatShort;
+  if (icon) icon.textContent = useRoster ? (last.name ? last.name.slice(0, 2) : '幸運') : (!isSeatLabel_(last) ? String(last.num) : seatShort);
   var bn2 = document.getElementById('lottoBallName');
   if (bn2) bn2.textContent = last.name || seatPos;
   var bp2 = document.getElementById('lottoBallPos');
@@ -2908,7 +3100,7 @@ function renderLottoChute(lastItem){
   if (chute){
     chute.innerHTML = validList.slice(-24).reverse().map(function(d){
       var p = seatMode === 'table' ? (d.r + '桌' + d.c) : (d.r + '-' + d.c);
-      var label = (useRoster && d.name && d.name !== p) ? (d.name + ' <span style="font-size:10.5px;opacity:0.8;">(' + p + ')</span>') : ('第 ' + p + ' 位');
+      var label = !isSeatLabel_(d) ? (d.name + ' <span style="font-size:10.5px;opacity:0.8;">(' + p + ')</span>') : ('第 ' + p + ' 位');
       return '<span class="lotto-chute-chip">🎱 <b>' + label + '</b></span>';
     }).join('');
   }
@@ -3113,6 +3305,12 @@ function showWinnerCard(item){
     deptTag.textContent = item.dept || '幸運得主';
     deptTag.style.display = 'inline-block';
     seatPosEl.textContent = seatPos;
+    seatPosEl.style.display = 'inline-block';
+  } else if (!isSeatLabel_(item)){
+    // 隨機排位（無名冊）：大字顯示抽中的人「N 號」，下方顯示分派到的座位
+    nameHuge.textContent = item.name;
+    deptTag.style.display = 'none';
+    seatPosEl.textContent = '入座 ' + seatPos;
     seatPosEl.style.display = 'inline-block';
   } else {
     // 桌人／行列模式無名冊時：大字直接醒目呈現「第 X 桌 第 X 位」為得獎唯一主角！
