@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>許瑞興機台回報戰情室 | HSH Machine Status War Room</title>
+  <script>
+    (function(){
+      try {
+        var saved = localStorage.getItem('hsh_ui_theme') || 'safety-blue';
+        document.documentElement.setAttribute('data-theme', saved);
+      } catch(e){}
+    })();
+  </script>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js CDN -->
@@ -50,6 +58,107 @@
   </script>
 
   <style>
+    /* 頂部風格切換 Badge */
+    .top-theme-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11.5px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .top-theme-badge:hover {
+      background: rgba(255,255,255,0.2);
+      border-color: rgba(255,255,255,0.4);
+    }
+    .top-theme-select {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      padding: 0;
+      margin: 0;
+      font-family: inherit;
+    }
+    .top-theme-select option {
+      background: #0f172a;
+      color: #f8fafc;
+    }
+
+    /* 五組版面主題配色 (許瑞興標準) */
+    /* 1. Safety 經典藍 (預設) */
+    html[data-theme="safety-blue"] header,
+    body[data-theme="safety-blue"] header {
+      background: linear-gradient(135deg, #071e3d 0%, #0d3b66 50%, #16487e 100%) !important;
+      border-bottom: 3px solid #38bdf8 !important;
+    }
+    html[data-theme="safety-blue"] .cyber-corner-tl,
+    html[data-theme="safety-blue"] .cyber-corner-tr,
+    html[data-theme="safety-blue"] .cyber-corner-bl,
+    html[data-theme="safety-blue"] .cyber-corner-br {
+      border-color: #38bdf8 !important;
+    }
+
+    /* 2. 極致深碳黑 */
+    html[data-theme="carbon-dark"] header,
+    body[data-theme="carbon-dark"] header {
+      background: linear-gradient(135deg, #18181b 0%, #27272a 50%, #4a0d18 100%) !important;
+      border-bottom: 3px solid #ef4444 !important;
+    }
+    html[data-theme="carbon-dark"] .cyber-corner-tl,
+    html[data-theme="carbon-dark"] .cyber-corner-tr,
+    html[data-theme="carbon-dark"] .cyber-corner-bl,
+    html[data-theme="carbon-dark"] .cyber-corner-br {
+      border-color: #ef4444 !important;
+    }
+
+    /* 3. 鋼鐵精密灰 */
+    html[data-theme="steel-slate"] header,
+    body[data-theme="steel-slate"] header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
+      border-bottom: 3px solid #94a3b8 !important;
+    }
+    html[data-theme="steel-slate"] .cyber-corner-tl,
+    html[data-theme="steel-slate"] .cyber-corner-tr,
+    html[data-theme="steel-slate"] .cyber-corner-bl,
+    html[data-theme="steel-slate"] .cyber-corner-br {
+      border-color: #94a3b8 !important;
+    }
+
+    /* 4. ESG 翡翠綠 */
+    html[data-theme="emerald-green"] header,
+    body[data-theme="emerald-green"] header {
+      background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #0f766e 100%) !important;
+      border-bottom: 3px solid #34d399 !important;
+    }
+    html[data-theme="emerald-green"] .cyber-corner-tl,
+    html[data-theme="emerald-green"] .cyber-corner-tr,
+    html[data-theme="emerald-green"] .cyber-corner-bl,
+    html[data-theme="emerald-green"] .cyber-corner-br {
+      border-color: #34d399 !important;
+    }
+
+    /* 5. 匠心琥珀金 */
+    html[data-theme="warm-amber"] header,
+    body[data-theme="warm-amber"] header {
+      background: linear-gradient(135deg, #271c19 0%, #451a03 50%, #78350f 100%) !important;
+      border-bottom: 3px solid #f59e0b !important;
+    }
+    html[data-theme="warm-amber"] .cyber-corner-tl,
+    html[data-theme="warm-amber"] .cyber-corner-tr,
+    html[data-theme="warm-amber"] .cyber-corner-bl,
+    html[data-theme="warm-amber"] .cyber-corner-br {
+      border-color: #f59e0b !important;
+    }
+
     /* 網格背景與科幻掃描線效果 */
     body {
       background-color: #111113;
@@ -155,6 +264,18 @@
 
       <!-- 右側工具列：時鐘、GAS 網址配置、手動重新整理 -->
       <div class="flex flex-wrap items-center gap-3">
+        <!-- 頂部風格切換 -->
+        <div class="top-theme-badge" title="切換系統版面配色風格 (經典藍/深碳黑/鋼鐵灰/翡翠綠/琥珀金)">
+          <span style="font-size: 11px;">🎨</span>
+          <select id="themeSelectorWarRoom" onchange="switchHshTheme(this.value)" class="top-theme-select">
+            <option value="safety-blue">經典藍</option>
+            <option value="carbon-dark">深碳黑</option>
+            <option value="steel-slate">鋼鐵灰</option>
+            <option value="emerald-green">翡翠綠</option>
+            <option value="warm-amber">琥珀金</option>
+          </select>
+        </div>
+
         <!-- 系統時鐘 -->
         <div class="bg-black/50 border border-slate-700/80 px-4 py-1.5 rounded text-right font-mono">
           <div class="text-[10px] text-cyan-400 tracking-wider">SYSTEM TIME</div>
@@ -4601,6 +4722,25 @@ module.exports = QRCode;
 var QRCode=req("index");var ECL=req("QRErrorCorrectLevel");
 window.makeQR=function(text,ecl){var q=new QRCode(-1,ECL[ecl||"M"]);q.addData(text);q.make();var n=q.getModuleCount(),p=[];for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(q.isDark(r,c))p.push("M"+(c+4)+" "+(r+4)+"h1v1h-1z");var s=n+8;return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+s+' '+s+'" shape-rendering="crispEdges"><rect width="'+s+'" height="'+s+'" fill="#fff"/><path d="'+p.join("")+'" fill="#000"/></svg>';};
 })();
+
+/* ---------- 5 色版面風格主題切換 (許瑞興全系統標準) ---------- */
+function initHshTheme() {
+  const saved = localStorage.getItem('hsh_ui_theme') || 'safety-blue';
+  switchHshTheme(saved, false);
+}
+function switchHshTheme(themeKey, save = true) {
+  const validThemes = ['safety-blue', 'carbon-dark', 'steel-slate', 'emerald-green', 'warm-amber'];
+  if (!validThemes.includes(themeKey)) themeKey = 'safety-blue';
+  document.documentElement.setAttribute('data-theme', themeKey);
+  document.body.setAttribute('data-theme', themeKey);
+  if (save) {
+    try { localStorage.setItem('hsh_ui_theme', themeKey); } catch(e){}
+  }
+  const sel = document.getElementById('themeSelectorWarRoom');
+  if (sel && sel.value !== themeKey) sel.value = themeKey;
+}
+window.addEventListener('DOMContentLoaded', initHshTheme);
+initHshTheme();
 </script>
 
 </body>
