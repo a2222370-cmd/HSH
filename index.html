@@ -1371,7 +1371,7 @@
       <input type="password" id="cloudUrlInput" disabled style="font-size:12px;" placeholder="••••••••••••••••••••（需管理者解鎖檢視）">
     </div>
     <div class="field" style="margin-bottom:10px;">
-      <label>API 驗證碼 (Token)</label>
+      <label>API 驗證碼 (Token，選填：後端 API_TOKEN 留空時不用填)</label>
       <input type="password" id="cloudTokenInput" disabled style="font-size:12px;" placeholder="••••••••••••••••••••">
     </div>
     <div style="display:flex;gap:8px;">
@@ -1563,7 +1563,7 @@ var Confetti = (function(){
 })();
 
 /* ================= 系統主要狀態變數 ================= */
-var APP_VERSION = 'v2.3.0';
+var APP_VERSION = 'v2.3.1';
 var lotteryMode = 'seat'; // 'seat' (純挑人/排位) | 'prize' (活動獎項模式)
 var rows = 5, cols = 6, total = 30;
 var pool = [];            // 候選人池
@@ -1609,7 +1609,7 @@ var tgConfig = {
 
 // 雲端設定 (Google Apps Script)
 var DEFAULT_CLOUD_API_URL = 'https://script.google.com/macros/s/AKfycbwzJhYBVkOoho6i5XDnPhe_Jc66dbpYY-L0GYZI2TDZDx7rUyV88FFGAmCBdViUTFjZjA/exec';
-var DEFAULT_CLOUD_API_TOKEN = 'CHANGE_ME_TO_A_SECRET';
+var DEFAULT_CLOUD_API_TOKEN = ''; // 不再使用公開驗證碼：雲端寫入改由管理者通行證（ADMIN_SESSION）保護
 var CLOUD_API_URL = DEFAULT_CLOUD_API_URL;
 var CLOUD_API_TOKEN = DEFAULT_CLOUD_API_TOKEN;
 var CLOUD_SESSION_ID = null;
@@ -1653,6 +1653,10 @@ var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181',
 
 /* 改版紀錄清單 */
 var CHANGELOG = [
+  { v: 'v2.3.1', date: '2026-10-05', notes: [
+    '🔐 拿掉網頁裡的公開驗證碼：抽籤紀錄寫入雲端改用管理者通行證，只有管理者解鎖過的電腦才會寫入；未解鎖照常抽籤但不寫雲端。',
+    '☁️ 格子下方顯示本場雲端紀錄狀態（已寫入／未解鎖／通行證過期／連線失敗）；雲端回應較慢時，先抽出的結果會自動補寫。'
+  ]},
   { v: 'v2.3.0', date: '2026-10-05', notes: [
     '💾 重新整理或瀏覽器當掉後，自動還原抽籤進度、格子大小與「一人限得一獎」設定。',
     '🍽️ 套用名冊不再改動「每桌人數／列數」，只依人數調整桌數，對號入座座位正確。',
@@ -2717,6 +2721,7 @@ function onSetupGridClick_(){
 }
 
 function setupGrid(){
+  CLOUD_REC_STATE_ = '';
   rows = parseInt(document.getElementById('rowsInput').value) || 5;
   cols = parseInt(document.getElementById('colsInput').value) || 6;
   total = rows * cols;
@@ -2870,6 +2875,10 @@ function updateTotalHint(){
     '，共 ' + total + ' 格（可用 ' + activeCount + ' 格）';
   if (useRoster) {
     hint += ' · 名冊已匯入 ' + roster.length + ' 人 (' + (seatAssignMode === 'assigned' ? '🍽️ 對號入座固定桌位' : '🎲 抽籤隨機分派空位') + ')';
+  }
+  if (started && CLOUD_API_URL){
+    var recTxt = { ok: '☁️ 本場已寫入雲端紀錄', locked: '☁️ 未管理者解鎖：本場不寫入雲端紀錄（抽籤照常）', expired: '⚠️ 管理者通行證已過期：之後的結果未寫入雲端，請重新解鎖', offline: '⚠️ 雲端連線失敗：本場未寫入雲端紀錄' }[CLOUD_REC_STATE_];
+    if (recTxt) hint += ' · ' + recTxt;
   }
   document.getElementById('totalHint').textContent = hint;
 }
@@ -4084,8 +4093,22 @@ function cloudClearAll(){
     }).catch(function(e){ alert('連線失敗：' + e.message); });
 }
 
+// 雲端抽籤紀錄狀態：只有管理者解鎖過的電腦才會寫入雲端（通行證由後端驗證密碼後發出）
+var CLOUD_REC_STATE_ = '';
+function setCloudRecState_(st){ CLOUD_REC_STATE_ = st; updateTotalHint(); }
+function cloudRecResult_(res){
+  if (res && res.needAdmin){
+    ADMIN_SESSION = '';
+    try { sessionStorage.removeItem('lottery_admin_session'); } catch(e){}
+    setCloudRecState_('expired');
+    return false;
+  }
+  return true;
+}
+
 function cloudCreateSession_(){
   if (!CLOUD_API_URL) return;
+  if (!ADMIN_SESSION){ setCloudRecState_('locked'); return; } // 未解鎖：照常抽籤，只是不寫雲端紀錄
   fetch(CLOUD_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -4093,11 +4116,21 @@ function cloudCreateSession_(){
       token: CLOUD_API_TOKEN, action: 'createSession',
       rows: rows, cols: cols, excludedCells: Object.keys(excluded).map(Number),
       groupMode: document.getElementById('groupMode').value,
-      note: (lotteryMode==='prize'?'獎項抽獎_':'座位挑人_') + new Date().toISOString().slice(0,10)
+      note: (lotteryMode==='prize'?'獎項抽獎_':'座位挑人_') + new Date().toISOString().slice(0,10),
+      adminSession: ADMIN_SESSION
     })
   }).then(function(r){ return r.json(); })
-    .then(function(res){ if (res.ok) CLOUD_SESSION_ID = res.sessionId; })
-    .catch(function(){});
+    .then(function(res){
+      if (!cloudRecResult_(res)) return;
+      if (res.ok){
+        CLOUD_SESSION_ID = res.sessionId;
+        setCloudRecState_('ok');
+        // 場次建立前就已抽出的紀錄（網路較慢時）補寫上去
+        drawHistory.forEach(function(d){ cloudAddDraw_(d); });
+        saveStateToStorage();
+      }
+    })
+    .catch(function(){ setCloudRecState_('offline'); });
 }
 
 function cloudAddDraw_(item){
@@ -4108,9 +4141,10 @@ function cloudAddDraw_(item){
     body: JSON.stringify({
       token: CLOUD_API_TOKEN, action: 'addDraw',
       sessionId: CLOUD_SESSION_ID, seq: item.seq, num: item.num,
-      row: item.r, col: item.c, prize: item.prize, name: item.name, dept: item.dept, status: item.status
+      row: item.r, col: item.c, prize: item.prize, name: item.name, dept: item.dept, status: item.status,
+      adminSession: ADMIN_SESSION
     })
-  }).catch(function(){});
+  }).then(function(r){ return r.json(); }).then(cloudRecResult_).catch(function(){});
 }
 
 function cloudSetDrawStatus_(seq, status){
@@ -4120,9 +4154,10 @@ function cloudSetDrawStatus_(seq, status){
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({
       token: CLOUD_API_TOKEN, action: 'setDrawStatus',
-      sessionId: CLOUD_SESSION_ID, seq: seq, status: status
+      sessionId: CLOUD_SESSION_ID, seq: seq, status: status,
+      adminSession: ADMIN_SESSION
     })
-  }).catch(function(){});
+  }).then(function(r){ return r.json(); }).then(cloudRecResult_).catch(function(){});
 }
 
 function cloudUndoLastDraw_(){
@@ -4130,8 +4165,8 @@ function cloudUndoLastDraw_(){
   fetch(CLOUD_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'undoLastDraw', sessionId: CLOUD_SESSION_ID })
-  }).catch(function(){});
+    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'undoLastDraw', sessionId: CLOUD_SESSION_ID, adminSession: ADMIN_SESSION })
+  }).then(function(r){ return r.json(); }).then(cloudRecResult_).catch(function(){});
 }
 
 function cloudSaveTemplate_(category, key, name, data){
@@ -4486,6 +4521,7 @@ function restoreProgress_(){
   filledCount = st.filledCount || 0;
   started = true;
   CLOUD_SESSION_ID = st.cloudSessionId || null;
+  CLOUD_REC_STATE_ = CLOUD_SESSION_ID ? 'ok' : (ADMIN_SESSION ? '' : 'locked');
   if (st.activeCellOrder && st.activeCellOrder.length){
     activeCellOrder = st.activeCellOrder;
   } else {
