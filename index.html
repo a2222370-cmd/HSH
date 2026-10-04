@@ -1687,9 +1687,24 @@ window.addEventListener('DOMContentLoaded', function(){
 });
 
 /* ================= 模式切換 ================= */
-function onLotteryModeChange(){
-  lotteryMode = document.getElementById('lotteryModeSelect').value;
+function onLotteryModeChange(fromRestore){
+  var modeSel = document.getElementById('lotteryModeSelect');
+  var isPrizeNext = modeSel.value === 'prize';
+  // 防呆：活動獎項模式只能用「對號入座」，隨機排位會讓得獎者被塞進不是自己的空位
+  if (isPrizeNext && seatAssignMode === 'random'){
+    if (!fromRestore && drawHistory.length > 0 &&
+        !confirm('活動獎項模式只能使用「宴席抽獎模式（對號入座）」。\n切換後會改成對號入座並清空目前的抽籤結果，確定要切換嗎？')){
+      modeSel.value = lotteryMode; // 取消：維持原本的抽籤模式
+      return;
+    }
+    seatAssignMode = 'assigned';
+    var selA = document.getElementById('seatAssignModeSelect');
+    if (selA) selA.value = 'assigned';
+    if (!fromRestore) setupGrid();
+  }
+  lotteryMode = modeSel.value;
   var isPrize = lotteryMode === 'prize';
+  syncSeatAssignLock_();
   document.getElementById('prizeBar').style.display = isPrize ? 'flex' : 'none';
   var limitInput = document.getElementById('drawLimitInput');
   var limitLabel = document.getElementById('drawLimitLabel');
@@ -2822,6 +2837,22 @@ function onSeatModeChange(){
   document.getElementById('rowsLabel').textContent = seatMode === 'table' ? '桌數' : '行數';
   document.getElementById('colsLabel').textContent = seatMode === 'table' ? '每桌人數' : '列數';
   setupGrid();
+}
+
+// 活動獎項模式：「隨機排位」選項變灰不能選；隨機挑人／排位模式：恢復可選
+function syncSeatAssignLock_(){
+  var sel = document.getElementById('seatAssignModeSelect');
+  if (!sel) return;
+  var isPrize = lotteryMode === 'prize';
+  for (var i = 0; i < sel.options.length; i++){
+    if (sel.options[i].value === 'random'){
+      sel.options[i].disabled = isPrize;
+      sel.options[i].textContent = isPrize
+        ? '🎲 隨機排位模式（活動獎項模式不適用）'
+        : '🎲 隨機排位模式（原版排位：抽籤分派空座位）';
+    }
+  }
+  sel.title = isPrize ? '活動獎項模式請使用對號入座：得獎者標示在名冊上的固定座位' : '';
 }
 
 function onSeatAssignModeChange(){
@@ -4359,7 +4390,7 @@ function loadSettings(){
     if (state.lotteryMode) {
       lotteryMode = state.lotteryMode;
       document.getElementById('lotteryModeSelect').value = lotteryMode;
-      onLotteryModeChange();
+      onLotteryModeChange(true);
     }
   }catch(e){}
 }
