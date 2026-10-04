@@ -1038,7 +1038,7 @@
         <label for="drawLimitInput" id="drawLimitLabel">限制抽出人數</label>
         <input type="number" id="drawLimitInput" min="1" placeholder="留白＝全抽" style="width:130px;" oninput="updateTotalHint(); saveStateToStorage();">
       </div>
-      <button id="btnSetup" onclick="setupGrid()">建立格子</button>
+      <button id="btnSetup" onclick="onSetupGridClick_()">建立格子</button>
       <button id="btnExclude" class="tool-btn" onclick="toggleExcludeMode()" disabled>🚫 設定排除格</button>
       <div class="field">
         <label for="groupMode">分組上色</label>
@@ -1563,7 +1563,7 @@ var Confetti = (function(){
 })();
 
 /* ================= 系統主要狀態變數 ================= */
-var APP_VERSION = 'v2.2.1';
+var APP_VERSION = 'v2.3.0';
 var lotteryMode = 'seat'; // 'seat' (純挑人/排位) | 'prize' (活動獎項模式)
 var rows = 5, cols = 6, total = 30;
 var pool = [];            // 候選人池
@@ -1616,10 +1616,35 @@ var CLOUD_SESSION_ID = null;
 var CLOUD_ADMIN_UNLOCKED = false;
 var STORAGE_KEY = 'lottery_v2_state';
 
-// 管理者密碼標準驗證（前後端一致）
-var ADMIN_PASSWORD_STANDARD = 'k8825252';
-function checkAdminPasswordInput(pw){
-  return String(pw || '').trim() === ADMIN_PASSWORD_STANDARD;
+// 管理者密碼驗證：密碼只存在 GAS 後端（指令碼屬性 ADMIN_PASSWORD 或 Code.gs），網頁原始碼不再看得到密碼
+// 驗證成功後端會發一組通行證 ADMIN_SESSION，名冊／範本的雲端讀寫都要帶這組通行證
+var ADMIN_SESSION = (function(){ try { return sessionStorage.getItem('lottery_admin_session') || ''; } catch(e){ return ''; } })();
+function verifyAdminRemote_(pw, onOk){
+  if (!CLOUD_API_URL){ alert('尚未設定雲端 GAS API 網址，無法驗證管理者密碼'); return; }
+  fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'verifyAdmin', adminPassword: String(pw || '').trim(), sid: MY_DEVICE_ID, ip: ENV.ip })
+  }).then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res && res.ok){
+        if (res.adminSession){
+          ADMIN_SESSION = res.adminSession;
+          try { sessionStorage.setItem('lottery_admin_session', ADMIN_SESSION); } catch(e){}
+        }
+        onOk();
+      } else {
+        alert('❌ ' + ((res && res.error) || '管理者密碼不正確！'));
+      }
+    }).catch(function(err){ alert('無法連線雲端驗證管理者密碼：' + err.message + '\n請確認網路與「雲端同步設定」的 GAS 網址。'); });
+}
+// 後端回覆通行證失效時提示重新解鎖
+function handleAdminWriteResult_(res, label){
+  if (res && res.needAdmin){
+    ADMIN_SESSION = '';
+    try { sessionStorage.removeItem('lottery_admin_session'); } catch(e){}
+    alert('⚠️ ' + label + '沒有寫入雲端：管理者通行證已過期，請重新按「管理者解鎖」輸入密碼後再試一次。');
+  }
 }
 
 // 調色盤
@@ -1628,6 +1653,14 @@ var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181',
 
 /* 改版紀錄清單 */
 var CHANGELOG = [
+  { v: 'v2.3.0', date: '2026-10-05', notes: [
+    '💾 重新整理或瀏覽器當掉後，自動還原抽籤進度、格子大小與「一人限得一獎」設定。',
+    '🍽️ 套用名冊不再改動「每桌人數／列數」，只依人數調整桌數，對號入座座位正確。',
+    '🔒 管理者密碼改由 GAS 後端驗證，網頁原始碼不再含密碼；雲端名冊與名冊範本需管理者解鎖才能讀寫。',
+    '⏳ 抽籤動畫進行中鎖住一鍵產生／復原／棄權重抽／重新開始，避免錯亂。',
+    '↩ 復原後再抽會回到正確座位；棄權重抽後棄權者座位熄燈；名冊人數多於座位時先提醒。',
+    '🎡 隨機排位時大輪盤顯示「N 號」；「一人限得一獎」取消勾選可重複中獎；洗牌改用 Fisher-Yates 完全平均。'
+  ]},
   { v: 'v2.2.1', date: '2026-10-04', notes: [
     '🍽️ 新增「座位對應情境」切換：完整支援「宴席抽獎模式（對號入座）」與「隨機排位模式（原版排位）」自由切換！',
     '🎯 宴席抽獎模式（對號入座）：依名冊序號精確鎖定每位同仁桌次（4桌10人時，編號24必定精準對應第3桌第4位），抽中時直接點亮得主真實座位，開獎卡片與廣播精準對齊，現場零混淆！',
@@ -1675,6 +1708,7 @@ window.addEventListener('DOMContentLoaded', function(){
   applyRosterAdminLockState();
   applyTgAdminLockState();
   setupGrid();
+  restoreProgress_();
   renderChangelog();
   initCloudConfig();
   syncTemplatesFromCloud(false);
@@ -1835,13 +1869,12 @@ function unlockRosterAdmin(){
   }
   var pw = prompt('請輸入管理者密碼進行解鎖：');
   if (!pw) return;
-  if (checkAdminPasswordInput(pw)){
+  verifyAdminRemote_(pw, function(){
     rosterAdminUnlocked = true;
     applyRosterAdminLockState();
+    syncTemplatesFromCloud(false); // 解鎖後才讀得到雲端名冊範本
     alert('🔓 管理者解鎖成功！已開放名冊編輯、範本修改與試算表同步權限。');
-  } else {
-    alert('❌ 管理者密碼不正確！');
-  }
+  });
 }
 
 function lockRosterAdmin(){
@@ -2199,14 +2232,12 @@ function unlockPrizeAdmin(){
   }
   var pw = prompt('請輸入管理者密碼進行解鎖：');
   if (!pw) return;
-  if (checkAdminPasswordInput(pw)){
+  verifyAdminRemote_(pw, function(){
     prizeAdminUnlocked = true;
     applyPrizeAdminLockState();
   applyRosterAdminLockState();
     alert('🔓 管理者解鎖成功！已開放獎項編輯、增刪與儲存範本權限。');
-  } else {
-    alert('❌ 管理者密碼不正確！');
-  }
+  });
 }
 
 function lockPrizeAdmin(){
@@ -2589,6 +2620,7 @@ function clearRosterInput(){
   document.getElementById('rosterCountHint').textContent = '目前名單：0 人';
 }
 
+var rosterLayoutMsg_ = '';
 function applyRoster(){
   if (!rosterAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
   var txt = document.getElementById('rosterText').value.trim();
@@ -2604,11 +2636,13 @@ function applyRoster(){
       if (parts.length === 2) return { id: '', name: parts[0], dept: parts[1], num: idx + 1 };
       return { id: '', name: parts[0], dept: '', num: idx + 1 };
     });
+    // 保留使用者設定的「列數／每桌人數」，只依人數調整「行數／桌數」（原本會重算成正方形，打亂對號入座的桌位）
     var n = roster.length;
-    var c = Math.ceil(Math.sqrt(n));
+    var c = parseInt(document.getElementById('colsInput').value) || cols || 1;
     var r = Math.ceil(n / c);
+    var oldR = parseInt(document.getElementById('rowsInput').value) || rows;
     document.getElementById('rowsInput').value = r;
-    document.getElementById('colsInput').value = c;
+    if (r !== oldR) rosterLayoutMsg_ = '\n\n' + (seatMode === 'table' ? '桌數' : '行數') + '已依名冊 ' + n + ' 人調整為 ' + r + '（' + (seatMode === 'table' ? '每桌人數' : '列數') + '維持 ' + c + '）。';
     setupGrid();
   }
   // 若管理者已解鎖，同步自動更新覆寫當前名冊範本
@@ -2624,7 +2658,8 @@ function applyRoster(){
   }
   closeModal('rosterModal');
   saveStateToStorage();
-  alert('✅ 名冊設定已成功套用並儲存！');
+  alert('✅ 名冊設定已成功套用並儲存！' + rosterLayoutMsg_);
+  rosterLayoutMsg_ = '';
 }
 
 function uploadRosterToCloud(){
@@ -2642,9 +2677,10 @@ function uploadRosterToCloud(){
   fetch(CLOUD_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'uploadRoster', roster: rosterList })
+    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'uploadRoster', roster: rosterList, adminSession: ADMIN_SESSION })
   }).then(function(r){ return r.json(); })
     .then(function(res){
+      if (res.needAdmin){ handleAdminWriteResult_(res, '名冊'); return; }
       if (res.ok){
         alert('✅ 成功上傳 ' + res.count + ' 筆名冊至 Google 試算表的「名冊」工作表！\n您現在打開 Google 試算表就能看到完整的同仁名單。');
       } else {
@@ -2656,9 +2692,10 @@ function uploadRosterToCloud(){
 function fetchRosterFromCloud(){
   if (!rosterAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
   if (!CLOUD_API_URL){ alert('尚未設定雲端 GAS API 網址，請先至「雲端同步設定」確認！'); return; }
-  fetch(CLOUD_API_URL + '?action=getRoster')
+  fetch(CLOUD_API_URL + '?action=getRoster&adminSession=' + encodeURIComponent(ADMIN_SESSION))
     .then(function(r){ return r.json(); })
     .then(function(res){
+      if (res.needAdmin){ handleAdminWriteResult_(res, '名冊讀取'); return; }
       if (res.ok && res.roster && res.roster.length){
         var lines = res.roster.map(function(x){ return [x.id, x.name, x.dept].filter(Boolean).join(' '); });
         document.getElementById('rosterText').value = lines.join('\n');
@@ -2671,6 +2708,14 @@ function fetchRosterFromCloud(){
 }
 
 /* ================= 座位網格 Grid 模組 ================= */
+// 「建立格子」按鈕：已有抽籤結果時先確認，避免一按就把結果清掉
+function onSetupGridClick_(){
+  if (busyAlert_()) return;
+  if (drawHistory.length > 0 && !confirm('重新建立格子會清除目前所有抽籤結果，確定要繼續嗎？')) return;
+  setupGrid();
+  saveStateToStorage();
+}
+
 function setupGrid(){
   rows = parseInt(document.getElementById('rowsInput').value) || 5;
   cols = parseInt(document.getElementById('colsInput').value) || 6;
@@ -2692,11 +2737,8 @@ function setupGrid(){
   var emptyState = document.getElementById('emptyState');
   if (emptyState) emptyState.style.display = total > 0 ? 'none' : 'block';
 
-  document.getElementById('btnDraw').disabled = false;
-  document.getElementById('btnDrawAll').disabled = false;
+  setDrawingUi_(false);
   document.getElementById('btnExclude').disabled = false;
-  document.getElementById('btnUndo').disabled = true;
-  document.getElementById('btnRedraw').disabled = true;
   document.getElementById('winnerCard').style.display = 'none';
   document.getElementById('resultPlaceholder').style.display = 'block';
 
@@ -2753,7 +2795,7 @@ function renderEmptyGrid(){
         var drawn = drawnMap[i];
         if (drawn){
           el.classList.add('filled');
-          el.innerHTML = '<span class="cell-name">' + drawn.name + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
+          el.innerHTML = '<span class="cell-name">' + cellLabel_(drawn) + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
         } else {
           if (seatAssignMode === 'assigned' && useRoster && roster[i]){
             el.innerHTML = '<span class="cell-name-preview">' + roster[i].name + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
@@ -2784,7 +2826,7 @@ function renderEmptyGrid(){
       var drawn = drawnMap[i];
       if (drawn){
         el.classList.add('filled');
-        el.innerHTML = '<span class="cell-name">' + drawn.name + '</span><span class="coord">' + r + '-' + c + '</span>';
+        el.innerHTML = '<span class="cell-name">' + cellLabel_(drawn) + '</span><span class="coord">' + r + '-' + c + '</span>';
       } else {
         if (seatAssignMode === 'assigned' && useRoster && roster[i]){
           el.innerHTML = '<span class="cell-name-preview">' + roster[i].name + '</span><span class="coord">' + r + '-' + c + '</span>';
@@ -2863,6 +2905,86 @@ function onSeatAssignModeChange(){
 }
 
 /* ================= 核心抽籤邏輯 ================= */
+/* ---------- 共用小工具（2026-10-05 修正） ---------- */
+var drawing_ = false; // 抽籤動畫進行中：鎖住其他按鈕，避免動畫中又按一鍵產生／復原造成錯亂
+
+// Fisher-Yates 洗牌：每種順序機率完全相同（原本 sort(Math.random) 會有偏差）
+function shuffle_(arr){
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function setDrawingUi_(on){
+  drawing_ = !!on;
+  var noHist = drawHistory.length === 0;
+  var set = function(id, dis){ var el = document.getElementById(id); if (el) el.disabled = dis; };
+  set('btnDraw', on);
+  set('btnDrawAll', on);
+  set('btnUndo', on || noHist);
+  set('btnRedraw', on || noHist);
+  set('btnReset', on);
+  set('btnSetup', on);
+}
+
+function busyAlert_(){
+  if (drawing_){ alert('抽籤動畫進行中，請等這一位抽出後再操作。'); return true; }
+  return false;
+}
+
+// 格子上顯示的文字：有名冊顯示姓名、隨機排位顯示「N 號」、對號入座無名冊顯示座位簡寫
+function cellLabel_(d){
+  return isSeatLabel_(d) ? (seatMode === 'table' ? (d.r + '桌' + d.c) : (d.r + '-' + d.c)) : d.name;
+}
+
+// 依目前抽籤紀錄重畫單一格（復原、棄權後用）：同格若還有其他有效得主就顯示他，沒有就恢復空格
+function refreshCell_(idx){
+  var el = cellRefs[idx];
+  var d = null;
+  for (var i = drawHistory.length - 1; i >= 0; i--){
+    if (drawHistory[i].cellIdx === idx && drawHistory[i].status !== 'waived'){ d = drawHistory[i]; break; }
+  }
+  var r = Math.floor(idx / cols) + 1, c = (idx % cols) + 1;
+  var coord = seatMode === 'table' ? (r + '桌' + c) : (r + '-' + c);
+  if (d){
+    drawnMap[idx] = d;
+    if (el){ el.classList.add('filled'); el.innerHTML = '<span class="cell-name">' + cellLabel_(d) + '</span><span class="coord">' + coord + '</span>'; }
+  } else {
+    delete drawnMap[idx];
+    if (el){
+      el.classList.remove('filled');
+      el.style.background = ''; el.style.borderColor = ''; el.style.color = '';
+      if (seatAssignMode === 'assigned' && useRoster && roster[idx]){
+        el.innerHTML = '<span class="cell-name-preview">' + roster[idx].name + '</span><span class="coord">' + coord + '</span>';
+      } else {
+        el.innerHTML = '<span class="coord">' + coord + '</span>';
+      }
+    }
+  }
+}
+
+// 第一次抽籤前的初始化（抽籤與一鍵產生共用）；回傳 false 代表使用者取消
+function initDrawSession_(){
+  if (started) return true;
+  if (useRoster && seatAssignMode === 'assigned' && roster.length > total){
+    if (!confirm('名冊有 ' + roster.length + ' 人，但座位只有 ' + total + ' 個。\n第 ' + (total + 1) + ' 位以後的同仁沒有座位，不會被抽到。\n\n建議先調整「' + (seatMode === 'table' ? '桌數' : '行數') + '」再抽。仍要繼續嗎？')) return false;
+  }
+  activeCellOrder = shuffle_(cellOrder.filter(function(i){ return !excluded[i]; }));
+  // 純挑人模式下若設定了限制人數：嚴格截取
+  if (lotteryMode === 'seat'){
+    var limit = parseInt(document.getElementById('drawLimitInput').value);
+    if (limit && limit > 0 && limit < activeCellOrder.length) activeCellOrder = activeCellOrder.slice(0, limit);
+  }
+  pool = buildCandidatePool();
+  started = true;
+  document.getElementById('btnExclude').disabled = true;
+  cloudCreateSession_();
+  return true;
+}
+
 function buildCandidatePool(){
   var candidates = [];
   var activeIndices = cellOrder.filter(function(i){ return !excluded[i]; });
@@ -2871,6 +2993,10 @@ function buildCandidatePool(){
     roster.forEach(function(person, idx){
       // 對號入座模式下：若此名冊人員對應的座位被設為排除，則不參與抽籤
       if (seatAssignMode === 'assigned' && excluded[idx]){
+        return;
+      }
+      // 對號入座：名冊人數多於座位時，沒有座位的人不參與（避免出現不存在的座位）
+      if (seatAssignMode === 'assigned' && idx >= total){
         return;
       }
       var r = Math.floor(idx / cols) + 1;
@@ -2919,20 +3045,8 @@ function buildCandidatePool(){
 }
 
 function executeDraw(){
-  if (!started){
-    activeCellOrder = cellOrder.filter(function(i){ return !excluded[i]; });
-    activeCellOrder.sort(function(){ return Math.random() - 0.5; });
-
-    // 純挑人模式下若設定了限制人數：嚴格截取
-    if (lotteryMode === 'seat'){
-      var limit = parseInt(document.getElementById('drawLimitInput').value);
-      if (limit && limit > 0 && limit < activeCellOrder.length) activeCellOrder = activeCellOrder.slice(0, limit);
-    }
-    pool = buildCandidatePool();
-    started = true;
-    document.getElementById('btnExclude').disabled = true;
-    cloudCreateSession_();
-  }
+  if (drawing_) return;
+  if (!initDrawSession_()) return;
 
   if (pool.length === 0 || filledCount >= activeCellOrder.length){
     alert('已抽完全部候選人或格子！'); return;
@@ -2957,7 +3071,7 @@ function executeDraw(){
     }
   }
 
-  document.getElementById('btnDraw').disabled = true;
+  setDrawingUi_(true);
   if (soundOn) SoundFX.startDrumRoll();
 
   // 事先隨機抽定得主 index，讓輪盤/滾輪精準定格到同一人
@@ -2991,9 +3105,12 @@ function animateGrid(chosenIdx, doneCallback){
 }
 
 function finishDrawWithIndex(chosenIdx){
+  drawing_ = false;
   if (soundOn) SoundFX.stopDrumRoll();
 
-  var picked = pool.splice(chosenIdx, 1)[0];
+  // 「一人限得一獎」取消勾選時，抽中的人留在候選名單可再被抽到（隨機排位一人只能坐一個位子，不適用）
+  var allowRepeat = !document.getElementById('chkNoDup').checked && seatAssignMode !== 'random';
+  var picked = allowRepeat ? pool[chosenIdx] : pool.splice(chosenIdx, 1)[0];
   var isPrize = lotteryMode === 'prize';
   var curPrize = isPrize ? (prizes.find(function(p){ return p.id === activePrizeId; }) || prizes[0]) : null;
 
@@ -3024,6 +3141,9 @@ function finishDrawWithIndex(chosenIdx){
     id: picked.id || '',
     r: r, c: c,
     cellIdx: cellIdx,
+    seatIndex: picked.seatIndex,
+    candName: picked.name,
+    keptInPool: allowRepeat,
     prize: isPrize ? curPrize.name : '',
     prizeIcon: isPrize ? curPrize.icon : '🎯',
     status: 'valid'
@@ -3043,9 +3163,7 @@ function finishDrawWithIndex(chosenIdx){
   Confetti.burst();
   if (soundOn) SoundFX.playFanfare();
 
-  document.getElementById('btnUndo').disabled = false;
-  document.getElementById('btnRedraw').disabled = false;
-  document.getElementById('btnDraw').disabled = false;
+  setDrawingUi_(false);
 
   if (isPrize){
     updatePrizeBar();
@@ -3138,35 +3256,29 @@ function renderLottoChute(lastItem){
 }
 
 function executeRedraw(){
+  if (busyAlert_()) return;
   if (drawHistory.length === 0) return;
   var last = drawHistory[drawHistory.length - 1];
   if (last.status === 'waived') { alert('上一筆已經是棄權狀態'); return; }
+  if (pool.length === 0) { alert('已經沒有其他候選人可以補抽了！'); return; }
 
   if (!confirm('確定將得主【' + last.name + '】標記為「未到場棄權」，並立即重新補抽一位嗎？')) return;
 
   last.status = 'waived';
   filledCount--; // 退回一個名額讓補抽補上同一格
   cloudSetDrawStatus_(last.seq, 'waived');
+  refreshCell_(last.cellIdx); // 棄權者的座位熄燈，不再顯示為得主
+  applyGroupColors();
+  renderHistory();
+  saveStateToStorage();
 
   executeDraw();
 }
 
 function executeDrawAll(){
+  if (busyAlert_()) return;
   // 1. 若尚未啟動，先進行初始化候選名單與座位順序
-  if (!started){
-    activeCellOrder = cellOrder.filter(function(x){ return !excluded[x]; });
-    activeCellOrder.sort(function(){ return Math.random() - 0.5; });
-    if (lotteryMode === 'seat'){
-      var limit = parseInt(document.getElementById('drawLimitInput').value);
-      if (limit && limit > 0 && limit < activeCellOrder.length) {
-        activeCellOrder = activeCellOrder.slice(0, limit);
-      }
-    }
-    pool = buildCandidatePool();
-    started = true;
-    document.getElementById('btnExclude').disabled = true;
-    cloudCreateSession_();
-  }
+  if (!initDrawSession_()) return;
 
   if (pool.length === 0 || filledCount >= activeCellOrder.length){
     alert('候選人名冊或可用座位已抽完！');
@@ -3250,31 +3362,27 @@ function updateAllViewsAfterDrawAll(count){
 }
 
 function undoLastDraw(){
+  if (busyAlert_()) return;
   if (drawHistory.length === 0) return;
   var last = drawHistory.pop();
   if (last.status !== 'waived') filledCount--;
-  delete drawnMap[last.cellIdx];
+  refreshCell_(last.cellIdx);
 
-  var cellEl = cellRefs[last.cellIdx];
-  if (cellEl){
-    cellEl.classList.remove('filled');
-    if (seatAssignMode === 'assigned' && useRoster && roster[last.cellIdx]){
-      cellEl.innerHTML = '<span class="cell-name-preview">' + roster[last.cellIdx].name + '</span><span class="coord">' + (seatMode==='table' ? last.r+'桌'+last.c : last.r+'-'+last.c) + '</span>';
-    } else {
-      cellEl.innerHTML = '<span class="coord">' + (seatMode==='table' ? last.r+'桌'+last.c : last.r+'-'+last.c) + '</span>';
-    }
+  // 放回候選名單時保留原本的座位編號（對號入座再抽到時才會回到正確座位）
+  if (!last.keptInPool){
+    var backSeat = (last.seatIndex !== undefined) ? last.seatIndex : last.cellIdx;
+    pool.push({ num: last.num, name: last.candName || last.name, dept: last.dept, id: last.id,
+                seatIndex: backSeat, r: Math.floor(backSeat / cols) + 1, c: (backSeat % cols) + 1 });
   }
-
-  pool.push({ num: last.num, name: last.name, dept: last.dept, id: last.id });
+  applyGroupColors();
 
   if (drawHistory.length > 0){
     showWinnerCard(drawHistory[drawHistory.length - 1]);
   } else {
     document.getElementById('winnerCard').style.display = 'none';
     document.getElementById('resultPlaceholder').style.display = 'block';
-    document.getElementById('btnUndo').disabled = true;
-    document.getElementById('btnRedraw').disabled = true;
   }
+  setDrawingUi_(false);
   if (lotteryMode === 'prize'){
     updatePrizeBar();
     renderPrizeSelect();
@@ -3302,6 +3410,7 @@ function undoLastDraw(){
 }
 
 function resetGrid(){
+  if (busyAlert_()) return;
   if (drawHistory.length > 0 && !confirm('確定要清除目前所有抽獎進度並重新開始嗎？')) return;
   setupGrid();
   saveStateToStorage();
@@ -3409,7 +3518,8 @@ function renderWheel(){
 
     var item = candidates[i];
     var label = item.name;
-    if (!useRoster){
+    // 只有「對號入座＋無名冊」時抽的是座位本身才顯示座位；隨機排位顯示「N 號」（抽中後才分派座位）
+    if (!useRoster && seatAssignMode === 'assigned'){
       label = item.seatShort || (seatMode === 'table' ? (item.r + '桌' + item.c) : (item.r + '-' + item.c)) || item.name;
     }
     if (count <= 25){
@@ -3780,13 +3890,11 @@ function unlockTgAdmin(){
   }
   var pw = prompt('請輸入管理者密碼進行解鎖：');
   if (!pw) return;
-  if (checkAdminPasswordInput(pw)){
+  verifyAdminRemote_(pw, function(){
     tgAdminUnlocked = true;
     applyTgAdminLockState();
     alert('🔓 管理者解鎖成功！Token 與 Chat ID 已解除遮蔽，開放推播操作。');
-  } else {
-    alert('❌ 管理者密碼不正確！');
-  }
+  });
 }
 
 function lockTgAdmin(){
@@ -3927,7 +4035,7 @@ function cloudAdminUnlock(){
   }
   var pw = prompt('請輸入管理者密碼進行解鎖：');
   if (!pw) return;
-  if (checkAdminPasswordInput(pw)){
+  verifyAdminRemote_(pw, function(){
     CLOUD_ADMIN_UNLOCKED = true;
     if (urlInput) { urlInput.disabled = false; urlInput.type = 'text'; }
     if (tokInput) { tokInput.disabled = false; tokInput.type = 'text'; }
@@ -3938,9 +4046,7 @@ function cloudAdminUnlock(){
     document.getElementById('cloudLockText').textContent = '🔓 管理者已解鎖，可檢視與修改 GAS API 網址與設定';
     if (btn) btn.textContent = '🔒 重新上鎖';
     alert('🔓 管理者解鎖成功！已開放檢視與修改 GAS API 網址、驗證碼與清除試算表權限。');
-  } else {
-    alert('❌ 管理者密碼不正確！');
-  }
+  });
 }
 
 function saveCloudSettings(){
@@ -3965,11 +4071,7 @@ function cloudTestConnection(){
 
 function cloudClearAll(){
   var pw = prompt('⚠️ 高風險操作：清空試算表所有歷史紀錄無法復原！\n請輸入管理者密碼確認：');
-  if (!pw) return;
-  if (!checkAdminPasswordInput(pw)){
-    alert('❌ 管理者密碼不正確！');
-    return;
-  }
+  if (!pw) return; // 密碼由後端驗證（clearAll 會檢查 adminPassword）
   if (!CLOUD_API_URL){ alert('尚未設定雲端 API 網址'); return; }
   fetch(CLOUD_API_URL, {
     method: 'POST',
@@ -4043,9 +4145,12 @@ function cloudSaveTemplate_(category, key, name, data){
       category: category,
       key: key,
       name: name,
-      data: data
+      data: data,
+      adminSession: ADMIN_SESSION
     })
-  }).catch(function(){});
+  }).then(function(r){ return r.json(); })
+    .then(function(res){ handleAdminWriteResult_(res, '範本'); })
+    .catch(function(){});
 }
 
 function cloudDeleteTemplate_(category, key){
@@ -4057,25 +4162,30 @@ function cloudDeleteTemplate_(category, key){
       token: CLOUD_API_TOKEN,
       action: 'deleteTemplate',
       category: category,
-      key: key
+      key: key,
+      adminSession: ADMIN_SESSION
     })
-  }).catch(function(){});
+  }).then(function(r){ return r.json(); })
+    .then(function(res){ handleAdminWriteResult_(res, '範本刪除'); })
+    .catch(function(){});
 }
 
 function syncTemplatesFromCloud(notify){
   if (notify && !prizeAdminUnlocked && !rosterAdminUnlocked){
     var pw = prompt('雲端同步將同步覆寫範本庫，需管理者解鎖，請輸入管理者密碼：');
     if (!pw) return;
-    if (!checkAdminPasswordInput(pw)){
-      alert('❌ 管理者密碼不正確！');
-      return;
-    }
+    verifyAdminRemote_(pw, function(){ doSyncTemplatesFromCloud_(notify); });
+    return;
   }
+  doSyncTemplatesFromCloud_(notify);
+}
+
+function doSyncTemplatesFromCloud_(notify){
   if (!CLOUD_API_URL){
     if (notify) alert('尚未設定雲端 GAS API 網址，請先至「雲端同步設定」確認！');
     return;
   }
-  fetch(CLOUD_API_URL + '?action=getTemplates')
+  fetch(CLOUD_API_URL + '?action=getTemplates' + (ADMIN_SESSION ? '&adminSession=' + encodeURIComponent(ADMIN_SESSION) : ''))
     .then(function(r){ return r.json(); })
     .then(function(res){
       if (res.ok && res.templates){
@@ -4141,12 +4251,8 @@ function exportTemplatesBackup(){
 
 function importTemplatesBackup(){
   if (!prizeAdminUnlocked && !rosterAdminUnlocked){
-    var pw = prompt('匯入備份範本需管理者解鎖，請輸入管理者密碼：');
-    if (!pw) return;
-    if (!checkAdminPasswordInput(pw)){
-      alert('❌ 管理者密碼不正確！');
-      return;
-    }
+    alert('匯入備份範本需管理者權限：請先在「獎項抽獎設定」或「人員名冊管理」按「管理者解鎖」，再回來匯入。');
+    return;
   }
   var input = document.createElement('input');
   input.type = 'file';
@@ -4360,10 +4466,58 @@ function saveStateToStorage(){
       roster: roster, useRoster: useRoster,
       drawHistory: drawHistory, filledCount: filledCount,
       started: started, excluded: excluded,
+      activeCellOrder: activeCellOrder, pool: pool, cloudSessionId: CLOUD_SESSION_ID,
       noDup: document.getElementById('chkNoDup').checked
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }catch(e){}
+}
+
+var pendingRestore_ = null;
+
+// 重新整理／瀏覽器當掉後還原抽籤進度（在 setupGrid 之後呼叫）
+function restoreProgress_(){
+  var st = pendingRestore_;
+  pendingRestore_ = null;
+  if (!st || !st.started || !st.drawHistory || !st.drawHistory.length) return;
+  if (st.rows !== rows || st.cols !== cols) return;
+  excluded = st.excluded || {};
+  drawHistory = st.drawHistory;
+  filledCount = st.filledCount || 0;
+  started = true;
+  CLOUD_SESSION_ID = st.cloudSessionId || null;
+  if (st.activeCellOrder && st.activeCellOrder.length){
+    activeCellOrder = st.activeCellOrder;
+  } else {
+    // 舊版存檔沒有座位順序：已抽過的座位依序排前面，其餘空位重新洗牌
+    var used = [];
+    drawHistory.forEach(function(d){ if (used.indexOf(d.cellIdx) === -1) used.push(d.cellIdx); });
+    activeCellOrder = used.concat(shuffle_(cellOrder.filter(function(i){ return !excluded[i] && used.indexOf(i) === -1; })));
+  }
+  if (st.pool){
+    pool = st.pool;
+  } else {
+    var won = drawHistory.filter(function(d){ return d.status !== 'waived'; }).map(function(d){ return d.candName || d.name; });
+    pool = buildCandidatePool().filter(function(c){ return won.indexOf(c.name) === -1; });
+  }
+  drawnMap = {};
+  drawHistory.forEach(function(d){ if (d.status !== 'waived') drawnMap[d.cellIdx] = d; });
+  renderEmptyGrid();
+  updateTotalHint();
+  document.getElementById('btnExclude').disabled = true;
+  setDrawingUi_(false);
+  var last = drawHistory[drawHistory.length - 1];
+  var validList = drawHistory.filter(function(d){ return d.status !== 'waived'; });
+  if (validList.length) showWinnerCard(validList[validList.length - 1]);
+  if (lotteryMode === 'prize'){ updatePrizeBar(); renderPrizeSelect(); }
+  renderHistory();
+  renderGroupResults();
+  applyGroupColors();
+  renderSlotWinnersStrip();
+  renderLottoChute(validList.length ? validList[validList.length - 1] : null);
+  renderWheel();
+  renderLotto();
+  if (st.drawView && st.drawView !== 'grid') switchDrawView(st.drawView);
 }
 
 function loadSettings(){
@@ -4371,6 +4525,11 @@ function loadSettings(){
     var raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     var state = JSON.parse(raw);
+    pendingRestore_ = state;
+    // 還原格子大小與「一人限得一獎」設定（原本只存不讀，重新整理會變回預設 5×6）
+    if (state.rows) document.getElementById('rowsInput').value = state.rows;
+    if (state.cols) document.getElementById('colsInput').value = state.cols;
+    if (state.noDup !== undefined) document.getElementById('chkNoDup').checked = !!state.noDup;
     if (state.currentPrizeTemplateKey) currentPrizeTemplateKey = state.currentPrizeTemplateKey;
     if (state.currentRosterTemplateKey) currentRosterTemplateKey = state.currentRosterTemplateKey;
     if (state.prizes) prizes = state.prizes;
