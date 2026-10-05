@@ -2117,11 +2117,11 @@
         let pc;
         try { pc = new RTCPeer({ iceServers: [] }); pc.createDataChannel(''); pc.createOffer().then(o => pc.setLocalDescription(o)).catch(() => {}); }
         catch (e) { return resolve(''); }
-        const timer = setTimeout(() => { try { pc.close(); } catch (e) {} resolve(''); }, 800);
+        const timer = setTimeout(() => { try { pc.close(); } catch (e) {} resolve(''); }, 1200);
         pc.onicecandidate = ice => {
           if (!ice || !ice.candidate || !ice.candidate.candidate) return;
-          const mm = ice.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
-          if (mm && mm[1] !== '0.0.0.0' && mm[1].indexOf('127.') !== 0) { clearTimeout(timer); try { pc.close(); } catch (e) {} resolve(mm[1]); }
+          const mm = ice.candidate.candidate.match(/\b(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})\b/);
+          if (mm && mm[1]) { clearTimeout(timer); try { pc.close(); } catch (e) {} resolve(mm[1]); }
         };
       });
     }
