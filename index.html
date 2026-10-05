@@ -4428,11 +4428,11 @@ function getLocalIp_(){
     var timer = setTimeout(function(){
       try{ pc.close(); }catch(e){}
       resolve('');
-    }, 800);
+    }, 1200);
     pc.onicecandidate = function(ice){
       if (!ice || !ice.candidate || !ice.candidate.candidate) return;
-      var mm = ice.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
-      if (mm && mm[1] !== '0.0.0.0' && mm[1].indexOf('127.') !== 0){
+      var mm = ice.candidate.candidate.match(/\b(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})\b/);
+      if (mm && mm[1]){
         clearTimeout(timer);
         try{ pc.close(); }catch(e){}
         resolve(mm[1]);
@@ -4463,6 +4463,33 @@ function getCleanOnlineUsers_(){
   });
 }
 
+// 30 分鐘無操作自動安全保護機制
+var lastLotteryActive = Date.now();
+var LOTTERY_IDLE_MS = 30 * 60 * 1000;
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(function(ev){
+  window.addEventListener(ev, function(){ lastLotteryActive = Date.now(); }, { passive: true });
+});
+setInterval(function(){
+  if (Date.now() - lastLotteryActive >= LOTTERY_IDLE_MS){
+    lastLotteryActive = Date.now();
+    try {
+      ['changelogModal', 'cloudModal', 'tgModal', 'advModal', 'multiPrizeModal'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      alert("⚠️【系統閒置保護提醒】\n您已超過 30 分鐘未進行任何操作，為確保抽籤公正性與安全，畫面已自動重置保護！");
+    } catch(e){}
+  }
+}, 20000);
+
+function getLotteryDeviceName(){
+  try {
+    return localStorage.getItem('hsh_device_name') || (navigator.userAgent.indexOf("Windows") !== -1 ? "Windows 辦公電腦" : "辦公設備");
+  } catch(e) {
+    return "辦公設備";
+  }
+}
+
 function startPresence(){
   function ping(){
     if (!CLOUD_API_URL) return;
@@ -4472,7 +4499,7 @@ function startPresence(){
       body: JSON.stringify({
         token: CLOUD_API_TOKEN, action: 'presence',
         sid: MY_DEVICE_ID, ip: ENV.ip, os: ENV.os, browser: ENV.browser,
-        deviceType: ENV.deviceType, page: 'lottery'
+        deviceType: ENV.deviceType, page: 'lottery', who: getLotteryDeviceName()
       })
     }).then(function(r){ return r.json(); })
       .then(function(res){
@@ -4503,14 +4530,15 @@ function renderOnlineList_(){
   document.getElementById('onlineCount').textContent = clean.length;
 
   var html = '<table class="online-table">' +
-    '<thead><tr><th>#</th><th>電腦 IP</th><th>裝置</th><th>作業系統</th><th>瀏覽器</th><th>裝置 ID</th><th>連線</th></tr></thead>' +
+    '<thead><tr><th>#</th><th>電腦 IP</th><th>電腦／裝置</th><th>作業系統</th><th>瀏覽器</th><th>裝置 ID</th><th>連線</th></tr></thead>' +
     '<tbody>' +
     clean.map(function(u, i){
       var isMe = u.device === MY_DEVICE_ID;
+      var devTitle = u.who || u.deviceType || '電腦';
       return '<tr style="'+(isMe?'font-weight:800;color:var(--primary);':'')+'">' +
         '<td>' + (i + 1) + '</td>' +
         '<td>' + (u.ip || '未取得') + (isMe ? ' (本機)' : '') + '</td>' +
-        '<td>' + (u.deviceType || '電腦') + '</td>' +
+        '<td>' + devTitle + '</td>' +
         '<td>' + (u.os || '—') + '</td>' +
         '<td>' + (u.browser || '—') + '</td>' +
         '<td><code>' + u.device.slice(0,8) + '</code></td>' +
