@@ -9,6 +9,10 @@
     try {
       var saved = localStorage.getItem('hsh_ui_theme') || 'safety-blue';
       document.documentElement.setAttribute('data-theme', saved);
+      if (saved === 'carbon-dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.add('darkmode');
+      }
     } catch(e){}
   })();
 </script>
@@ -286,6 +290,64 @@
   html[data-theme="carbon-dark"] .top-theme-badge:hover, body[data-theme="carbon-dark"] .top-theme-badge:hover {
     background: rgba(239,68,68,.25);
     border-color: #ef4444;
+  }
+
+  /* carbon-dark 極致深碳黑全局暗黑版面變數 */
+  html[data-theme="carbon-dark"].dark,
+  html[data-theme="carbon-dark"] body.darkmode,
+  body[data-theme="carbon-dark"].darkmode {
+    --bg: #121214 !important;
+    --panel: #18181b !important;
+    --card-bg: #1f1f23 !important;
+    --ink: #f4f4f5 !important;
+    --text: #f4f4f5 !important;
+    --muted: #a1a1aa !important;
+    --line: #27272a !important;
+    --border: #3f3f46 !important;
+    --accent: #ef4444 !important;
+    --accent-soft: rgba(239,68,68,0.15) !important;
+    --primary: #ef4444 !important;
+    --primary-dark: #dc2626 !important;
+    --empty-bg: #18181b !important;
+    --filled-bg: #3f1219 !important;
+    --excluded-bg: #27272a !important;
+    background-color: #121214 !important;
+    color: #f4f4f5 !important;
+  }
+  body[data-theme="carbon-dark"].darkmode .panel {
+    background: #18181b !important;
+    border-color: #27272a !important;
+  }
+  body[data-theme="carbon-dark"].darkmode .tool-btn {
+    background: #27272a !important;
+    border-color: #3f3f46 !important;
+    color: #f4f4f5 !important;
+  }
+  body[data-theme="carbon-dark"].darkmode .tool-btn:hover {
+    background: #3f3f46 !important;
+    color: #fca5a5 !important;
+  }
+  body[data-theme="carbon-dark"].darkmode .tool-btn.highlight {
+    background: rgba(239,68,68,0.18) !important;
+    border-color: #ef4444 !important;
+    color: #fca5a5 !important;
+  }
+  body[data-theme="carbon-dark"].darkmode textarea,
+  body[data-theme="carbon-dark"].darkmode input:not([type=checkbox]):not([type=radio]),
+  body[data-theme="carbon-dark"].darkmode select {
+    background: #18181b !important;
+    color: #f4f4f5 !important;
+    border-color: #3f3f46 !important;
+  }
+  body[data-theme="carbon-dark"].darkmode .modal-card {
+    background: #18181b !important;
+    border-color: #3f3f46 !important;
+    color: #f4f4f5 !important;
+  }
+  body[data-theme="carbon-dark"].darkmode .mode-indicator-bar {
+    background: #271418 !important;
+    border-color: #7f1d1d !important;
+    color: #fca5a5 !important;
   }
 
   /* 3. steel-slate: 鋼鐵精密灰 (冷軋鋼索五金) */
@@ -963,11 +1025,11 @@
     </div>
     <div class="brand-right">
       <div class="top-actions-row">
-        <div class="top-theme-badge" title="切換系統版面配色風格 (經典藍/深碳黑/鋼鐵灰/翡翠綠/琥珀金)">
+        <div class="top-theme-badge" title="切換系統版面配色風格 (深色模式為「深碳黑」風格)">
           <span style="font-size: 11px;">🎨</span>
           <select id="themeSelectorLottery" onchange="switchHshTheme(this.value)" class="top-theme-select">
-            <option value="safety-blue">經典藍</option>
-            <option value="carbon-dark">深碳黑</option>
+            <option value="safety-blue">經典藍 (淺色)</option>
+            <option value="carbon-dark">深碳黑 (深色)</option>
             <option value="steel-slate">鋼鐵灰</option>
             <option value="emerald-green">翡翠綠</option>
             <option value="warm-amber">琥珀金</option>
@@ -1067,7 +1129,7 @@
       <button class="tool-btn" id="btnSound" onclick="toggleSound()">🔈 音效開</button>
       <button class="tool-btn" id="btnBigScreen" onclick="toggleStageMode()">🖥 大螢幕模式</button>
       <button class="tool-btn" id="btnFullscreen" onclick="toggleFullscreen()">⛶ 全螢幕</button>
-      <button class="tool-btn" id="btnDarkMode" onclick="toggleDarkMode()">🌙 深色模式</button>
+      <button class="tool-btn" id="btnDarkMode" onclick="toggleDarkMode()" title="切換深色模式（深碳黑風格）／淺色模式（經典藍風格）">🌙 深色模式</button>
       <button class="tool-btn highlight" id="btnGroupResult" onclick="toggleGroupResultPanel()">📊 開獎結果／分組名單</button>
       <button class="tool-btn highlight" onclick="openModal('rosterModal')">👥 人員名冊管理</button>
       <button class="tool-btn highlight" onclick="openModal('prizeModal')">🏆 獎項抽獎設定</button>
@@ -1841,7 +1903,10 @@ function switchHshTheme(themeKey, save) {
   document.body.classList.toggle('darkmode', isDark);
   darkMode = isDark;
   var btn1 = document.getElementById('btnDarkMode');
-  if (btn1) btn1.textContent = darkMode ? '☀️ 淺色模式' : '🌙 深色模式';
+  if (btn1) {
+    btn1.textContent = darkMode ? '☀️ 淺色模式 (經典藍)' : '🌙 深色模式 (深碳黑)';
+    btn1.title = darkMode ? '目前為深色模式（深碳黑風格），點擊切換為淺色模式（經典藍風格）' : '目前為淺色模式，點擊切換為深色模式（深碳黑風格）';
+  }
   var sel = document.getElementById('themeSelectorLottery');
   if (sel && sel.value !== themeKey) sel.value = themeKey;
   if (save) {
@@ -1854,6 +1919,7 @@ function switchHshTheme(themeKey, save) {
   if (typeof applyGroupColors === 'function') applyGroupColors();
 }
 
+// 選深色就是風格選深碳黑：切換深色模式與深碳黑風格一體同步連動
 function toggleDarkMode(){
   var cur = document.documentElement.getAttribute('data-theme') || 'safety-blue';
   if (cur === 'carbon-dark') {
