@@ -1747,6 +1747,83 @@ html[data-theme="forest-dark"] body{background-color:#0b1914!important}
 /* 原生下拉選單的選項不繼承頁首白字，十三款均用清楚的文字與底色。 */
 html[data-theme] select[data-hsh-theme-picker] option { background:#fff !important; color:#1f2937 !important; }
 </style>
+<style id="hsh-light-theme-readability">
+/* 淺色主題：登入後標題列、帳號資訊與導覽需使用深字；實心操作按鈕保留白字。 */
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) { background: #f8fafc !important; color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is(h1,h2,p,.brand-title,.brand-sub,.brand-logo span,.brand-title .tag) { color: #1f2937 !important; text-shadow: none !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is([class*="text-slate-"],[class*="text-zinc-"],[class*="text-cyan-"],[class*="text-indigo-"],[class*="text-blue-"],.text-white,.nav-btn) { color: #1f2937 !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is(button,select,.top-theme-badge,.top-version-badge) { background-color: #fff !important; color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) a { color: #1f2937 !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is(button,a):hover { background-color: #e2e8f0 !important; color: #1f2937 !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is(button,a) :is(span,i,b) { color: inherit !important; }
+html[data-theme="bright-white"] .hsh-dark-header :is(#currentUserName,#currentUserInfo,#topUserName,#currentUserRoleBadge,#topUserRoleBadge,#headerVersionPill,#headerDevicePill,#headerDeviceName,#headerOnlinePill,#headerBtnChangePass,#headerBtnLogout,#headerUserInfoBlock,.hdr-ghost) { background-color: #fff !important; color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="bright-white"] .hsh-dark-header :is(#headerVersionPill,#headerBtnChangePass,#headerBtnLogout,.hdr-ghost):hover { background: #e2e8f0 !important; color: #1f2937 !important; }
+html[data-theme="bright-white"] .hsh-dark-header :is(#headerBtnChangePass,#headerBtnLogout) i { color: inherit !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is([class*="text-emerald-"],[class*="text-green-"]) { color: #065f46 !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is([class*="text-rose-"],[class*="text-red-"]) { color: #9f1239 !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is([class*="text-amber-"],[class*="text-yellow-"]) { color: #854d0e !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is(.top-theme-badge,.top-version-badge) :is(span,b) { color: #1f2937 !important; }
+html[data-theme="bright-white"] #mainTabBar { background: #f8fafc !important; color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="bright-white"] #mainTabBar .tab-btn,
+html[data-theme="bright-white"] #mainTabBar #btnToggleDiscordHub { color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="bright-white"] #mainTabBar .tab-btn:hover,
+html[data-theme="bright-white"] #mainTabBar #btnToggleDiscordHub:hover { background: #e2e8f0 !important; color: #1f2937 !important; }
+html[data-theme="bright-white"] #mainTabBar .tab-btn :is(span,i),
+html[data-theme="bright-white"] #mainTabBar #btnToggleDiscordHub :is(span,i) { color: inherit !important; }
+html[data-theme="bright-white"] #mainTabBar #tab-btn-admin-users span.bg-indigo-100 { background: #e0e7ff !important; color: #3730a3 !important; }
+html[data-theme="bright-white"] #mainTabBar .tab-btn.bg-blue-600,
+html[data-theme="bright-white"] #mainTabBar .tab-btn.bg-blue-600:hover { background: #334155 !important; color: #fff !important; }
+html[data-theme="bright-white"] #mainTabBar .tab-btn.bg-blue-600 :is(span,i) { color: #fff !important; }
+html[data-theme="bright-white"] #mainTabBar .tab-btn.theme-tab-active,
+html[data-theme="bright-white"] #mainTabBar .tab-btn.theme-tab-active:hover { background: #334155 !important; color: #fff !important; }
+html[data-theme="bright-white"] #mainTabBar .tab-btn.theme-tab-active :is(span,i) { color: #fff !important; }
+html[data-theme="bright-white"] #mainTabBar .tab-btn #badge-pending-count { background: #be123c !important; color: #fff !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is(#headerBtnLogin,.theme-accent-btn,button.primary) { background: #334155 !important; color: #fff !important; border-color: #334155 !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) :is(#headerBtnLogin,.theme-accent-btn,button.primary) :is(span,i) { color: #fff !important; }
+html[data-theme="bright-white"] :is(header,.hsh-dark-header) #headerVersionPill span.bg-rose-500 { background: #be123c !important; color: #fff !important; }
+html[data-theme="bright-white"] nav.view-switch-bar :is(button,.view-switch-btn),
+html[data-theme="bright-white"] nav.view-switch-bar :is(button,.view-switch-btn):hover { background: transparent !important; color: #1f2937 !important; }
+html[data-theme="bright-white"] header nav.view-switch-bar button.active,
+html[data-theme="bright-white"] header nav.view-switch-bar button.active:hover { background: #334155 !important; color: #fff !important; border-bottom-color: #334155 !important; }
+html[data-theme="bright-white"] header .top-version-badge .sep { opacity: 1; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) { background: #faf7f1 !important; color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is(h1,h2,p,.brand-title,.brand-sub,.brand-logo span,.brand-title .tag) { color: #1f2937 !important; text-shadow: none !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is([class*="text-slate-"],[class*="text-zinc-"],[class*="text-cyan-"],[class*="text-indigo-"],[class*="text-blue-"],.text-white,.nav-btn) { color: #1f2937 !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is(button,select,.top-theme-badge,.top-version-badge) { background-color: #fff !important; color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) a { color: #1f2937 !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is(button,a):hover { background-color: #e2e8f0 !important; color: #1f2937 !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is(button,a) :is(span,i,b) { color: inherit !important; }
+html[data-theme="warm-beige"] .hsh-dark-header :is(#currentUserName,#currentUserInfo,#topUserName,#currentUserRoleBadge,#topUserRoleBadge,#headerVersionPill,#headerDevicePill,#headerDeviceName,#headerOnlinePill,#headerBtnChangePass,#headerBtnLogout,#headerUserInfoBlock,.hdr-ghost) { background-color: #fff !important; color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="warm-beige"] .hsh-dark-header :is(#headerVersionPill,#headerBtnChangePass,#headerBtnLogout,.hdr-ghost):hover { background: #e2e8f0 !important; color: #1f2937 !important; }
+html[data-theme="warm-beige"] .hsh-dark-header :is(#headerBtnChangePass,#headerBtnLogout) i { color: inherit !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is([class*="text-emerald-"],[class*="text-green-"]) { color: #065f46 !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is([class*="text-rose-"],[class*="text-red-"]) { color: #9f1239 !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is([class*="text-amber-"],[class*="text-yellow-"]) { color: #854d0e !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is(.top-theme-badge,.top-version-badge) :is(span,b) { color: #1f2937 !important; }
+html[data-theme="warm-beige"] #mainTabBar { background: #faf7f1 !important; color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="warm-beige"] #mainTabBar .tab-btn,
+html[data-theme="warm-beige"] #mainTabBar #btnToggleDiscordHub { color: #1f2937 !important; border-color: #cbd5e1 !important; }
+html[data-theme="warm-beige"] #mainTabBar .tab-btn:hover,
+html[data-theme="warm-beige"] #mainTabBar #btnToggleDiscordHub:hover { background: #e2e8f0 !important; color: #1f2937 !important; }
+html[data-theme="warm-beige"] #mainTabBar .tab-btn :is(span,i),
+html[data-theme="warm-beige"] #mainTabBar #btnToggleDiscordHub :is(span,i) { color: inherit !important; }
+html[data-theme="warm-beige"] #mainTabBar #tab-btn-admin-users span.bg-indigo-100 { background: #e0e7ff !important; color: #3730a3 !important; }
+html[data-theme="warm-beige"] #mainTabBar .tab-btn.bg-blue-600,
+html[data-theme="warm-beige"] #mainTabBar .tab-btn.bg-blue-600:hover { background: #805c36 !important; color: #fff !important; }
+html[data-theme="warm-beige"] #mainTabBar .tab-btn.bg-blue-600 :is(span,i) { color: #fff !important; }
+html[data-theme="warm-beige"] #mainTabBar .tab-btn.theme-tab-active,
+html[data-theme="warm-beige"] #mainTabBar .tab-btn.theme-tab-active:hover { background: #805c36 !important; color: #fff !important; }
+html[data-theme="warm-beige"] #mainTabBar .tab-btn.theme-tab-active :is(span,i) { color: #fff !important; }
+html[data-theme="warm-beige"] #mainTabBar .tab-btn #badge-pending-count { background: #be123c !important; color: #fff !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is(#headerBtnLogin,.theme-accent-btn,button.primary) { background: #805c36 !important; color: #fff !important; border-color: #805c36 !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) :is(#headerBtnLogin,.theme-accent-btn,button.primary) :is(span,i) { color: #fff !important; }
+html[data-theme="warm-beige"] :is(header,.hsh-dark-header) #headerVersionPill span.bg-rose-500 { background: #be123c !important; color: #fff !important; }
+html[data-theme="warm-beige"] nav.view-switch-bar :is(button,.view-switch-btn),
+html[data-theme="warm-beige"] nav.view-switch-bar :is(button,.view-switch-btn):hover { background: transparent !important; color: #1f2937 !important; }
+html[data-theme="warm-beige"] header nav.view-switch-bar button.active,
+html[data-theme="warm-beige"] header nav.view-switch-bar button.active:hover { background: #805c36 !important; color: #fff !important; border-bottom-color: #805c36 !important; }
+html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
+</style>
 </head>
 <body>
 
