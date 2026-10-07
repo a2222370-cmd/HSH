@@ -2128,6 +2128,7 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
       <button class="tool-btn" id="btnUploadRosterCloud" onclick="uploadRosterToCloud()" disabled>📤 上傳目前名冊到 Google 試算表</button>
       <button class="tool-btn" id="btnApplyRoster" style="background:#1f5fbf;color:#fff;margin-left:auto;" onclick="applyRoster()" disabled>💾 儲存並套用名冊</button>
     </div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-top:8px;">「載入名冊」讀取同一份雲端名冊；「上傳目前名冊」會覆蓋這份名冊，其他電腦之後載入也會取得最新上傳內容。若要保留多份名單，請用上方「自訂新範本」並取不同名稱；範本另存於 Templates 工作表，可跨電腦同步及切換。</p>
   </div>
 </div>
 
@@ -5250,7 +5251,7 @@ function doSyncTemplatesFromCloud_(notify){
     .then(function(r){ return r.json(); })
     .then(function(res){
       if (res.ok && res.templates){
-        var count = 0;
+        var prizeCount = 0, rosterCount = 0;
         if (res.templates.prize && Object.keys(res.templates.prize).length > 0){
           var pCustom = getCustomPrizeTemplates();
           Object.keys(res.templates.prize).forEach(function(k){
@@ -5258,12 +5259,12 @@ function doSyncTemplatesFromCloud_(notify){
               // 自動背景同步（例如重整網頁）：本地範本具最高優先權，絕不覆寫本地現有修改！僅補入本地不存在的雲端新範本
               if (!pCustom[k]){
                 pCustom[k] = res.templates.prize[k];
-                count++;
+                prizeCount++;
               }
             } else {
               // 使用者手動點擊「☁️ 雲端同步」：由雲端同步覆寫
               pCustom[k] = res.templates.prize[k];
-              count++;
+              prizeCount++;
             }
           });
           saveCustomPrizeTemplates(pCustom);
@@ -5275,17 +5276,17 @@ function doSyncTemplatesFromCloud_(notify){
             if (!notify){
               if (!rCustom[k]){
                 rCustom[k] = res.templates.roster[k];
-                count++;
+                rosterCount++;
               }
             } else {
               rCustom[k] = res.templates.roster[k];
-              count++;
+              rosterCount++;
             }
           });
           saveCustomRosterTemplates(rCustom);
           renderRosterTemplateOptions(currentRosterTemplateKey);
         }
-        if (notify) alert('✅ 雲端同步成功！已從 Google 試算表同步載入 ' + count + ' 個範本，跨電腦隨時可用。');
+        if (notify) alert('✅ 雲端同步成功！已從 Google 試算表同步載入：\n獎項範本：' + prizeCount + ' 個\n名冊範本：' + rosterCount + ' 個\n合計：' + (prizeCount + rosterCount) + ' 個範本\n\n請分別到「獎項抽獎設定」及「人員名冊管理」的範本選單查看。雲端範本若與本機範本相同，會更新原有項目，不會增加選單數量。');
       } else {
         if (notify) alert('Google 試算表目前尚無其他自訂範本。');
       }
