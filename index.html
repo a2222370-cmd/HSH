@@ -2646,24 +2646,49 @@ var STORAGE_KEY = 'lottery_v2_state';
 // 管理者密碼驗證：密碼只存在 GAS 後端（指令碼屬性 ADMIN_PASSWORD 或 Code.gs），網頁原始碼不再看得到密碼
 // 驗證成功後端會發一組通行證 ADMIN_SESSION，名冊／範本的雲端讀寫都要帶這組通行證
 var ADMIN_SESSION = (function(){ try { return sessionStorage.getItem('lottery_admin_session') || ''; } catch(e){ return ''; } })();
-function verifyAdminRemote_(pw, onOk){
+var adminVerificationPending_ = false;
+async function verifyAdminRemote_(pw, onOk){
   if (!CLOUD_API_URL){ alert('尚未設定雲端 GAS API 網址，無法驗證管理者密碼'); return; }
-  fetch(CLOUD_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'verifyAdmin', adminPassword: String(pw || '').trim(), sid: MY_DEVICE_ID, ip: ENV.ip })
-  }).then(function(r){ return r.json(); })
-    .then(function(res){
-      if (res && res.ok){
-        if (res.adminSession){
-          ADMIN_SESSION = res.adminSession;
-          try { sessionStorage.setItem('lottery_admin_session', ADMIN_SESSION); } catch(e){}
-        }
-        onOk();
-      } else {
-        alert('❌ ' + ((res && res.error) || '管理者密碼不正確！'));
-      }
-    }).catch(function(err){ alert('無法連線雲端驗證管理者密碼：' + err.message + '\n請確認網路與「雲端同步設定」的 GAS 網址。'); });
+  if (adminVerificationPending_) return;
+  adminVerificationPending_ = true;
+  var buttons = Array.prototype.map.call(document.querySelectorAll('button[onclick*="unlockRosterAdmin"], button[onclick*="unlockPrizeAdmin"], button[onclick*="cloudAdminUnlock"], button[onclick*="unlockTgAdmin"], button[onclick*="syncTemplatesFromCloud"]'), function(btn){
+    var saved = { btn: btn, text: btn.textContent, disabled: btn.disabled };
+    btn.disabled = true;
+    btn.textContent = '⏳ 正在驗證管理者…';
+    return saved;
+  });
+  var controller = new AbortController();
+  var timer, res, failure;
+  try {
+    res = await Promise.race([
+      fetch(CLOUD_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        signal: controller.signal,
+        body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'verifyAdmin', adminPassword: String(pw || '').trim(), sid: MY_DEVICE_ID, ip: ENV.ip })
+      }).then(function(r){
+        if (!r.ok) throw new Error('雲端回應 HTTP ' + r.status);
+        return r.json().catch(function(){ throw new Error('雲端未回傳驗證資料，請確認部署權限及 /exec 網址'); });
+      }),
+      new Promise(function(resolve, reject){
+        timer = setTimeout(function(){ reject(new Error('驗證連線超過 15 秒，已停止等待。請稍後再試；逾時不代表密碼錯誤。')); controller.abort(); }, 15000);
+      })
+    ]);
+  } catch(err){ failure = err; }
+  finally {
+    clearTimeout(timer);
+    adminVerificationPending_ = false;
+    buttons.forEach(function(saved){ saved.btn.textContent = saved.text; saved.btn.disabled = saved.disabled; });
+  }
+  if (failure){
+    alert('無法完成雲端管理者驗證：' + failure.message + '\n請確認網路、GAS /exec 網址及網頁應用程式部署權限。');
+    return;
+  }
+  if (!res || !res.ok){ alert('❌ ' + ((res && res.error) || '管理者驗證失敗')); return; }
+  if (!res.adminSession){ alert('雲端驗證未取得管理者通行證，請更新 GAS 後端部署。'); return; }
+  ADMIN_SESSION = res.adminSession;
+  try { sessionStorage.setItem('lottery_admin_session', ADMIN_SESSION); } catch(e){}
+  onOk();
 }
 // 後端回覆通行證失效時提示重新解鎖
 function handleAdminWriteResult_(res, label){
