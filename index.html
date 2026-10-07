@@ -2342,7 +2342,7 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
             <span class="mol-box-label text-emerald">
               <i class="ph-bold ph-network"></i> 內網 IP 位址：
             </span>
-            <span id="mdlOnlineIntranetIp" class="mol-box-val text-emerald">探測中...</span>
+            <span title="瀏覽器可能因隱私保護而未提供內網 IP，不影響登入與線上人數。" id="mdlOnlineIntranetIp" class="mol-box-val text-emerald">探測中...</span><small style="display:block;font-size:11px;line-height:1.5">未提供內網 IP 不影響登入與線上人數。</small>
           </div>
           <div class="mol-grid-box mol-bg-blue">
             <span class="mol-box-label text-blue">
@@ -2576,7 +2576,7 @@ var Confetti = (function(){
 })();
 
 /* ================= 系統主要狀態變數 ================= */
-var APP_VERSION = 'v2.4.0';
+var APP_VERSION = 'v2.4.1';
 var lotteryMode = 'seat'; // 'seat' (純挑人/排位) | 'prize' (活動獎項模式)
 var rows = 5, cols = 6, total = 30;
 var pool = [];            // 候選人池
@@ -2666,6 +2666,7 @@ var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181',
 
 /* 改版紀錄清單 */
 var CHANGELOG = [
+  { v: "v2.4.1", date: "2026-10-07", notes: ["內網 IP 探測完成或逾時後明確顯示結果；公網查詢逾時不再阻擋線上狀態啟動。"] },
 {"v": "v2.4.0", "date": "2026-10-06", "notes": ["新增明亮白、海軍藍、靜謐紫、暖米色、玫瑰紅五款風格，以及午夜藍、深紫黑、森林黑三款深色風格；原有五款完整保留，共十三款可選，登入與主畫面選項一致，本機記住選擇。"]},
   { v: 'v2.3.1', date: '2026-10-05', notes: [
     '🔐 拿掉網頁裡的公開驗證碼：抽籤紀錄寫入雲端改用管理者通行證，只有管理者解鎖過的電腦才會寫入；未解鎖照常抽籤但不寫雲端。',
@@ -5367,40 +5368,60 @@ function detectEnv(){
   if (m) ENV.browser = m.join(' ');
 }
 
-function getLocalIp_(){
-  return new Promise(function(resolve){
-    var RTCPeer = window.RTCPeerConnection || window.webkitRTCPeerConnection;
-    if (!RTCPeer) return resolve('');
-    var pc;
-    try {
-      pc = new RTCPeer({ iceServers: [] });
-      pc.createDataChannel('');
-      pc.createOffer().then(function(o){ pc.setLocalDescription(o); }).catch(function(){});
-    } catch(e){ return resolve(''); }
-    var timer = setTimeout(function(){
-      try{ pc.close(); }catch(e){}
-      resolve('');
-    }, 1200);
-    pc.onicecandidate = function(ice){
-      if (!ice || !ice.candidate || !ice.candidate.candidate) return;
-      var mm = ice.candidate.candidate.match(/\b(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})\b/);
-      if (mm && mm[1]){
+function getLocalIp_() {
+  return new Promise(function(resolve) {
+function probeLocal(callback) {
+      var RTCPeer = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+      var pc, timer, done = false;
+      function finish(ip) {
+        if (done) return;
+        done = true;
         clearTimeout(timer);
-        try{ pc.close(); }catch(e){}
-        resolve(mm[1]);
+        try { if (pc) pc.close(); } catch (e) {}
+        if (callback) callback(ip || "");
       }
-    };
+      if (!RTCPeer) { finish(""); return; }
+      timer = setTimeout(function() { finish(""); }, 1500);
+      try {
+        pc = new RTCPeer({ iceServers: [] });
+        pc.onicecandidate = function(e) {
+          if (!e || !e.candidate) { finish(""); return; }
+          var candidate = e.candidate.candidate || "";
+          var m = /\b(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})\b/.exec(candidate);
+          if (m) finish(m[1]);
+        };
+        pc.createDataChannel("hsh-ip-probe");
+        pc.createOffer().then(function(o) { if (!done) return pc.setLocalDescription(o); })
+          .catch(function() { finish(""); });
+      } catch (e) { finish(""); }
+    }
+    probeLocal(resolve);
   });
 }
 
 function detectIp_(){
-  var extP = fetch('https://api.ipify.org?format=json', { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(d){ return (d && d.ip) || ''; })
-    .catch(function(){ return ''; });
-  return Promise.all([getLocalIp_(), extP]).then(function(res){
+  ENV.intranetPending = true;
+  var localP = getLocalIp_().then(function(ip) {
+    ENV.intranetIp = ip;
+    ENV.intranetPending = false;
+    var el = document.getElementById("mdlOnlineIntranetIp");
+    if (el) el.innerText = ip || "瀏覽器未提供";
+    return ip;
+  });
+  var extP = new Promise(function(resolve) {
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = setTimeout(function() { resolve(''); if (controller) controller.abort(); }, 2500);
+    Promise.resolve().then(function() {
+      return fetch('https://api.ipify.org?format=json', { cache: 'no-store', signal: controller ? controller.signal : undefined });
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      clearTimeout(timer); resolve((d && d.ip) || '');
+    }).catch(function() { clearTimeout(timer); resolve(''); });
+  });
+  return Promise.all([localP, extP]).then(function(res){
     var local = res[0], ext = res[1];
-    ENV.ip = ext && local ? ext + (/^(10|192|172)\./.test(local) ? ' (內:' + local + ')' : ' (' + local + ')') : (ext || (local ? '內:' + local : ''));
+    ENV.ip = ext ? ext + (local ? ' (內:' + local + ')' : '') : (local ? '內:' + local : '');
+    var el = document.getElementById("mdlOnlineIp");
+    if (el) el.innerText = ext || '未取得';
   });
 }
 
@@ -5479,9 +5500,9 @@ function openOnlineStatusModal(){
   var didEl = document.getElementById("mdlOnlineDeviceId");
   if (didEl) didEl.innerText = MY_DEVICE_ID;
   
-  var fullIp = ENV.ip || '127.0.0.1';
-  var extIp = fullIp.split(' ')[0] || '127.0.0.1';
-  var intraIp = '探測中...';
+  var fullIp = ENV.ip || '';
+  var extIp = /^內/.test(fullIp) ? '未取得' : (fullIp.split(' ')[0] || '未取得');
+  var intraIp = ENV.intranetIp || (ENV.intranetPending ? '探測中...' : '瀏覽器未提供');
   if (fullIp.indexOf('內網:') !== -1){
     intraIp = fullIp.split('內網:')[1].replace(')', '').trim();
   } else if (fullIp.indexOf('內:') !== -1){
