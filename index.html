@@ -2278,6 +2278,7 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
       <button class="modal-close-btn" onclick="closeModal('changelogModal')">✕</button>
     </div>
     <div id="changelogContent" style="font-size:13px;line-height:1.6;"></div>
+    <div id="changelogPager" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);font-size:12px"></div>
   </div>
 </div>
 
@@ -2576,7 +2577,7 @@ var Confetti = (function(){
 })();
 
 /* ================= 系統主要狀態變數 ================= */
-var APP_VERSION = 'v2.4.1';
+var APP_VERSION = 'v2.4.2';
 var lotteryMode = 'seat'; // 'seat' (純挑人/排位) | 'prize' (活動獎項模式)
 var rows = 5, cols = 6, total = 30;
 var pool = [];            // 候選人池
@@ -2666,6 +2667,7 @@ var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181',
 
 /* 改版紀錄清單 */
 var CHANGELOG = [
+  { v: "v2.4.2", date: "2026-10-07", notes: ["系統改版紀錄加入分頁管理，支援上一頁、下一頁、頁碼及每頁 3／5／10／20 筆，記住本機的每頁筆數。"] },
   { v: "v2.4.1", date: "2026-10-07", notes: ["內網 IP 探測完成或逾時後明確顯示結果；公網查詢逾時不再阻擋線上狀態啟動。"] },
 {"v": "v2.4.0", "date": "2026-10-06", "notes": ["新增明亮白、海軍藍、靜謐紫、暖米色、玫瑰紅五款風格，以及午夜藍、深紫黑、森林黑三款深色風格；原有五款完整保留，共十三款可選，登入與主畫面選項一致，本機記住選擇。"]},
   { v: 'v2.3.1', date: '2026-10-05', notes: [
@@ -5846,6 +5848,7 @@ function openModal(id){
     initCloudConfig();
   }
   if (id === 'changelogModal'){
+    changelogPage = 1;
     renderChangelog();
   }
   if (id === 'prizeBoardModal') renderPrizeBoard();
@@ -5874,17 +5877,34 @@ function renderLiveQr(){
   document.getElementById('liveQrContainer').innerHTML = window.makeQR(url);
 }
 
+var changelogPage = 1, changelogSize = 5;
+try { var savedChangelogSize = Number(localStorage.getItem('hsh_lottery_changelog_size')); if ([3,5,10,20].indexOf(savedChangelogSize) >= 0) changelogSize = savedChangelogSize; } catch(e) {}
+function escapeChangelogText_(value){ return String(value == null ? '' : value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function renderChangelog(){
+  var total = CHANGELOG.length, pages = Math.max(1, Math.ceil(total / changelogSize));
+  changelogPage = Math.min(Math.max(1, changelogPage), pages);
+  var start = (changelogPage - 1) * changelogSize;
   var c = document.getElementById('changelogContent');
-  c.innerHTML = CHANGELOG.map(function(item){
+  c.innerHTML = CHANGELOG.slice(start, start + changelogSize).map(function(item){
     return '<div style="margin-bottom:14px;">' +
-      '<div style="font-weight:800;color:var(--primary);font-size:14px;">v' + item.v + ' (' + item.date + ')</div>' +
-      '<ul style="margin:4px 0 0 18px;padding:0;">' +
-        item.notes.map(function(n){ return '<li>' + n + '</li>'; }).join('') +
-      '</ul>' +
-    '</div>';
+      '<div style="font-weight:800;color:var(--primary);font-size:14px;">' + escapeChangelogText_(/^v/.test(item.v) ? item.v : 'v' + item.v) + ' (' + escapeChangelogText_(item.date) + ')' + (item === CHANGELOG[0] ? ' · 目前版本' : '') + '</div>' +
+      '<ul style="margin:4px 0 0 18px;padding:0;">' + item.notes.map(function(n){ return '<li>' + escapeChangelogText_(n) + '</li>'; }).join('') + '</ul></div>';
   }).join('');
+  function button(label,page,disabled,active) {
+    return '<button type="button" ' + (disabled ? 'disabled ' : '') + 'onclick="goChangelogPage(' + page + ')" style="padding:5px 9px;border:1px solid var(--line);border-radius:6px;background:' + (active ? 'var(--primary)' : 'var(--panel)') + ';color:' + (active ? '#fff' : 'var(--ink)') + ';opacity:' + (disabled ? '.45' : '1') + '">' + label + '</button>';
+  }
+  var nums='';
+  for(var p=1;p<=pages;p++) {
+    if (pages>7 && p!==1 && p!==pages && Math.abs(p-changelogPage)>1) { if(p===2 || p===pages-1) nums+='<span>…</span>'; continue; }
+    nums+=button(p,p,false,p===changelogPage);
+  }
+  document.getElementById('changelogPager').innerHTML =
+    '<span>共 ' + total + ' 筆 · 第 ' + changelogPage + ' / ' + pages + ' 頁</span>' +
+    '<div style="display:flex;gap:4px;align-items:center">' + button('上一頁',changelogPage-1,changelogPage===1,false) + nums + button('下一頁',changelogPage+1,changelogPage===pages,false) + '</div>' +
+    '<label>每頁 <select aria-label="改版紀錄每頁筆數" onchange="setChangelogSize(this.value)">' + [3,5,10,20].map(function(n){return '<option value="'+n+'"'+(n===changelogSize?' selected':'')+'>'+n+'</option>';}).join('') + '</select> 筆</label>';
 }
+function goChangelogPage(page){ changelogPage = page; renderChangelog(); document.getElementById('changelogContent').parentElement.scrollTop = 0; }
+function setChangelogSize(size){ changelogSize = [3,5,10,20].indexOf(Number(size)) >= 0 ? Number(size) : 5; changelogPage=1; try { localStorage.setItem('hsh_lottery_changelog_size', String(changelogSize)); } catch(e) {} renderChangelog(); }
 </script>
 </body>
 </html>
