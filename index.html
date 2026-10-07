@@ -2110,7 +2110,7 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
       <button class="tool-btn" id="btnRenameRosterTpl" onclick="renameRosterTemplate()" disabled title="修改當前範本名稱（含預設範本）">✏️ 改名</button>
       <button class="tool-btn" id="btnSaveRosterTpl" onclick="saveNewRosterTemplate()" disabled title="將目前名單另存為全新自訂範本">➕ 自訂新範本</button>
       <button class="tool-btn" id="btnResetFactoryRoster" onclick="resetFactoryRosterTemplate()" disabled title="將此預設名冊還原為原廠初始內容" style="display:none;color:#d97706;">🔄 還原預設</button>
-      <button class="tool-btn" onclick="syncTemplatesFromCloud(true)" title="從 Google 試算表同步其他電腦的名冊">☁️ 雲端同步</button>
+      <button class="tool-btn" onclick="syncTemplatesFromCloud(true)" title="從 Google 試算表同步獎項與名冊範本至這台電腦的範本選單">☁️ 雲端同步</button>
       <button class="tool-btn" onclick="exportTemplatesBackup()" title="匯出成備份檔帶到別台電腦">📤 備份</button>
       <button class="tool-btn" onclick="importTemplatesBackup()" title="匯入備份檔">📥 匯入</button>
       <button class="tool-btn" id="btnDeleteRosterTpl" onclick="deleteRosterTemplate()" style="color:#dc2626;" disabled>🗑️ 刪除</button>
@@ -2128,7 +2128,13 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
       <button class="tool-btn" id="btnUploadRosterCloud" onclick="uploadRosterToCloud()" disabled>📤 上傳目前名冊到 Google 試算表</button>
       <button class="tool-btn" id="btnApplyRoster" style="background:#1f5fbf;color:#fff;margin-left:auto;" onclick="applyRoster()" disabled>💾 儲存並套用名冊</button>
     </div>
-    <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-top:8px;">「載入名冊」讀取同一份雲端名冊；「上傳目前名冊」會覆蓋這份名冊，其他電腦之後載入也會取得最新上傳內容。若要保留多份名單，請用上方「自訂新範本」並取不同名稱；範本另存於 Templates 工作表，可跨電腦同步及切換。</p>
+    <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-top:8px;">
+      <strong>☁️ 雲端同步與載入名冊有什麼差別？</strong>
+      <p>「雲端同步」讀取 Google 試算表的 Templates 工作表，把多份獎項範本、名冊範本同步到這台電腦的範本選單。同步後，請選擇所需名冊範本，再按「儲存並套用名冊」用於抽獎。其他電腦也需使用相同雲端設定並同步，才能取得已存到雲端的範本。</p>
+      <p>「從 Google 試算表載入名冊」讀取「名冊」工作表的一份共用名單，直接放入上方編輯框，請確認後再按「儲存並套用名冊」。套用時也會更新目前選中的名冊範本；若要另外保留一份，請先用「自訂新範本」取不同名稱。</p>
+      <p>「上傳目前名冊」會覆蓋「名冊」工作表的共用名單，其他電腦之後載入也會取得最新上傳內容。這個操作與 Templates 範本庫分開；要保留多份名單並跨電腦切換，請用「自訂新範本」取不同名稱儲存至雲端，再到其他電腦按「雲端同步」。</p>
+      <p>同步提示的「4 個範本」是獎項範本＋名冊範本的合計，不代表有 4 份名冊；同步結果會分別列出兩類範本的數量及名稱。同步既有範本會更新原項目，不會增加選單數量。</p>
+    </div>
   </div>
 </div>
 
@@ -2269,6 +2275,11 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
       <button class="tool-btn" id="btnCloudClear" onclick="cloudClearAll()" disabled style="background:#fee2e2;color:#dc2626;margin-left:auto;">🗑 一鍵清除試算表</button>
     </div>
     <div class="hint" id="cloudStatus" style="margin-top:10px;font-size:12px;"></div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-top:12px;">
+      <strong>☁️ 跨電腦同步說明</strong>
+      <p>各台電腦使用相同的雲端設定後，可在「人員名冊管理」或「獎項抽獎設定」按「雲端同步」，讀取 Templates 工作表中的獎項與名冊範本。同步結果會分別顯示數量及名稱；例如「合計 4 個」是兩類範本加總，不代表有 4 份名冊。手動同步會以雲端內容更新相同範本。</p>
+      <p>「從 Google 試算表載入名冊」則讀取「名冊」工作表的一份共用名單，直接帶入名冊編輯框。「上傳目前名冊」會覆蓋這份共用名單。要保留多份名單，請以不同名稱儲存「自訂新範本」，再到其他電腦同步及選擇範本，最後按「儲存並套用名冊」。</p>
+    </div>
   </div>
 </div>
 
@@ -5252,6 +5263,7 @@ function doSyncTemplatesFromCloud_(notify){
     .then(function(res){
       if (res.ok && res.templates){
         var prizeCount = 0, rosterCount = 0;
+        var prizeNames = [], rosterNames = [];
         if (res.templates.prize && Object.keys(res.templates.prize).length > 0){
           var pCustom = getCustomPrizeTemplates();
           Object.keys(res.templates.prize).forEach(function(k){
@@ -5260,11 +5272,13 @@ function doSyncTemplatesFromCloud_(notify){
               if (!pCustom[k]){
                 pCustom[k] = res.templates.prize[k];
                 prizeCount++;
+                prizeNames.push(res.templates.prize[k].name || k);
               }
             } else {
               // 使用者手動點擊「☁️ 雲端同步」：由雲端同步覆寫
               pCustom[k] = res.templates.prize[k];
               prizeCount++;
+              prizeNames.push(res.templates.prize[k].name || k);
             }
           });
           saveCustomPrizeTemplates(pCustom);
@@ -5277,16 +5291,18 @@ function doSyncTemplatesFromCloud_(notify){
               if (!rCustom[k]){
                 rCustom[k] = res.templates.roster[k];
                 rosterCount++;
+                rosterNames.push(res.templates.roster[k].name || k);
               }
             } else {
               rCustom[k] = res.templates.roster[k];
               rosterCount++;
+              rosterNames.push(res.templates.roster[k].name || k);
             }
           });
           saveCustomRosterTemplates(rCustom);
           renderRosterTemplateOptions(currentRosterTemplateKey);
         }
-        if (notify) alert('✅ 雲端同步成功！已從 Google 試算表同步載入：\n獎項範本：' + prizeCount + ' 個\n名冊範本：' + rosterCount + ' 個\n合計：' + (prizeCount + rosterCount) + ' 個範本\n\n請分別到「獎項抽獎設定」及「人員名冊管理」的範本選單查看。雲端範本若與本機範本相同，會更新原有項目，不會增加選單數量。');
+        if (notify) alert('✅ 雲端同步成功！已從 Google 試算表同步載入：\n\n獎項範本：' + prizeCount + ' 個\n' + (prizeNames.length ? prizeNames.map(function(name, i){ return (i + 1) + '. ' + name; }).join('\n') : '（無）') + '\n\n名冊範本：' + rosterCount + ' 個\n' + (rosterNames.length ? rosterNames.map(function(name, i){ return (i + 1) + '. ' + name; }).join('\n') : '（無）') + '\n\n合計：' + (prizeCount + rosterCount) + ' 個範本（獎項＋名冊）\n\n請分別到「獎項抽獎設定」及「人員名冊管理」的範本選單查看。雲端範本若與本機範本相同，會更新原有項目，不會增加選單數量。選擇名冊範本後，請按「儲存並套用名冊」用於抽獎。');
       } else {
         if (notify) alert('Google 試算表目前尚無其他自訂範本。');
       }
