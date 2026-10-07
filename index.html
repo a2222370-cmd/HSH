@@ -1826,6 +1826,7 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
 </style>
 </head>
 <body>
+<div id="lotteryApp" inert>
 
 <div class="stage-control-bar" id="stageControlBar">
   <button class="stage-bar-btn highlight" onclick="toggleGroupResultPanel()">📊 開獎名單／分組清單</button>
@@ -2577,7 +2578,7 @@ var Confetti = (function(){
 })();
 
 /* ================= 系統主要狀態變數 ================= */
-var APP_VERSION = 'v2.4.2';
+var APP_VERSION = 'v2.5.0';
 var lotteryMode = 'seat'; // 'seat' (純挑人/排位) | 'prize' (活動獎項模式)
 var rows = 5, cols = 6, total = 30;
 var pool = [];            // 候選人池
@@ -2667,6 +2668,7 @@ var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181',
 
 /* 改版紀錄清單 */
 var CHANGELOG = [
+  { v: "v2.5.0", date: "2026-10-07", notes: ["首次使用這個瀏覽器時，必須登記姓名、部門及電腦名稱才能操作；登記資料會自動帶入本機資訊及線上同仁／部門、電腦設備名稱。"] },
   { v: "v2.4.2", date: "2026-10-07", notes: ["系統改版紀錄加入分頁管理，支援上一頁、下一頁、頁碼及每頁 3／5／10／20 筆，記住本機的每頁筆數。"] },
   { v: "v2.4.1", date: "2026-10-07", notes: ["內網 IP 探測完成或逾時後明確顯示結果；公網查詢逾時不再阻擋線上狀態啟動。"] },
 {"v": "v2.4.0", "date": "2026-10-06", "notes": ["新增明亮白、海軍藍、靜謐紫、暖米色、玫瑰紅五款風格，以及午夜藍、深紫黑、森林黑三款深色風格；原有五款完整保留，共十三款可選，登入與主畫面選項一致，本機記住選擇。"]},
@@ -2719,6 +2721,7 @@ var CHANGELOG = [
 /* ================= 頁面初始化 ================= */
 window.addEventListener('DOMContentLoaded', function(){
   initHshTheme();
+  initLotteryRegistration();
   document.getElementById('versionTag').textContent = APP_VERSION;
   loadSettings();
   renderPrizeTemplateOptions(currentPrizeTemplateKey);
@@ -4075,6 +4078,7 @@ function buildCandidatePool(){
 }
 
 function executeDraw(){
+  if (!validLotteryProfile_(LOTTERY_PROFILE)) { openLotteryRegistration(); return; }
   if (drawing_) return;
   if (!initDrawSession_()) return;
 
@@ -4306,6 +4310,7 @@ function executeRedraw(){
 }
 
 function executeDrawAll(){
+  if (!validLotteryProfile_(LOTTERY_PROFILE)) { openLotteryRegistration(); return; }
   if (busyAlert_()) return;
   // 1. 若尚未啟動，先進行初始化候選名單與座位順序
   if (!initDrawSession_()) return;
@@ -5351,14 +5356,59 @@ function importTemplatesBackup(){
 
 /* ================= 線上人數完整實裝（與許瑞興訂單/戰情室一致） ================= */
 var MY_DEVICE_ID = (function(){
-  var id = localStorage.getItem('hsh_lottery_device_id');
+  var id = '';
+  try { id = localStorage.getItem('hsh_lottery_device_id'); } catch(e) {}
   if (!id){
     id = 'D' + Math.random().toString(36).slice(2,8).toUpperCase() + Date.now().toString(36).slice(-4).toUpperCase();
-    localStorage.setItem('hsh_lottery_device_id', id);
+    try { localStorage.setItem('hsh_lottery_device_id', id); } catch(e) {}
   }
   return id;
 })();
+var LOTTERY_PROFILE = null;
+var lotteryPresenceTimer = null;
+var lotteryPresenceRequest = 0;
 var ENV = { ip: '', os: '', browser: '', deviceType: '' };
+function validLotteryProfile_(profile){
+  return !!(profile && profile.deviceId === MY_DEVICE_ID && ['name','department','deviceName'].every(function(k){ return typeof profile[k] === 'string' && profile[k].trim().length > 0; }));
+}
+function initLotteryRegistration(){
+  try { LOTTERY_PROFILE = JSON.parse(localStorage.getItem('hsh_lottery_device_profile') || 'null'); } catch(e) { LOTTERY_PROFILE = null; }
+  if (validLotteryProfile_(LOTTERY_PROFILE)) closeLotteryRegistration();
+  else { LOTTERY_PROFILE = null; openLotteryRegistration(); }
+}
+function openLotteryRegistration(){
+  var registered = validLotteryProfile_(LOTTERY_PROFILE);
+  document.getElementById('lotteryApp').inert = true;
+  document.getElementById('lotteryRegistration').style.display = 'flex';
+  document.getElementById('lotteryRegistrationTitle').textContent = registered ? '修改這台電腦的登記資料' : '首次使用：登記這台電腦';
+  document.getElementById('lotteryRegistrationCancel').style.display = registered ? 'inline-block' : 'none';
+  document.getElementById('lotteryRegistrantName').value = registered ? LOTTERY_PROFILE.name : '';
+  document.getElementById('lotteryRegistrantDepartment').value = registered ? LOTTERY_PROFILE.department : '';
+  document.getElementById('lotteryRegistrantDevice').value = registered ? LOTTERY_PROFILE.deviceName : '';
+  document.getElementById('lotteryRegistrationError').textContent = '';
+  document.getElementById('lotteryRegistrantName').focus();
+}
+function closeLotteryRegistration(){
+  if (!validLotteryProfile_(LOTTERY_PROFILE)) return;
+  document.getElementById('lotteryRegistration').style.display = 'none';
+  document.getElementById('lotteryApp').inert = false;
+}
+function saveLotteryRegistration(){
+  var profile = { deviceId: MY_DEVICE_ID,
+    name: document.getElementById('lotteryRegistrantName').value.trim(),
+    department: document.getElementById('lotteryRegistrantDepartment').value.trim(),
+    deviceName: document.getElementById('lotteryRegistrantDevice').value.trim() };
+  if (!validLotteryProfile_(profile)) {
+    document.getElementById('lotteryRegistrationError').textContent = '姓名、部門與電腦名稱都必須填寫，不能只輸入空白。'; return;
+  }
+  if (profile.name.length > 40 || profile.department.length > 60 || profile.deviceName.length > 60) return;
+  try { localStorage.setItem('hsh_lottery_device_profile', JSON.stringify(profile)); }
+  catch(e) { alert('瀏覽器無法保存登記資料。本次仍可使用，下次開啟需要重新登記。'); }
+  LOTTERY_PROFILE = profile;
+  closeLotteryRegistration();
+  if (document.getElementById('modalOnline').style.display !== 'none') openOnlineStatusModal();
+  startPresence();
+}
 
 function detectEnv(){
   var ua = navigator.userAgent;
@@ -5457,44 +5507,37 @@ setInterval(function(){
   }
 }, 20000);
 
-function getLotteryDeviceName(){
-  try {
-    return localStorage.getItem('hsh_device_name') || (navigator.userAgent.indexOf("Windows") !== -1 ? "Windows 辦公電腦" : "辦公設備");
-  } catch(e) {
-    return "辦公設備";
-  }
-}
+function getLotteryDeviceName(){ return validLotteryProfile_(LOTTERY_PROFILE) ? LOTTERY_PROFILE.deviceName : '未登記電腦'; }
 
 function startPresence(){
-  function ping(){
-    if (!CLOUD_API_URL) return;
-    fetch(CLOUD_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        token: CLOUD_API_TOKEN, action: 'presence',
-        sid: MY_DEVICE_ID, ip: ENV.ip, os: ENV.os, browser: ENV.browser,
-        deviceType: ENV.deviceType, page: 'lottery', who: getLotteryDeviceName()
-      })
-    }).then(function(r){ return r.json(); })
-      .then(function(res){
-        if (res.ok){
-          ONLINE = res;
-          var clean = getCleanOnlineUsers_();
-          document.getElementById('onlineCount').textContent = clean.length;
-          document.getElementById('onlineBadge').classList.remove('off');
-          if (document.getElementById('onlineList').style.display !== 'none') renderOnlineList_();
-        }
-      }).catch(function(){});
-  }
-  ping();
-  setInterval(ping, 30000);
+  if (!validLotteryProfile_(LOTTERY_PROFILE)) return;
+  pingLotteryPresence_();
+  if (!lotteryPresenceTimer) lotteryPresenceTimer = setInterval(pingLotteryPresence_, 30000);
+}
+function pingLotteryPresence_(){
+  if (!CLOUD_API_URL || !validLotteryProfile_(LOTTERY_PROFILE)) return;
+  var request = ++lotteryPresenceRequest;
+  fetch(CLOUD_API_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'presence',
+      sid: MY_DEVICE_ID, ip: ENV.ip, os: ENV.os, browser: ENV.browser,
+      deviceType: ENV.deviceType, page: 'lottery', who: LOTTERY_PROFILE.name,
+      department: LOTTERY_PROFILE.department, deviceName: LOTTERY_PROFILE.deviceName })
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if (request !== lotteryPresenceRequest || !res.ok) return;
+    ONLINE = res;
+    var clean = getCleanOnlineUsers_();
+    document.getElementById('onlineCount').textContent = clean.length;
+    document.getElementById('onlineBadge').classList.remove('off');
+    if (document.getElementById('modalOnline').style.display !== 'none') renderOnlineStatusListModal_();
+  }).catch(function(){});
 }
 
 function openOnlineStatusModal(){
+  if (!validLotteryProfile_(LOTTERY_PROFILE)) { openLotteryRegistration(); return; }
   var devName = getLotteryDeviceName();
   var uEl = document.getElementById("mdlOnlineUser");
-  if (uEl) uEl.innerText = "現場人員 (許瑞興企業)";
+  if (uEl) uEl.innerText = LOTTERY_PROFILE.name + " (" + LOTTERY_PROFILE.department + ")";
   var rEl = document.getElementById("mdlOnlineRole");
   if (rEl) rEl.innerText = "👑 抽籤管理員";
   var devEl = document.getElementById("mdlOnlineDevice");
@@ -5536,16 +5579,7 @@ function refreshOnlineModal(){
   openOnlineStatusModal();
 }
 
-function openDeviceRenameModal(){
-  var cur = localStorage.getItem("hsh_device_name") || "辦公電腦";
-  var n = prompt("請輸入這台電腦的顯示名稱（例如：品保辦公桌機、生管筆電）：", cur);
-  if (n !== null && n.trim()){
-    localStorage.setItem("hsh_device_name", n.trim());
-    var el = document.getElementById("mdlOnlineDevice");
-    if (el) el.innerText = n.trim();
-    startPresence();
-  }
-}
+function openDeviceRenameModal(){ openLotteryRegistration(); }
 
 function renderOnlineStatusListModal_(){
   var tbody = document.getElementById("mdlOnlineTableBody");
@@ -5575,8 +5609,9 @@ function renderOnlineStatusListModal_(){
 
   tbody.innerHTML = users.map(function(u){
     var isMe = u.device === MY_DEVICE_ID;
-    var name = u.who || (isMe ? getLotteryDeviceName() : '在線同仁');
-    var devName = isMe ? getLotteryDeviceName() : (u.who || u.deviceType || '電腦');
+    var name = isMe && validLotteryProfile_(LOTTERY_PROFILE) ? LOTTERY_PROFILE.name : (u.who || '未登記姓名');
+    var department = isMe && validLotteryProfile_(LOTTERY_PROFILE) ? LOTTERY_PROFILE.department : (u.department || '未登記部門');
+    var devName = isMe ? getLotteryDeviceName() : (u.deviceName || '未登記電腦');
     var rawIp = u.ip || '127.0.0.1';
 
     var ipCell = '';
@@ -5599,7 +5634,7 @@ function renderOnlineStatusListModal_(){
           '<span class="mol-pulse-dot"></span>' +
           '<b>' + esc(name) + '</b>' + isCurBadge +
         '</div>' +
-        '<div style="font-size:10px;color:#94a3b8;margin-top:2px;">抽籤系統 · 現場</div>' +
+        '<div style="font-size:10px;color:#94a3b8;margin-top:2px;">' + esc(department) + '</div>' +
       '</td>' +
       '<td>' +
         '<b>' + esc(devName) + '</b>' +
@@ -5906,5 +5941,18 @@ function renderChangelog(){
 function goChangelogPage(page){ changelogPage = page; renderChangelog(); document.getElementById('changelogContent').parentElement.scrollTop = 0; }
 function setChangelogSize(size){ changelogSize = [3,5,10,20].indexOf(Number(size)) >= 0 ? Number(size) : 5; changelogPage=1; try { localStorage.setItem('hsh_lottery_changelog_size', String(changelogSize)); } catch(e) {} renderChangelog(); }
 </script>
+</div>
+<div id="lotteryRegistration" role="dialog" aria-modal="true" aria-labelledby="lotteryRegistrationTitle" style="position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.75)">
+  <form onsubmit="event.preventDefault();saveLotteryRegistration();" style="box-sizing:border-box;background:var(--panel,#fff);color:var(--ink,#1e293b);padding:24px;border-radius:16px;width:460px;max-width:100%;max-height:90vh;overflow:auto">
+    <h2 id="lotteryRegistrationTitle" style="margin-top:0;font-size:20px">首次使用：登記這台電腦</h2>
+    <p style="font-size:13px;line-height:1.6">請填寫以下三個必填欄位，完成後才能使用抽籤系統。資料會記住在這個瀏覽器，並顯示在線上人數清單。</p>
+    <label style="display:block;margin:14px 0">姓名 <span style="color:#dc2626">*</span><input id="lotteryRegistrantName" required maxlength="40" autocomplete="name" style="display:block;box-sizing:border-box;width:100%;margin-top:6px;padding:10px;border:1px solid #94a3b8;border-radius:8px;background:var(--panel,#fff);color:var(--ink,#1e293b)" placeholder="請輸入使用人員姓名"></label>
+    <label style="display:block;margin:14px 0">部門 <span style="color:#dc2626">*</span><input id="lotteryRegistrantDepartment" required maxlength="60" style="display:block;box-sizing:border-box;width:100%;margin-top:6px;padding:10px;border:1px solid #94a3b8;border-radius:8px;background:var(--panel,#fff);color:var(--ink,#1e293b)" placeholder="例如：製造部、管理部"></label>
+    <label style="display:block;margin:14px 0">電腦名稱／使用地點 <span style="color:#dc2626">*</span><input id="lotteryRegistrantDevice" list="lotteryDeviceNames" required maxlength="60" style="display:block;box-sizing:border-box;width:100%;margin-top:6px;padding:10px;border:1px solid #94a3b8;border-radius:8px;background:var(--panel,#fff);color:var(--ink,#1e293b)" placeholder="選擇或自行輸入，例如：公司電腦、家裡筆電"></label>
+    <datalist id="lotteryDeviceNames"><option value="公司電腦"><option value="家裡電腦"><option value="家裡筆電"><option value="公司筆電"><option value="現場電腦"></datalist>
+    <p id="lotteryRegistrationError" role="alert" style="font-size:13px;color:#dc2626"></p>
+    <div style="display:flex;justify-content:flex-end;gap:10px"><button type="button" id="lotteryRegistrationCancel" style="display:none;padding:10px" onclick="closeLotteryRegistration()">取消</button><button type="submit" style="padding:10px 18px;background:#2563eb;color:white;border:0;border-radius:8px;font-weight:bold">儲存並使用</button></div>
+  </form>
+</div>
 </body>
 </html>
