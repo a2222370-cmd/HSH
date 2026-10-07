@@ -2129,7 +2129,15 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
       <button class="tool-btn" id="btnApplyRoster" style="background:#1f5fbf;color:#fff;margin-left:auto;" onclick="applyRoster()" disabled>💾 儲存並套用名冊</button>
     </div>
     <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-top:8px;">
-      <strong>☁️ 雲端同步與載入名冊有什麼差別？</strong>
+      <strong>☁️ Google 試算表中有兩個分開的儲存位置</strong>
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:10px 0;font-size:12px;line-height:1.6;overflow-wrap:anywhere;">
+        <caption style="text-align:left;margin-bottom:6px;">雲端同步與載入名冊的差別</caption>
+        <thead><tr><th scope="col" style="text-align:left;border-bottom:1px solid var(--line);padding:6px;">操作</th><th scope="col" style="text-align:left;border-bottom:1px solid var(--line);padding:6px;">讀取哪裡</th><th scope="col" style="text-align:left;border-bottom:1px solid var(--line);padding:6px;">可以存幾份</th></tr></thead>
+        <tbody>
+          <tr><td style="border-bottom:1px solid var(--line);padding:6px;">雲端同步</td><td style="border-bottom:1px solid var(--line);padding:6px;">Templates 範本庫</td><td style="border-bottom:1px solid var(--line);padding:6px;">多份，例如 3 人名單、公司尾牙 40 人</td></tr>
+          <tr><td style="border-bottom:1px solid var(--line);padding:6px;">從 Google 試算表載入名冊</td><td style="border-bottom:1px solid var(--line);padding:6px;">「名冊」工作表</td><td style="border-bottom:1px solid var(--line);padding:6px;">一份共用名單；後上傳的內容會覆蓋前一份</td></tr>
+        </tbody>
+      </table>
       <p>「雲端同步」讀取 Google 試算表的 Templates 工作表，把多份獎項範本、名冊範本同步到這台電腦的範本選單。同步後，請選擇所需名冊範本，再按「儲存並套用名冊」用於抽獎。其他電腦也需使用相同雲端設定並同步，才能取得已存到雲端的範本。</p>
       <p>「從 Google 試算表載入名冊」讀取「名冊」工作表的一份共用名單，直接放入上方編輯框，請確認後再按「儲存並套用名冊」。套用時也會更新目前選中的名冊範本；若要另外保留一份，請先用「自訂新範本」取不同名稱。</p>
       <p>「上傳目前名冊」會覆蓋「名冊」工作表的共用名單，其他電腦之後載入也會取得最新上傳內容。這個操作與 Templates 範本庫分開；要保留多份名單並跨電腦切換，請用「自訂新範本」取不同名稱儲存至雲端，再到其他電腦按「雲端同步」。</p>
@@ -2277,8 +2285,11 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
     <div class="hint" id="cloudStatus" style="margin-top:10px;font-size:12px;"></div>
     <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-top:12px;">
       <strong>☁️ 跨電腦同步說明</strong>
+      <p><strong>Google 試算表有兩個分開的儲存位置：</strong>Templates 範本庫可存多份獎項、名冊範本；「名冊」工作表只存一份共用名單。範本庫中的 40 人名單，不會因儲存範本而自動取代「名冊」工作表的 3 人名單。</p>
       <p>各台電腦使用相同的雲端設定後，可在「人員名冊管理」或「獎項抽獎設定」按「雲端同步」，讀取 Templates 工作表中的獎項與名冊範本。同步結果會分別顯示數量及名稱；例如「合計 4 個」是兩類範本加總，不代表有 4 份名冊。手動同步會以雲端內容更新相同範本。</p>
       <p>「從 Google 試算表載入名冊」則讀取「名冊」工作表的一份共用名單，直接帶入名冊編輯框。「上傳目前名冊」會覆蓋這份共用名單。要保留多份名單，請以不同名稱儲存「自訂新範本」，再到其他電腦同步及選擇範本，最後按「儲存並套用名冊」。</p>
+      <p><strong>內建範本與雲端範本：</strong>「尾牙春酒標準版」、「部門聚餐精簡版」、「課堂活動激勵版」原本就是內建獎項範本，各台電腦都會顯示，不代表曾另存成自訂範本，也不會自動全部上傳到 Google 試算表。同步結果只列出這次從雲端取得的範本；沒有列出的內建名稱可能尚未存到雲端，也可能已被改名。</p>
+      <p><strong>如何確認雲端有哪些範本：</strong>開啟系統連接的 Google 試算表，查看 Templates 工作表。Category 為 prize 的列是獎項範本，roster 的列是名冊範本；Name 是目前名稱，Key 是範本識別碼。獎項 Key 為 preset_standard、preset_dept、preset_class，分別對應內建的尾牙春酒、部門聚餐、課堂活動，即使改名仍可依 Key 辨認。另存的新範本 Key 通常以 custom_ 開頭。要確認「載入名冊」的內容，請另外查看「名冊」工作表。</p>
     </div>
   </div>
 </div>
@@ -3101,6 +3112,27 @@ function syncPrizesFromTable(){
   return prizes;
 }
 
+// 只用已成功讀取／寫入的雲端結果判斷來源。
+var cloudTemplateSources_ = { url: '', prize: {}, roster: {} };
+function templateSourceLabel_(category, key, item, fromCloud){
+  var factory = category === 'prize' ? FACTORY_PRIZE_TEMPLATES : FACTORY_ROSTER_TEMPLATES;
+  var preset = factory[key];
+  var cloud = fromCloud || (cloudTemplateSources_.url === CLOUD_API_URL && cloudTemplateSources_[category][key]);
+  if (!preset) return '（是另存的新範本' + (cloud ? '，已存於雲端' : '，尚未確認雲端儲存') + '）';
+  if (category === 'roster' && item.name !== preset.name){
+    var count = String(item.text || '').split(/\r?\n/).filter(function(line){ return line.trim(); }).length;
+    return '（原本的內建' + (key === 'demo' ? '示範名冊' : '名冊') + '已改名，內容為 ' + count + ' 人' + (cloud ? '，已存於雲端' : '，尚未確認雲端儲存') + '）';
+  }
+  if (cloud) return '（' + (category === 'roster' && key === 'tailing' ? '內建 40 人範本' : '內建範本') + '儲存到雲端的版本）';
+  return '（系統內建範本，尚未確認雲端儲存）';
+}
+function templateOptionHtml_(category, key, item){
+  var option = document.createElement('option');
+  option.value = key;
+  option.textContent = (item.name || key) + templateSourceLabel_(category, key, item);
+  return option.outerHTML;
+}
+
 function renderPrizeTemplateOptions(selectedKey){
   var sel = document.getElementById('prizeTemplateSelect');
   if (!sel) return;
@@ -3112,14 +3144,14 @@ function renderPrizeTemplateOptions(selectedKey){
   var html = '<optgroup label="── 預設獎項範本（可編輯/改名） ──">';
   presetKeys.forEach(function(k){
     var item = allTpls[k] || FACTORY_PRIZE_TEMPLATES[k];
-    html += '<option value="' + k + '">' + item.name + '</option>';
+    html += templateOptionHtml_('prize', k, item);
   });
   html += '</optgroup>';
 
   if (customKeys.length > 0){
     html += '<optgroup label="── 自訂獎項範本 ──">';
     customKeys.forEach(function(k){
-      html += '<option value="' + k + '">📁 ' + allTpls[k].name + '</option>';
+      html += templateOptionHtml_('prize', k, allTpls[k]);
     });
     html += '</optgroup>';
   }
@@ -3509,14 +3541,14 @@ function renderRosterTemplateOptions(selectedKey){
   var html = '<optgroup label="── 預設名冊範本（可編輯/改名） ──">';
   presetKeys.forEach(function(k){
     var item = allTpls[k] || FACTORY_ROSTER_TEMPLATES[k];
-    html += '<option value="' + k + '">' + item.name + '</option>';
+    html += templateOptionHtml_('roster', k, item);
   });
   html += '</optgroup>';
 
   if (customKeys.length > 0){
     html += '<optgroup label="── 自訂名冊範本 ──">';
     customKeys.forEach(function(k){
-      html += '<option value="' + k + '">📁 ' + allTpls[k].name + '</option>';
+      html += templateOptionHtml_('roster', k, allTpls[k]);
     });
     html += '</optgroup>';
   }
@@ -5234,7 +5266,8 @@ function cloudUndoLastDraw_(){
 
 function cloudSaveTemplate_(category, key, name, data){
   if (!CLOUD_API_URL) return;
-  fetch(CLOUD_API_URL, {
+  var targetUrl = CLOUD_API_URL;
+  fetch(targetUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({
@@ -5247,7 +5280,15 @@ function cloudSaveTemplate_(category, key, name, data){
       adminSession: ADMIN_SESSION
     })
   }).then(function(r){ return r.json(); })
-    .then(function(res){ handleAdminWriteResult_(res, '範本'); })
+    .then(function(res){
+      handleAdminWriteResult_(res, '範本');
+      if (res && res.ok && targetUrl === CLOUD_API_URL){
+        if (cloudTemplateSources_.url !== targetUrl) cloudTemplateSources_ = { url: targetUrl, prize: {}, roster: {} };
+        cloudTemplateSources_[category][key] = true;
+        renderPrizeTemplateOptions(currentPrizeTemplateKey);
+        renderRosterTemplateOptions(currentRosterTemplateKey);
+      }
+    })
     .catch(function(){});
 }
 
@@ -5283,10 +5324,13 @@ function doSyncTemplatesFromCloud_(notify){
     if (notify) alert('尚未設定雲端 GAS API 網址，請先至「雲端同步設定」確認！');
     return;
   }
-  fetch(CLOUD_API_URL + '?action=getTemplates' + (ADMIN_SESSION ? '&adminSession=' + encodeURIComponent(ADMIN_SESSION) : ''))
+  var targetUrl = CLOUD_API_URL;
+  fetch(targetUrl + '?action=getTemplates' + (ADMIN_SESSION ? '&adminSession=' + encodeURIComponent(ADMIN_SESSION) : ''))
     .then(function(r){ return r.json(); })
     .then(function(res){
       if (res.ok && res.templates){
+        if (targetUrl !== CLOUD_API_URL) return;
+        cloudTemplateSources_ = { url: targetUrl, prize: res.templates.prize || {}, roster: res.templates.roster || {} };
         var prizeCount = 0, rosterCount = 0;
         var prizeNames = [], rosterNames = [];
         if (res.templates.prize && Object.keys(res.templates.prize).length > 0){
@@ -5297,13 +5341,13 @@ function doSyncTemplatesFromCloud_(notify){
               if (!pCustom[k]){
                 pCustom[k] = res.templates.prize[k];
                 prizeCount++;
-                prizeNames.push(res.templates.prize[k].name || k);
+                prizeNames.push((res.templates.prize[k].name || k) + templateSourceLabel_('prize', k, res.templates.prize[k], true));
               }
             } else {
               // 使用者手動點擊「☁️ 雲端同步」：由雲端同步覆寫
               pCustom[k] = res.templates.prize[k];
               prizeCount++;
-              prizeNames.push(res.templates.prize[k].name || k);
+              prizeNames.push((res.templates.prize[k].name || k) + templateSourceLabel_('prize', k, res.templates.prize[k], true));
             }
           });
           saveCustomPrizeTemplates(pCustom);
@@ -5316,17 +5360,19 @@ function doSyncTemplatesFromCloud_(notify){
               if (!rCustom[k]){
                 rCustom[k] = res.templates.roster[k];
                 rosterCount++;
-                rosterNames.push(res.templates.roster[k].name || k);
+                rosterNames.push((res.templates.roster[k].name || k) + templateSourceLabel_('roster', k, res.templates.roster[k], true));
               }
             } else {
               rCustom[k] = res.templates.roster[k];
               rosterCount++;
-              rosterNames.push(res.templates.roster[k].name || k);
+              rosterNames.push((res.templates.roster[k].name || k) + templateSourceLabel_('roster', k, res.templates.roster[k], true));
             }
           });
           saveCustomRosterTemplates(rCustom);
           renderRosterTemplateOptions(currentRosterTemplateKey);
         }
+        renderPrizeTemplateOptions(currentPrizeTemplateKey);
+        renderRosterTemplateOptions(currentRosterTemplateKey);
         if (notify) alert('✅ 雲端同步成功！已從 Google 試算表同步載入：\n\n獎項範本：' + prizeCount + ' 個\n' + (prizeNames.length ? prizeNames.map(function(name, i){ return (i + 1) + '. ' + name; }).join('\n') : '（無）') + '\n\n名冊範本：' + rosterCount + ' 個\n' + (rosterNames.length ? rosterNames.map(function(name, i){ return (i + 1) + '. ' + name; }).join('\n') : '（無）') + '\n\n合計：' + (prizeCount + rosterCount) + ' 個範本（獎項＋名冊）\n\n請分別到「獎項抽獎設定」及「人員名冊管理」的範本選單查看。雲端範本若與本機範本相同，會更新原有項目，不會增加選單數量。選擇名冊範本後，請按「儲存並套用名冊」用於抽獎。');
       } else {
         if (notify) alert('Google 試算表目前尚無其他自訂範本。');
