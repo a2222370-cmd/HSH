@@ -5,6 +5,90 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>許瑞興機台回報戰情室 | HSH Machine Status War Room</title>
   <script>
+/* HSH 2026-10-11: browser-provided device information, with bounded detection. */
+(function(root) {
+  'use strict';
+  function deviceType(nav) {
+    var ua=nav.userAgent||'';
+    if (/iPad|Tablet|PlayBook|Silk/i.test(ua)||(/Macintosh/.test(ua)&&nav.maxTouchPoints>1)||(/Android/i.test(ua)&&!/Mobile/i.test(ua))) return '平板';
+    return ((nav.userAgentData||{}).mobile||/Mobi|iPhone|iPod|Android.*Mobile/i.test(ua))?'手機':'電腦';
+  }
+  function fallbackOS(nav) {
+    var ua=nav.userAgent||'',m;
+    if (/Windows NT 10/.test(ua)) return 'Windows 10／11（瀏覽器未提供版本）';
+    if (/Windows NT 6\.3/.test(ua)) return 'Windows 8.1';
+    if (/Windows NT 6\.2/.test(ua)) return 'Windows 8';
+    if (/Windows NT 6\.1/.test(ua)) return 'Windows 7';
+    if (/Windows/.test(ua)) return 'Windows（版本未提供）';
+    if (/iPad/.test(ua)||(/Macintosh/.test(ua)&&nav.maxTouchPoints>1)) return 'iPadOS';
+    if (/iPhone|iPod/.test(ua)) return 'iOS'+((m=ua.match(/OS ([\d_]+)/))?' '+m[1].replace(/_/g,'.'):'');
+    if (/Android/.test(ua)) return 'Android（版本未提供）';
+    if (/CrOS/.test(ua)) return 'ChromeOS';
+    if (/Macintosh|Mac OS X/.test(ua)) return 'macOS（版本未提供）';
+    return /Linux/.test(ua)?'Linux':'未提供作業系統';
+  }
+  function browserInfo(nav) {
+    var ua=nav.userAgent||'',m,name='未提供瀏覽器',version='';
+    var patterns=[['LINE',/Line\/([\d.]+)/i],['WeChat',/MicroMessenger\/([\d.]+)/],['Facebook',/FBAV\/([\d.]+)/],['Samsung Browser',/SamsungBrowser\/([\d.]+)/],['Edge',/(?:EdgA|EdgiOS|Edg|Edge)\/([\d.]+)/],['Opera',/(?:OPR|OPiOS)\/([\d.]+)/],['Firefox',/(?:Firefox|FxiOS)\/([\d.]+)/],['Chrome',/(?:Chrome|CriOS)\/([\d.]+)/],['Safari',/Version\/([\d.]+).*Safari/],['IE',/(?:MSIE |rv:)([\d.]+)/]];
+    for(var i=0;i<patterns.length;i++) if((m=ua.match(patterns[i][1]))) {name=patterns[i][0];version=m[1];break;}
+    return {name:name,version:version};
+  }
+  function browserLabel(info) {
+    return info.name+(info.version?' '+(/^\d+\.0\.0\.0$/.test(info.version)?info.version.split('.')[0]+'（完整版本未提供）':info.version):'');
+  }
+  async function software(nav) {
+    nav=nav||root.navigator;var info=browserInfo(nav),os=fallbackOS(nav),d=nav.userAgentData,timer;
+    if(d&&typeof d.getHighEntropyValues==='function') {
+      try {
+        var h=await Promise.race([Promise.resolve().then(function(){return d.getHighEntropyValues(['platformVersion','fullVersionList']);}),new Promise(function(resolve){timer=setTimeout(function(){resolve({});},1500);})]);
+        var pv=String(h.platformVersion||''),major=parseInt(pv.split('.')[0],10);
+        if(d.platform==='Windows') {if(major>=13)os='Windows 11';else if(major>=1&&major<=10)os='Windows 10';}
+        else if(/^(macOS|Android|Chrome OS|Linux)$/.test(d.platform||'')) os=d.platform+(pv&&pv!=='0.0.0'?' '+pv:'');
+        var brands=(h.fullVersionList||[]),pick=brands.find(function(b){return /Edge/.test(b.brand)&&info.name==='Edge';})||brands.find(function(b){return /Opera/.test(b.brand)&&info.name==='Opera';})||brands.find(function(b){return /Google Chrome/.test(b.brand)&&info.name==='Chrome';});
+        if(pick&&/^\d+(\.\d+)*$/.test(pick.version)) info.version=pick.version;
+      } catch(e) {} finally {clearTimeout(timer);}
+    }
+    return {os:os,browser:browserLabel(info),deviceType:deviceType(nav)};
+  }
+  function privateIP(value) {
+    value=String(value||'').trim();var parts=value.split('.');
+    if(parts.length!==4||parts.some(function(p){return !/^\d{1,3}$/.test(p)||Number(p)>255;}))return '';
+    return (parts[0]==='10'||(parts[0]==='192'&&parts[1]==='168')||(parts[0]==='172'&&Number(parts[1])>=16&&Number(parts[1])<=31))?value:'';
+  }
+  var localPromise;
+  function localIP() {
+    if(localPromise)return localPromise;
+    localPromise=new Promise(function(resolve){
+      var Peer=root.RTCPeerConnection||root.webkitRTCPeerConnection||root.mozRTCPeerConnection,pc,timer,done=false;
+      function finish(ip){if(done)return;done=true;clearTimeout(timer);try{if(pc)pc.close();}catch(e){}resolve(ip||'');}
+      function scan(text){var matches=String(text||'').match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g)||[];for(var i=0;i<matches.length;i++){var ip=privateIP(matches[i]);if(ip){finish(ip);return;}}}
+      if(!Peer){finish('');return;}
+      timer=setTimeout(function(){finish('');},1800);
+      try {
+        pc=new Peer({iceServers:[]});
+        pc.onicecandidate=function(e){if(done)return;if(e&&e.candidate){var ip=privateIP(e.candidate.address);if(ip){finish(ip);return;}scan(e.candidate.candidate);}else{scan((pc.localDescription||{}).sdp);finish('');}};
+        pc.onicegatheringstatechange=function(){if(pc.iceGatheringState==='complete'){scan((pc.localDescription||{}).sdp);finish('');}};
+        pc.createDataChannel('hsh-ip-probe');
+        Promise.resolve(pc.createOffer()).then(function(offer){if(!done)return pc.setLocalDescription(offer);}).then(function(){if(!done)scan((pc.localDescription||{}).sdp);}).catch(function(){finish('');});
+      }catch(e){finish('');}
+    });
+    return localPromise;
+  }
+  function publicIP() {
+    return new Promise(function(resolve){
+      var done=false,controller=typeof root.AbortController==='function'?new root.AbortController():null;
+      var timer=setTimeout(function(){finish('');if(controller)controller.abort();},2500);
+      function finish(ip){if(done)return;done=true;clearTimeout(timer);resolve(ip||'');}
+      Promise.resolve().then(function(){return root.fetch('https://api.ipify.org?format=json',{cache:'no-store',signal:controller?controller.signal:undefined});}).then(function(r){return r.json();}).then(function(d){finish(d&&d.ip);}).catch(function(){finish('');});
+    });
+  }
+  function formatIP(ext,local) {return (ext||'未取得')+(local?' (內網: '+local+')':'');}
+  async function ip() {var pair=await Promise.all([publicIP(),localIP()]);return {publicIp:pair[0],localIp:pair[1],ip:formatIP(pair[0],pair[1])};}
+  root.HSHDeviceInfo={software:software,fallbackOS:fallbackOS,browser:function(nav){return browserLabel(browserInfo(nav||root.navigator));},deviceType:deviceType,privateIP:privateIP,localIP:localIP,publicIP:publicIP,formatIP:formatIP,ip:ip};
+})(window);
+
+</script>
+<script>
     (function(){
       try {
         var saved = localStorage.getItem('hsh_ui_theme') || 'safety-blue';
@@ -1454,8 +1538,9 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     // ==========================================
     // 版本與歷史改版記錄（與回報頁 report.html 共用同一份內容）
     // ==========================================
-    const APP_VERSION = 'v2.7.0';
+    const APP_VERSION = 'v2.7.1';
     const CHANGELOG = [
+{"v": "v2.7.1", "date": "2026-10-11", "notes": ["戰情室線上裝置改用瀏覽器提供的版本資訊判斷 Windows 10／11，並回報完整瀏覽器版本；取得完成後同步線上名單。", "未提供 Windows 平台版本時明確標示未提供，不猜成 Windows 10。"]},
 {"v": "v2.7.0", "date": "2026-10-06", "notes": ["新增明亮白、海軍藍、靜謐紫、暖米色、玫瑰紅五款風格，以及午夜藍、深紫黑、森林黑三款深色風格；原有五款完整保留，共十三款可選，登入與主畫面選項一致，本機記住選擇。"]},
       { v: 'v2.6.0', date: '2026-10-04', notes: [
         '【全系統】風格統一為許瑞興品牌版（與圖面／標準文件查詢一致）：字體改用思源黑體與 Roboto Mono，頂部改為深灰帶酒紅漸層與品牌紅底線',
@@ -2405,15 +2490,8 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
       return id;
     })();
     const ENV = { ip: '', os: '', browser: '', deviceType: '' };
-    (function detectEnv() {
-      const ua = navigator.userAgent;
-      ENV.deviceType = (/iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) ? '平板'
-        : /Mobi|iPhone|iPod|Android.*Mobile/i.test(ua) ? '手機' : '電腦';
-      ENV.os = /Windows NT 10/.test(ua) ? 'Windows 10/11' : /Windows/.test(ua) ? 'Windows' : /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
-      const m = ua.match(/Edg\/(\d+)/) ? ['Edge', ua.match(/Edg\/(\d+)/)[1]] : ua.match(/Firefox\/(\d+)/) ? ['Firefox', ua.match(/Firefox\/(\d+)/)[1]]
-        : ua.match(/Chrome\/(\d+)/) ? ['Chrome', ua.match(/Chrome\/(\d+)/)[1]] : ua.match(/Version\/(\d+).*Safari/) ? ['Safari', ua.match(/Version\/(\d+)/)[1]] : null;
-      if (m) ENV.browser = m.join(' ');
-    })();
+    async function detectEnv() { Object.assign(ENV, await HSHDeviceInfo.software()); }
+    const ENV_READY = detectEnv();
     function getLocalIp_() {
       return new Promise(resolve => {
         const RTCPeer = window.RTCPeerConnection || window.webkitRTCPeerConnection;
@@ -3749,8 +3827,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
       updateAlarmAudioButton();
       const threshSelect = document.getElementById('downtimeThresholdSelect');
       if (threshSelect) threshSelect.value = String(DOWNTIME_THRESHOLD_MINUTES);
-      pingPresence();
-      detectIp_().then(() => { presenceBusy = false; pingPresence(); });
+      Promise.all([ENV_READY, detectIp_()]).then(() => { pingPresence(); });
       setInterval(pingPresence, 30000);
       window.addEventListener('pagehide', () => {
         try { navigator.sendBeacon && navigator.sendBeacon(getStoredGasUrl(), JSON.stringify({ token: getStoredToken(), action: 'presence', sid: MY_DEVICE_ID, leave: true })); } catch (e) {}
