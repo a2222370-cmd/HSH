@@ -1,0 +1,131 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>許瑞興電腦資訊偵測</title>
+<style>body{font-family:system-ui;background:#f1f5f9;color:#0f172a;margin:24px}main{background:white;padding:24px;border-radius:16px}h1{font-size:22px}dl{display:grid;grid-template-columns:110px 1fr;gap:12px}dd{margin:0;overflow-wrap:anywhere}button{padding:10px 16px;border-radius:8px;border:1px solid #94a3b8;cursor:pointer}</style>
+<main><h1>電腦資訊偵測</h1><p id="status">正在偵測這台電腦的作業系統、瀏覽器及 IP…</p><dl id="facts"></dl><button id="retry">重新偵測</button><p>只回傳此電腦資訊至您開啟的系統，不會更改業務資料。</p></main><script>/* HSH 2026-10-11: browser-provided device information, with bounded detection. */
+(function(root) {
+  'use strict';
+  function deviceType(nav) {
+    var ua=nav.userAgent||'';
+    if (/iPad|Tablet|PlayBook|Silk/i.test(ua)||(/Macintosh/.test(ua)&&nav.maxTouchPoints>1)||(/Android/i.test(ua)&&!/Mobile/i.test(ua))) return '平板';
+    return ((nav.userAgentData||{}).mobile||/Mobi|iPhone|iPod|Android.*Mobile/i.test(ua))?'手機':'電腦';
+  }
+  function fallbackOS(nav) {
+    var ua=nav.userAgent||'',m;
+    if (/Windows NT 10/.test(ua)) return 'Windows 10／11（瀏覽器未提供版本）';
+    if (/Windows NT 6\.3/.test(ua)) return 'Windows 8.1';
+    if (/Windows NT 6\.2/.test(ua)) return 'Windows 8';
+    if (/Windows NT 6\.1/.test(ua)) return 'Windows 7';
+    if (/Windows/.test(ua)) return 'Windows（版本未提供）';
+    if (/iPad/.test(ua)||(/Macintosh/.test(ua)&&nav.maxTouchPoints>1)) return 'iPadOS';
+    if (/iPhone|iPod/.test(ua)) return 'iOS'+((m=ua.match(/OS ([\d_]+)/))?' '+m[1].replace(/_/g,'.'):'');
+    if (/Android/.test(ua)) return 'Android（版本未提供）';
+    if (/CrOS/.test(ua)) return 'ChromeOS';
+    if (/Macintosh|Mac OS X/.test(ua)) return 'macOS（版本未提供）';
+    return /Linux/.test(ua)?'Linux':'未提供作業系統';
+  }
+  function browserInfo(nav) {
+    var ua=nav.userAgent||'',m,name='未提供瀏覽器',version='';
+    var patterns=[['LINE',/Line\/([\d.]+)/i],['WeChat',/MicroMessenger\/([\d.]+)/],['Facebook',/FBAV\/([\d.]+)/],['Samsung Browser',/SamsungBrowser\/([\d.]+)/],['Edge',/(?:EdgA|EdgiOS|Edg|Edge)\/([\d.]+)/],['Opera',/(?:OPR|OPiOS)\/([\d.]+)/],['Firefox',/(?:Firefox|FxiOS)\/([\d.]+)/],['Chrome',/(?:Chrome|CriOS)\/([\d.]+)/],['Safari',/Version\/([\d.]+).*Safari/],['IE',/(?:MSIE |rv:)([\d.]+)/]];
+    for(var i=0;i<patterns.length;i++) if((m=ua.match(patterns[i][1]))) {name=patterns[i][0];version=m[1];break;}
+    return {name:name,version:version};
+  }
+  function browserLabel(info) {
+    return info.name+(info.version?' '+(/^\d+\.0\.0\.0$/.test(info.version)?info.version.split('.')[0]+'（完整版本未提供）':info.version):'');
+  }
+  async function software(nav) {
+    if(!nav&&bridgeData)return {os:bridgeData.os,browser:bridgeData.browser,deviceType:bridgeData.deviceType};
+    nav=nav||root.navigator;var info=browserInfo(nav),os=fallbackOS(nav),d=nav.userAgentData,timer;
+    if(d&&typeof d.getHighEntropyValues==='function') {
+      try {
+        var h=await Promise.race([Promise.resolve().then(function(){return d.getHighEntropyValues(['platformVersion','fullVersionList']);}),new Promise(function(resolve){timer=setTimeout(function(){resolve({});},1500);})]);
+        var pv=String(h.platformVersion||''),major=parseInt(pv.split('.')[0],10);
+        if(d.platform==='Windows') {if(major>=13)os='Windows 11';else if(major>=1&&major<=10)os='Windows 10';}
+        else if(/^(macOS|Android|Chrome OS|Linux)$/.test(d.platform||'')) os=d.platform+(pv&&pv!=='0.0.0'?' '+pv:'');
+        var brands=(h.fullVersionList||[]),pick=brands.find(function(b){return /Edge/.test(b.brand)&&info.name==='Edge';})||brands.find(function(b){return /Opera/.test(b.brand)&&info.name==='Opera';})||brands.find(function(b){return /Google Chrome/.test(b.brand)&&info.name==='Chrome';});
+        if(pick&&/^\d+(\.\d+)*$/.test(pick.version)) info.version=pick.version;
+      } catch(e) {} finally {clearTimeout(timer);}
+    }
+    return bridgeData||{os:os,browser:browserLabel(info),deviceType:deviceType(nav)};
+  }
+  function privateIP(value) {
+    value=String(value||'').trim();var parts=value.split('.');
+    if(parts.length!==4||parts.some(function(p){return !/^\d{1,3}$/.test(p)||Number(p)>255;}))return '';
+    return (parts[0]==='10'||(parts[0]==='192'&&parts[1]==='168')||(parts[0]==='172'&&Number(parts[1])>=16&&Number(parts[1])<=31))?value:'';
+  }
+  var localPromise;
+  function localIP() {
+    if(bridgeData&&bridgeData.localIp)return Promise.resolve(bridgeData.localIp);
+    if(localPromise)return localPromise;
+    localPromise=new Promise(function(resolve){
+      var Peer=root.RTCPeerConnection||root.webkitRTCPeerConnection||root.mozRTCPeerConnection,pc,timer,done=false;
+      function finish(ip){if(done)return;done=true;clearTimeout(timer);try{if(pc)pc.close();}catch(e){}resolve(ip||'');}
+      function scan(text){var matches=String(text||'').match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g)||[];for(var i=0;i<matches.length;i++){var ip=privateIP(matches[i]);if(ip){finish(ip);return;}}}
+      if(!Peer){finish('');return;}
+      timer=setTimeout(function(){finish('');},1800);
+      try {
+        pc=new Peer({iceServers:[]});
+        // Match the working warroom: null candidates do not end the probe early.
+        pc.onicecandidate=function(e){if(done)return;if(e&&e.candidate){var ip=privateIP(e.candidate.address);if(ip){finish(ip);return;}scan(e.candidate.candidate);}else{scan((pc.localDescription||{}).sdp);}};
+        pc.onicegatheringstatechange=function(){if(pc.iceGatheringState==='complete')scan((pc.localDescription||{}).sdp);};
+        pc.createDataChannel('hsh-ip-probe');
+        Promise.resolve(pc.createOffer()).then(function(offer){if(!done)return pc.setLocalDescription(offer);}).then(function(){if(!done)scan((pc.localDescription||{}).sdp);}).catch(function(){finish('');});
+      }catch(e){finish('');}
+    });
+    var pending=localPromise;
+    pending.then(function(){if(localPromise===pending)localPromise=null;});
+    return pending;
+  }
+  function publicIP() {
+    return new Promise(function(resolve){
+      var done=false,controller=typeof root.AbortController==='function'?new root.AbortController():null;
+      var timer=setTimeout(function(){finish('');if(controller)controller.abort();},2500);
+      function finish(ip){if(done)return;done=true;clearTimeout(timer);resolve(ip||'');}
+      Promise.resolve().then(function(){return root.fetch('https://api.ipify.org?format=json',{cache:'no-store',signal:controller?controller.signal:undefined});}).then(function(r){return r.json();}).then(function(d){finish(d&&d.ip);}).catch(function(){finish('');});
+    });
+  }
+  function formatIP(ext,local) {return (ext||'未取得')+(local?' (內網: '+local+')':'');}
+  async function ip() {var pair=await Promise.all([publicIP(),localIP()]);return bridgeData?Object.assign({},bridgeData):{publicIp:pair[0],localIp:pair[1],ip:formatIP(pair[0],pair[1])};}
+  var bridgeData=null, listeners=[], bridgeOrigin='https://a-a2222370.vercel.app';
+  function onChange(fn){listeners.push(fn);}
+  function requestBridge() {
+    return new Promise(function(resolve,reject){
+      var bytes=new Uint8Array(16);root.crypto.getRandomValues(bytes);
+      var nonce=Array.from(bytes,function(v){return v.toString(16).padStart(2,'0');}).join('');
+      var popup, timer;
+      function clean(){clearTimeout(timer);root.removeEventListener('message',receive);try{if(popup)popup.close();}catch(e){}}
+      function receive(e){
+        if(e.origin!==bridgeOrigin||e.source!==popup||!e.data||e.data.type!=='hsh-device-result'||e.data.nonce!==nonce)return;
+        var d=e.data.info;
+        if(!d||typeof d.os!=='string'||typeof d.browser!=='string'||d.os.length>100||d.browser.length>100)return;
+        bridgeData={os:d.os,browser:d.browser,deviceType:['電腦','手機','平板'].indexOf(d.deviceType)>=0?d.deviceType:'電腦',publicIp:String(d.publicIp||'').slice(0,60),localIp:privateIP(d.localIp)};
+        bridgeData.ip=formatIP(bridgeData.publicIp,bridgeData.localIp);
+        clean();listeners.forEach(function(fn){try{fn(bridgeData);}catch(err){root.console.warn('連線資訊同步失敗',err);}});
+        [['mdlOnlineOsText',bridgeData.os],['mdlOnlineBrowserText',bridgeData.browser],['mdlOnlineIp',bridgeData.publicIp||'未取得'],['mdlOnlineIntranetIp',bridgeData.localIp||'瀏覽器未提供']].forEach(function(pair){var el=root.document.getElementById(pair[0]);if(el)el.textContent=pair[1];});
+        resolve(bridgeData);
+      }
+      root.addEventListener('message',receive);
+      popup=root.open(bridgeOrigin+'/warroom/device-info.html#'+new URLSearchParams({origin:root.location.origin,nonce:nonce}),'hsh_device_'+nonce,'width=560,height=540');
+      if(!popup){clean();reject(new Error('請允許開啟偵測視窗，再按一次重新偵測。'));return;}
+      timer=setTimeout(function(){clean();reject(new Error('偵測未完成。請確認已上傳戰情室的 device-info.html，並允許開啟視窗。'));},20000);
+    });
+  }
+  function installBridgeButton(selector){
+    function install(){var panel=root.document.querySelector(selector);if(!panel)return;
+      if(selector==='#modalOnlineUsersList')panel=panel.parentElement;
+      var box=root.document.createElement('div'),button=root.document.createElement('button'),label=root.document.createElement('span');
+      box.style.cssText='padding:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+      button.type='button';button.textContent='重新偵測電腦資訊';button.style.cssText='padding:7px 12px;border:1px solid #94a3b8;border-radius:8px;background:#f1f5f9;color:#0f172a;cursor:pointer';
+      label.style.cssText='font-size:12px';label.textContent='無法取得時，開啟戰情室 HTTPS 偵測視窗。';
+      button.onclick=function(){button.disabled=true;label.textContent='正在偵測…';requestBridge().then(function(d){label.textContent=d.localIp?'已更新作業系統、瀏覽器及內網 IP。':'已更新作業系統與瀏覽器；此瀏覽器仍未提供內網 IP。';}).catch(function(e){label.textContent=e.message;}).finally(function(){button.disabled=false;});};
+      box.append(button,label);panel.prepend(box);
+    }
+    if(root.document.readyState==='loading')root.document.addEventListener('DOMContentLoaded',install);else install();
+  }
+  root.HSHDeviceInfo={software:software,fallbackOS:fallbackOS,browser:function(nav){return browserLabel(browserInfo(nav||root.navigator));},deviceType:deviceType,privateIP:privateIP,localIP:localIP,publicIP:publicIP,formatIP:formatIP,ip:ip};
+  Object.assign(root.HSHDeviceInfo,{onChange:onChange,requestBridge:requestBridge,installBridgeButton:installBridgeButton});
+})(window);
+</script><script>
+const params=new URLSearchParams(location.hash.slice(1)),nonce=params.get('nonce'),origin=params.get('origin');
+function allowedOrigin(value){try{const u=new URL(value);if(u.origin!==value)return false;return (u.protocol==='https:'&&(u.hostname==='a-a2222370.vercel.app'||u.hostname==='script.google.com'||/(^|[.-])script\.googleusercontent\.com$/.test(u.hostname)))||(['http:','https:'].includes(u.protocol)&&(!!HSHDeviceInfo.privateIP(u.hostname)||u.hostname==='localhost'));}catch(e){return false;}}
+async function run(){document.getElementById('retry').disabled=true;try{const pair=await Promise.all([HSHDeviceInfo.software(),HSHDeviceInfo.ip()]),info=Object.assign({},pair[0],pair[1]);const facts=document.getElementById('facts');facts.replaceChildren();[['作業系統',info.os],['瀏覽器',info.browser],['內網 / VPN IP',info.localIp||'瀏覽器未提供'],['外網 IP',info.publicIp||'未取得']].forEach(([key,value])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=key;dd.textContent=value;facts.append(dt,dd);});if(window.opener&&allowedOrigin(origin)&&/^[a-f0-9]{32}$/.test(nonce||'')){window.opener.postMessage({type:'hsh-device-result',nonce:nonce,info:info},origin);document.getElementById('status').textContent='已回傳至原系統，可以關閉此視窗。';}else document.getElementById('status').textContent='偵測完成。請從原系統的「重新偵測電腦資訊」按鈕開啟，才能同步回傳。';}catch(e){document.getElementById('status').textContent='偵測失敗，請重新偵測。';}finally{document.getElementById('retry').disabled=false;}}
+document.getElementById('retry').onclick=run;run();
+</script></html>
