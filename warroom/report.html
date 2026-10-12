@@ -1,6 +1,185 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+<script>
+/* 本機電腦資訊：僅使用瀏覽器提供的資料，不從在線名單補入 IP。 */
+(function(root) {
+  'use strict';
+  var bridgeData = null, bridgePending = null, localPending = null, listeners = [];
+  var bridgeOrigin = 'https://a-a2222370.vercel.app';
+  function deviceType(nav) {
+    var ua = nav.userAgent || '';
+    if (/iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return '平板';
+    return ((nav.userAgentData || {}).mobile || /Mobi|iPhone|iPod|Android.*Mobile/i.test(ua)) ? '手機' : '電腦';
+  }
+  function fallbackOS(nav) {
+    nav = nav || root.navigator;
+    var ua = nav.userAgent || '', match;
+    if (/Windows NT 10/.test(ua)) return 'Windows（10／11 版本未提供）';
+    if (/Windows NT 6\.3/.test(ua)) return 'Windows 8.1';
+    if (/Windows NT 6\.2/.test(ua)) return 'Windows 8';
+    if (/Windows NT 6\.1/.test(ua)) return 'Windows 7';
+    if (/Windows/.test(ua)) return 'Windows（版本未提供）';
+    if (/iPad/.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1)) return 'iPadOS';
+    if (/iPhone|iPod/.test(ua)) return 'iOS' + ((match = ua.match(/OS ([\d_]+)/)) ? ' ' + match[1].replace(/_/g, '.') : '');
+    if (/Android/.test(ua)) return 'Android（版本未提供）';
+    if (/CrOS/.test(ua)) return 'ChromeOS';
+    if (/Macintosh|Mac OS X/.test(ua)) return 'macOS（版本未提供）';
+    return /Linux/.test(ua) ? 'Linux' : '作業系統未提供';
+  }
+  function browserInfo(nav) {
+    var ua = nav.userAgent || '', match;
+    var patterns = [['LINE', /Line\/([\d.]+)/i], ['WeChat', /MicroMessenger\/([\d.]+)/], ['Samsung Browser', /SamsungBrowser\/([\d.]+)/], ['Edge', /(?:EdgA|EdgiOS|Edg|Edge)\/([\d.]+)/], ['Opera', /(?:OPR|OPiOS)\/([\d.]+)/], ['Firefox', /(?:Firefox|FxiOS)\/([\d.]+)/], ['Chrome', /(?:Chrome|CriOS)\/([\d.]+)/], ['Safari', /Version\/([\d.]+).*Safari/], ['IE', /(?:MSIE |rv:)([\d.]+)/]];
+    for (var i = 0; i < patterns.length; i++) {
+      if ((match = ua.match(patterns[i][1]))) return {name: patterns[i][0], version: match[1]};
+    }
+    return {name: '瀏覽器未提供', version: ''};
+  }
+  function browser(nav) {
+    var info = browserInfo(nav || root.navigator);
+    return browserLabel(info);
+  }
+  function browserLabel(info) {
+    return info.name + (info.version ? ' ' + info.version + (/^\d+\.0\.0\.0$/.test(info.version) ? '（完整版本未提供）' : '') : '');
+  }
+  async function software(nav) {
+    nav = nav || root.navigator;
+    var info = browserInfo(nav), os = fallbackOS(nav), hints = nav.userAgentData, timer;
+    if (hints && typeof hints.getHighEntropyValues === 'function') {
+      try {
+        var high = await Promise.race([
+          Promise.resolve().then(function() { return hints.getHighEntropyValues(['platformVersion', 'fullVersionList']); }),
+          new Promise(function(resolve) { timer = setTimeout(function() { resolve({}); }, 1800); })
+        ]);
+        var version = String(high.platformVersion || ''), major = parseInt(version.split('.')[0], 10);
+        if (hints.platform === 'Windows' && /^\d+(\.\d+)*$/.test(version)) {
+          if (major >= 13) os = 'Windows 11';
+          else if (major >= 1 && major <= 10) os = 'Windows 10';
+        } else if (/^(macOS|Android|Chrome OS|Linux)$/.test(hints.platform || '')) {
+          os = hints.platform + (version && version !== '0.0.0' ? ' ' + version : '');
+        }
+        var expected = {Edge: 'Microsoft Edge', Chrome: 'Google Chrome', Opera: 'Opera'}[info.name];
+        var brand = (Array.isArray(high.fullVersionList) ? high.fullVersionList : []).find(function(b) { return expected && b.brand === expected; });
+        if (brand && /^\d+(\.\d+)*$/.test(brand.version)) info.version = brand.version;
+      } catch (e) {} finally { clearTimeout(timer); }
+    }
+    return {os: os, browser: browserLabel(info), deviceType: deviceType(nav)};
+  }
+  function ipv4(value) {
+    var parts = String(value || '').trim().split('.');
+    return parts.length === 4 && parts.every(function(p) { return /^(0|[1-9]\d{0,2})$/.test(p) && Number(p) <= 255; }) ? parts.join('.') : '';
+  }
+  function privateIP(value) {
+    var ip = ipv4(value), parts = ip.split('.');
+    return ip && (parts[0] === '10' || (parts[0] === '192' && parts[1] === '168') || (parts[0] === '172' && Number(parts[1]) >= 16 && Number(parts[1]) <= 31)) ? ip : '';
+  }
+  function publicAddress(value) {
+    var ip = ipv4(value);
+    return ip && !privateIP(ip) && !/^(0|127|169\.254|224|255)\./.test(ip) ? ip : '';
+  }
+  function localIP() {
+    if (localPending) return localPending;
+    var pending = new Promise(function(resolve) {
+      var Peer = root.RTCPeerConnection || root.webkitRTCPeerConnection || root.mozRTCPeerConnection, pc, timer, done = false;
+      function finish(ip) { if (done) return; done = true; clearTimeout(timer); try { if (pc) pc.close(); } catch (e) {} resolve(ip || ''); }
+      function scan(text) {
+        var matches = String(text || '').match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g) || [];
+        for (var i = 0; i < matches.length; i++) { var ip = privateIP(matches[i]); if (ip) { finish(ip); return; } }
+      }
+      function scanDescription() { if (pc && !done) scan((pc.localDescription || {}).sdp); }
+      if (!Peer) { finish(''); return; }
+      timer = setTimeout(function() { scanDescription(); finish(''); }, 2500);
+      try {
+        pc = new Peer({iceServers: []});
+        // 空候選只補查描述資料，仍等待後續候選或到期；不快取失敗結果。
+        pc.onicecandidate = function(e) {
+          if (done) return;
+          if (e && e.candidate) {
+            var ip = privateIP(e.candidate.address);
+            if (ip) { finish(ip); return; }
+            scan(e.candidate.candidate);
+          }
+          scanDescription();
+        };
+        pc.onicegatheringstatechange = scanDescription;
+        pc.createDataChannel('hsh-ip-probe');
+        Promise.resolve(pc.createOffer()).then(function(offer) { if (!done) return pc.setLocalDescription(offer); }).then(scanDescription).catch(function() { finish(''); });
+      } catch (e) { finish(''); }
+    });
+    localPending = pending;
+    pending.then(function() { if (localPending === pending) localPending = null; });
+    return pending;
+  }
+  function publicIP() {
+    return new Promise(function(resolve) {
+      var done = false, controller = typeof root.AbortController === 'function' ? new root.AbortController() : null;
+      var timer = setTimeout(function() { finish(''); if (controller) controller.abort(); }, 3000);
+      function finish(ip) { if (done) return; done = true; clearTimeout(timer); resolve(publicAddress(ip)); }
+      Promise.resolve().then(function() { return root.fetch('https://api.ipify.org?format=json', {cache: 'no-store', signal: controller ? controller.signal : undefined}); }).then(function(r) { if (!r.ok) throw new Error('IP 偵測失敗'); return r.json(); }).then(function(d) { finish(d && d.ip); }).catch(function() { finish(''); });
+    });
+  }
+  function formatIP(ext, local) { return (ext || '公網 IP 未取得') + ' (內網: ' + (local || '瀏覽器未提供') + ')'; }
+  async function detect() {
+    var values = await Promise.all([software(), publicIP(), localIP()]);
+    return Object.assign({}, values[0], {publicIp: values[1], localIp: values[2], ip: formatIP(values[1], values[2])});
+  }
+  function onChange(fn) { listeners.push(fn); }
+  function requestBridge() {
+    if (bridgePending) return bridgePending;
+    bridgeData = null;
+    bridgePending = new Promise(function(resolve, reject) {
+      var popup, timer, closedTimer, nonce;
+      function clean() { clearTimeout(timer); clearInterval(closedTimer); root.removeEventListener('message', receive); try { if (popup) popup.close(); } catch (e) {} }
+      function fail(message) { clean(); reject(new Error(message)); }
+      function receive(e) {
+        if (e.origin !== bridgeOrigin || e.source !== popup || !e.data || e.data.type !== 'hsh-device-result' || e.data.nonce !== nonce) return;
+        var d = e.data.info;
+        if (!d || typeof d.os !== 'string' || typeof d.browser !== 'string' || d.os.length > 100 || d.browser.length > 100) return;
+        bridgeData = {os: d.os || '作業系統未提供', browser: d.browser || '瀏覽器未提供', deviceType: ['電腦', '手機', '平板'].indexOf(d.deviceType) >= 0 ? d.deviceType : '裝置類型未提供', publicIp: publicAddress(d.publicIp), localIp: privateIP(d.localIp)};
+        bridgeData.ip = formatIP(bridgeData.publicIp, bridgeData.localIp);
+        clean();
+        listeners.forEach(function(fn) { try { fn(bridgeData); } catch (err) { if (root.console) root.console.warn('本機資訊同步失敗', err); } });
+        resolve(bridgeData);
+      }
+      try {
+        var bytes = new Uint8Array(16); root.crypto.getRandomValues(bytes);
+        nonce = Array.from(bytes, function(v) { return v.toString(16).padStart(2, '0'); }).join('');
+        root.addEventListener('message', receive);
+        popup = root.open(bridgeOrigin + '/warroom/device-info.html#' + new URLSearchParams({origin: root.location.origin, nonce: nonce}), 'hsh_device_' + nonce, 'width=600,height=600');
+        if (!popup) { fail('請允許開啟偵測視窗，再按一次重新偵測。'); return; }
+        timer = setTimeout(function() { fail('未收到電腦資訊。請先上傳 device-info.html 至戰情室 /warroom/，再重新偵測。'); }, 20000);
+        closedTimer = setInterval(function() { if (popup.closed) fail('偵測視窗已關閉，請重新偵測。'); }, 500);
+      } catch (e) { fail('無法開啟偵測視窗：' + e.message); }
+    });
+    var pending = bridgePending;
+    pending.then(function() { if (bridgePending === pending) bridgePending = null; }, function() { if (bridgePending === pending) bridgePending = null; });
+    return pending;
+  }
+  function installBridgeButton(selector, refresh) {
+    function install() {
+      var panel = root.document.querySelector(selector);
+      if (!panel || root.document.getElementById('hshDeviceRefresh')) return;
+      if (selector === '#modalOnlineUsersList') panel = panel.parentElement;
+      var box = root.document.createElement('div'), button = root.document.createElement('button'), label = root.document.createElement('span');
+      box.style.cssText = 'padding:10px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+      button.id = 'hshDeviceRefresh'; button.type = 'button'; button.textContent = '重新偵測電腦資訊';
+      button.style.cssText = 'padding:7px 12px;border:1px solid #94a3b8;border-radius:8px;background:#f1f5f9;color:#0f172a;cursor:pointer';
+      label.style.cssText = 'font-size:12px;color:#475569'; label.setAttribute('role', 'status');
+      label.textContent = '未取得資訊時，可開啟戰情室 HTTPS 偵測視窗。';
+      button.onclick = function() {
+        button.disabled = true; label.textContent = '正在偵測本機資訊…';
+        var request = requestBridge();
+        if (refresh) refresh().catch(function() {});
+        request.then(function(d) { label.textContent = '本機資訊已同步；' + (d.localIp ? '已取得內網 IP。' : '瀏覽器未提供內網 IP。') + (d.publicIp ? '' : '公網 IP 未取得。'); }).catch(function(e) { label.textContent = e.message; }).finally(function() { button.disabled = false; });
+      };
+      box.appendChild(button); box.appendChild(label); panel.insertBefore(box, panel.firstChild);
+    }
+    if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', install); else install();
+  }
+  root.HSHDeviceInfo = {software: software, fallbackOS: fallbackOS, browser: browser, deviceType: deviceType, privateIP: privateIP, localIP: localIP, publicIP: publicIP, formatIP: formatIP, detect: detect, onChange: onChange, requestBridge: requestBridge, installBridgeButton: installBridgeButton};
+})(window);
+
+</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>許瑞興機台狀態回報系統 | HSH Machine Status Reporter</title>
@@ -565,6 +744,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       <span class="online-badge off" id="onlineBadge" onclick="toggleOnlineList()" title="點擊查看目前在線的裝置">
         <span class="dot-pulse"></span><span>線上：<b id="onlineCount">—</b> 人</span><span class="arrow" id="onlineArrow">▾</span>
       </span>
+<div style="margin-top:10px;font-size:12px;color:#94a3b8"><button id="warroomDeviceRefresh" type="button" onclick="refreshWarroomDeviceInfo_()" style="padding:6px 10px;border:1px solid #64748b;border-radius:6px;background:#1e293b;color:#e2e8f0;cursor:pointer">重新偵測電腦資訊</button> <span id="warroomDeviceStatus" role="status">公網／內網 IP 偵測中…</span></div>
       <div class="online-list" id="onlineList" style="display:none;"></div>
     </div>
 
@@ -950,9 +1130,10 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
     // ==========================================
     // 版本與改版記錄
     // ==========================================
-    const APP_VERSION = 'v2.7.1';
+    const APP_VERSION = 'v2.7.2';
     const BACKEND_MIN_VERSION = 'v2.5.0';
     const CHANGELOG = [
+{"v":"v2.7.2","date":"2026-10-12","notes":["內網偵測補查候選位址、字串及描述資料，空候選不提前結束、失敗可重試。","線上資訊增加重新偵測；未取得內網時明確顯示瀏覽器未提供，不再只剩公網 IP。"]},
 {"v": "v2.7.1", "date": "2026-10-11", "notes": ["戰情室線上裝置改用瀏覽器提供的版本資訊判斷 Windows 10／11，並回報完整瀏覽器版本；取得完成後同步線上名單。", "未提供 Windows 平台版本時明確標示未提供，不猜成 Windows 10。"]},
 {"v": "v2.7.0", "date": "2026-10-06", "notes": ["新增明亮白、海軍藍、靜謐紫、暖米色、玫瑰紅五款風格，以及午夜藍、深紫黑、森林黑三款深色風格；原有五款完整保留，共十三款可選，登入與主畫面選項一致，本機記住選擇。"]},
       { v: 'v2.6.1', date: '2026-10-04', notes: [
@@ -1055,71 +1236,28 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
     })();
     const ENV = { os: '', browser: '', deviceType: '', ip: '' };
 
-    function detectDeviceType_() {
-      const ua = navigator.userAgent;
-      const d = navigator.userAgentData;
-      if (/iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return '平板';
-      if ((d && d.mobile) || /Mobi|iPhone|iPod|Android.*Mobile|Windows Phone/i.test(ua)) return '手機';
-      return '電腦';
+    function detectDeviceType_() { return HSHDeviceInfo.deviceType(navigator); }
+    async function detectEnv_() { Object.assign(ENV, await HSHDeviceInfo.software()); }
+    let deviceDetectionSequence_ = 0;
+    function getLocalIp_() { return HSHDeviceInfo.localIP(); }
+    async function detectIp_() {
+      const sequence = ++deviceDetectionSequence_;
+      const info = await HSHDeviceInfo.detect();
+      if (sequence === deviceDetectionSequence_) Object.assign(ENV, info);
     }
-    function detectEnv_() {
-      const ua = navigator.userAgent;
-      ENV.deviceType = detectDeviceType_();
-      ENV.os = /Windows NT 10/.test(ua) ? 'Windows 10/11' : /Windows/.test(ua) ? 'Windows'
-        : /iPhone|iPad|iPod/.test(ua) ? 'iOS ' + ((ua.match(/OS (\d+)_/) || [])[1] || '')
-        : /Android/.test(ua) ? 'Android ' + ((ua.match(/Android (\d+)/) || [])[1] || '')
-        : /Mac OS X/.test(ua) ? (navigator.maxTouchPoints > 1 ? 'iPadOS' : 'macOS') : /CrOS/.test(ua) ? 'ChromeOS' : /Linux/.test(ua) ? 'Linux' : '';
-      const m = ua.match(/Line\/(\d+)/) ? ['LINE', ua.match(/Line\/(\d+)/)[1]]
-        : ua.match(/FBAN|FBAV/) ? ['Facebook', '']
-        : ua.match(/SamsungBrowser\/(\d+)/) ? ['Samsung', ua.match(/SamsungBrowser\/(\d+)/)[1]]
-        : ua.match(/EdgA?\/(\d+)/) ? ['Edge', ua.match(/EdgA?\/(\d+)/)[1]]
-        : ua.match(/OPR\/(\d+)/) ? ['Opera', ua.match(/OPR\/(\d+)/)[1]]
-        : ua.match(/(?:Firefox|FxiOS)\/(\d+)/) ? ['Firefox', ua.match(/(?:Firefox|FxiOS)\/(\d+)/)[1]]
-        : ua.match(/CriOS\/(\d+)/) ? ['Chrome', ua.match(/CriOS\/(\d+)/)[1]]
-        : ua.match(/Chrome\/(\d+)/) ? ['Chrome', ua.match(/Chrome\/(\d+)/)[1]]
-        : ua.match(/Version\/(\d+).*Safari/) ? ['Safari', ua.match(/Version\/(\d+)/)[1]] : null;
-      if (m) ENV.browser = m.join(' ').trim();
+    async function refreshWarroomDeviceInfo_() {
+      const button = document.getElementById('warroomDeviceRefresh');
+      const status = document.getElementById('warroomDeviceStatus');
+      button.disabled = true; status.textContent = '正在偵測這台裝置…';
       try {
-        const d = navigator.userAgentData;
-        if (d && d.getHighEntropyValues) {
-          return d.getHighEntropyValues(['platformVersion', 'fullVersionList']).then(h => {
-            const pv = parseInt((h.platformVersion || '0').split('.')[0], 10) || 0;
-            if (d.platform === 'Windows') ENV.os = pv >= 13 ? 'Windows 11' : pv > 0 ? 'Windows 10' : 'Windows';
-            else if (d.platform === 'macOS') ENV.os = 'macOS ' + (h.platformVersion || '').split('.').slice(0, 2).join('.');
-            else if (d.platform === 'Android') ENV.os = 'Android ' + (h.platformVersion || '').split('.')[0];
-            const list = (h.fullVersionList || d.brands || []).filter(b => !/Not.?A.?Brand|Chromium/i.test(b.brand));
-            const pick = list.filter(b => /Edge|Opera|Brave|Vivaldi|Samsung/i.test(b.brand))[0] || list.filter(b => /Chrome/i.test(b.brand))[0] || list[0];
-            if (pick && !/LINE|Facebook/.test(ENV.browser)) ENV.browser = pick.brand.replace('Google ', '').replace('Microsoft ', '') + ' ' + String(pick.version).split('.')[0];
-          }).catch(() => {});
-        }
-      } catch (e) {}
-      return Promise.resolve();
+        await detectIp_();
+        renderMyDeviceInfo();
+        status.textContent = ENV.ip;
+        pingPresence(true);
+      } catch (e) { status.textContent = '未取得本機資訊，請重新偵測。'; }
+      finally { button.disabled = false; }
     }
-    function getLocalIp_() {
-      return new Promise(resolve => {
-        const RTCPeer = window.RTCPeerConnection || window.webkitRTCPeerConnection;
-        if (!RTCPeer) return resolve('');
-        let pc;
-        try {
-          pc = new RTCPeer({ iceServers: [] });
-          pc.createDataChannel('');
-          pc.createOffer().then(o => pc.setLocalDescription(o)).catch(() => {});
-        } catch (e) { return resolve(''); }
-        const timer = setTimeout(() => { try { pc.close(); } catch (e) {} resolve(''); }, 1200);
-        pc.onicecandidate = ice => {
-          if (!ice || !ice.candidate || !ice.candidate.candidate) return;
-          const m = ice.candidate.candidate.match(/\b(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})\b/);
-          if (m && m[1]) { clearTimeout(timer); try { pc.close(); } catch (e) {} resolve(m[1]); }
-        };
-      });
-    }
-    function detectIp_() {
-      const extP = fetch('https://api.ipify.org?format=json', { cache: 'no-store' }).then(r => r.json()).then(d => (d && d.ip) || '').catch(() => '');
-      return Promise.all([getLocalIp_(), extP]).then(([local, ext]) => {
-        if (ext && local) ENV.ip = ext + (/^(10|192|172)\./.test(local) ? ' (內:' + local + ')' : ' (' + local + ')');
-        else ENV.ip = ext || (local ? '內:' + local : '');
-      });
-    }
+
     function renderMyDeviceInfo() {
       const el = document.getElementById('myDeviceInfo');
       const icon = ENV.deviceType === '手機' ? '📱' : ENV.deviceType === '平板' ? '📟' : '💻';
@@ -1454,6 +1592,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
     let ONLINE = { ok: false, pending: true, count: null, users: [] };
     const ONLINE_CACHE_KEY = 'hsh_report_online_last';
     let presenceBusy = false;
+    let presenceNeedsRefresh_ = false;
 
     function onlineAgo_(since, now) {
       const m = Math.floor(((now || Date.now() / 1000) - since) / 60);
@@ -1490,8 +1629,8 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       if (show) { renderOnlineList_(); pingPresence(); }
     }
     function whoAmI_() { const { dept, name } = getIdentity(); return name ? (dept ? '[' + dept + '] ' : '') + name : ''; }
-    function pingPresence() {
-      if (presenceBusy) return;
+    function pingPresence(refresh) {
+      if (presenceBusy) { if (refresh === true) presenceNeedsRefresh_ = true; return; }
       presenceBusy = true;
       let done = false;
       const finish = result => {
@@ -1500,6 +1639,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
         if (result.ok) lsSet(ONLINE_CACHE_KEY, JSON.stringify({ t: Date.now(), count: result.count }));
         updateOnlineBadge_();
         if (document.getElementById('onlineList').style.display !== 'none') renderOnlineList_();
+        if (presenceNeedsRefresh_) { presenceNeedsRefresh_ = false; setTimeout(pingPresence, 0); }
       };
       const timer = setTimeout(() => finish({ ok: false, count: 0, users: [], err: '雲端 API 超過 20 秒沒有回應' }), 20000);
       apiPost({ action: 'presence', sid: MY_DEVICE_ID, ip: ENV.ip, os: ENV.os, browser: ENV.browser, deviceType: ENV.deviceType, page: 'report', who: whoAmI_() })
@@ -1512,8 +1652,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
         if (last && Date.now() - last.t < 10 * 60 * 1000) ONLINE = { ok: false, pending: true, count: last.count, users: [] };
       } catch (e) {}
       updateOnlineBadge_();
-      pingPresence(); // 立刻送第一次，不等 IP 偵測
-      Promise.all([envP, detectIp_()]).then(() => { renderMyDeviceInfo(); presenceBusy = false; pingPresence(); });
+      Promise.all([envP, detectIp_()]).then(() => { renderMyDeviceInfo(); document.getElementById('warroomDeviceStatus').textContent = ENV.ip; pingPresence(true); });
       setInterval(pingPresence, 30000);
       document.addEventListener('visibilitychange', () => { if (!document.hidden) pingPresence(); });
       window.addEventListener('pagehide', () => {
