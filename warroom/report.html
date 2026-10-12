@@ -5,7 +5,7 @@
 /* 本機電腦資訊：僅使用瀏覽器提供的資料，不從在線名單補入 IP。 */
 (function(root) {
   'use strict';
-  var bridgeData = null, bridgePending = null, localPending = null, listeners = [];
+  var bridgeData = null, bridgePending = null, localPending = null, listeners = [], nativeInfo = null;
   var bridgeOrigin = 'https://a-a2222370.vercel.app';
   function deviceType(nav) {
     var ua = nav.userAgent || '';
@@ -118,12 +118,91 @@
       Promise.resolve().then(function() { return root.fetch('https://api.ipify.org?format=json', {cache: 'no-store', signal: controller ? controller.signal : undefined}); }).then(function(r) { if (!r.ok) throw new Error('IP 偵測失敗'); return r.json(); }).then(function(d) { finish(d && d.ip); }).catch(function() { finish(''); });
     });
   }
-  function formatIP(ext, local) { return (ext || '公網 IP 未取得') + ' (內網: ' + (local || '瀏覽器未提供') + ')'; }
+  function formatIP(ext, local, missingLocal) { return (ext || '公網 IP 未取得') + ' (內網: ' + (local || missingLocal || '瀏覽器未提供') + ')'; }
   async function detect() {
     var values = await Promise.all([software(), publicIP(), localIP()]);
-    return Object.assign({}, values[0], {publicIp: values[1], localIp: values[2], ip: formatIP(values[1], values[2])});
+    return mergeNative(Object.assign({}, values[0], {publicIp: values[1], localIp: values[2], ip: formatIP(values[1], values[2]), computerName: '', localInfoSource: ''}));
   }
   function onChange(fn) { listeners.push(fn); }
+  function notify(info) { listeners.forEach(function(fn) { try { fn(info); } catch (e) { if (root.console) root.console.warn('本機資訊同步失敗', e); } }); }
+  function deviceLabel(info) { return info.os + ' - ' + info.browser + (info.computerName ? ' · 電腦：' + info.computerName : ''); }
+  function cleanName(value) { return typeof value === 'string' && value.length <= 255 && !/[\x00-\x1f\x7f]/.test(value) ? value.trim() : ''; }
+  function validateNative(data) {
+    if (!data || data.schema !== 'hsh-local-device-v1' || !cleanName(data.computerName) || !Array.isArray(data.interfaces) || data.interfaces.length > 64) throw new Error('不是有效的本機資訊檔。');
+    var time = Date.parse(data.collectedAt), age = Date.now() - time;
+    if (!Number.isFinite(time) || age < -120000 || age > 10 * 60 * 1000) throw new Error('資訊已超過 10 分鐘，請在目前電腦重新匯出或讀取。');
+    var interfaces = data.interfaces.filter(function(item) { return item && privateIP(item.ip); }).map(function(item) { return {ip: privateIP(item.ip), adapter: cleanName(item.adapter) || '網路介面'}; });
+    return {computerName: cleanName(data.computerName), os: cleanName(data.os), collectedAt: new Date(time).toISOString(), interfaces: interfaces};
+  }
+  function mergeNative(info) {
+    if (!nativeInfo || Date.now() - Date.parse(nativeInfo.collectedAt) > 10 * 60 * 1000) return info;
+    return Object.assign({}, info, {os: nativeInfo.os || info.os, computerName: nativeInfo.computerName, localIp: nativeInfo.localIp, ip: formatIP(info.publicIp, nativeInfo.localIp, '本機未取得有效 IPv4'), localInfoSource: nativeInfo.source, collectedAt: nativeInfo.collectedAt});
+  }
+  async function applyNative(data, source, selectedIp) {
+    var valid = validateNative(data), ip = selectedIp;
+    if (ip === undefined) {
+      if (valid.interfaces.length === 1) ip = valid.interfaces[0].ip;
+      else if (valid.interfaces.length > 1) {
+        var choice = root.prompt('這台電腦有多個內網位址，請選擇要顯示的編號：\n' + valid.interfaces.map(function(item, i) { return (i + 1) + '. ' + item.adapter + '：' + item.ip; }).join('\n'), '');
+        if (choice === null) throw new Error('已取消選擇。');
+        var index = Number(choice) - 1;
+        if (!Number.isInteger(index) || index < 0 || index >= valid.interfaces.length) throw new Error('請重新讀取並選擇有效編號。');
+        ip = valid.interfaces[index].ip;
+      } else ip = '';
+    }
+    if (ip && !valid.interfaces.some(function(item) { return item.ip === ip; })) throw new Error('選擇的 IP 不在這台電腦的資訊內。');
+    nativeInfo = Object.assign({}, valid, {localIp: ip || '', source: source});
+    var pair = await Promise.all([software(), publicIP()]);
+    var info = mergeNative(Object.assign({}, pair[0], {publicIp: pair[1], localIp: '', ip: formatIP(pair[1], '')}));
+    notify(info);
+    return info;
+  }
+  async function readNative(code) {
+    code = String(code || '').trim();
+    if (!/^[a-f0-9]{64}$/.test(code)) throw new Error('請貼上本機助手顯示的完整配對碼。');
+    var controller = new root.AbortController(), timer = setTimeout(function() { controller.abort(); }, 10000);
+    try {
+      var response = await root.fetch('http://127.0.0.1:17621/device-info', {method: 'GET', headers: {Authorization: 'Bearer ' + code}, cache: 'no-store', credentials: 'omit', signal: controller.signal});
+      if (response.status === 403) throw new Error('配對碼不符，請使用目前電腦本機助手的配對碼。');
+      if (!response.ok) throw new Error('本機助手回應失敗。');
+      return await applyNative(await response.json(), '本機助手');
+    } catch (e) {
+      if (e.name === 'TypeError' || e.name === 'AbortError') throw new Error('無法連接本機助手。請先啟動助手並允許瀏覽器存取本機網路，或改用「匯入本機資訊」。');
+      throw e;
+    } finally { clearTimeout(timer); }
+  }
+  function installNativeButton(selector) {
+    function install() {
+      var panel = root.document.querySelector(selector);
+      if (!panel || root.document.getElementById('hshNativeRead')) return;
+      var parent = panel.parentElement, box = root.document.createElement('div'), button = root.document.createElement('button'), importButton = root.document.createElement('button'), download = root.document.createElement('a'), input = root.document.createElement('input'), status = root.document.createElement('span');
+      box.style.cssText = 'padding:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px';
+      button.id = 'hshNativeRead'; button.type = importButton.type = 'button'; button.textContent = '讀取本機 IP 與電腦名稱'; importButton.textContent = '匯入本機資訊';
+      [button, importButton].forEach(function(b) { b.style.cssText = 'padding:7px 10px;border:1px solid #94a3b8;border-radius:8px;background:#f1f5f9;color:#0f172a;cursor:pointer'; });
+      input.type = 'file'; input.accept = '.json,application/json'; input.hidden = true; status.setAttribute('role', 'status');
+      download.href = bridgeOrigin + '/warroom/local-device-helper.zip'; download.target = '_blank'; download.rel = 'noopener'; download.textContent = '下載本機助手'; download.style.cssText = 'color:inherit;text-decoration:underline';
+      status.textContent = '需先啟動這台 Windows 電腦的本機助手。';
+      function show(info) { status.textContent = '電腦：' + info.computerName + ' · ' + (info.localIp ? '內網：' + info.localIp : '未取得有效內網 IPv4') + '（' + info.localInfoSource + '）'; }
+      button.onclick = async function() {
+        var code = root.prompt('請先雙擊「啟動本機助手.cmd」，再貼上助手視窗顯示的配對碼。', '');
+        if (code === null) return;
+        button.disabled = true; status.textContent = '正在讀取目前電腦…';
+        try { show(await readNative(code)); } catch (e) { status.textContent = e.message; } finally { button.disabled = false; }
+      };
+      importButton.onclick = function() { input.click(); };
+      input.onchange = async function() {
+        var file = input.files[0]; if (!file) return;
+        try {
+          if (file.size > 32768) throw new Error('資訊檔過大，請使用助手剛匯出的 JSON。');
+          var data = JSON.parse((await file.text()).replace(/^\uFEFF/, '')), valid = validateNative(data);
+          if (!root.confirm('確認這份資訊是在「目前這台電腦」剛匯出的嗎？\n電腦：' + valid.computerName + '\n位址：' + valid.interfaces.map(function(item) { return item.ip; }).join('、') + '\n匯入後會標示來源為本機檔案匯入。')) return;
+          show(await applyNative(data, '本機檔案匯入（使用者確認）'));
+        } catch (e) { status.textContent = e.message; } finally { input.value = ''; }
+      };
+      [download, button, importButton, input, status].forEach(function(el) { box.appendChild(el); }); parent.insertBefore(box, panel);
+    }
+    if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', install); else install();
+  }
   function requestBridge() {
     if (bridgePending) return bridgePending;
     bridgeData = null;
@@ -136,7 +215,10 @@
         var d = e.data.info;
         if (!d || typeof d.os !== 'string' || typeof d.browser !== 'string' || d.os.length > 100 || d.browser.length > 100) return;
         bridgeData = {os: d.os || '作業系統未提供', browser: d.browser || '瀏覽器未提供', deviceType: ['電腦', '手機', '平板'].indexOf(d.deviceType) >= 0 ? d.deviceType : '裝置類型未提供', publicIp: publicAddress(d.publicIp), localIp: privateIP(d.localIp)};
-        bridgeData.ip = formatIP(bridgeData.publicIp, bridgeData.localIp);
+        bridgeData.computerName = cleanName(d.computerName);
+        bridgeData.localInfoSource = cleanName(d.localInfoSource);
+        bridgeData = mergeNative(bridgeData);
+        bridgeData.ip = formatIP(bridgeData.publicIp, bridgeData.localIp, bridgeData.localInfoSource ? '本機未取得有效 IPv4' : '瀏覽器未提供');
         clean();
         listeners.forEach(function(fn) { try { fn(bridgeData); } catch (err) { if (root.console) root.console.warn('本機資訊同步失敗', err); } });
         resolve(bridgeData);
@@ -176,7 +258,7 @@
     }
     if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', install); else install();
   }
-  root.HSHDeviceInfo = {software: software, fallbackOS: fallbackOS, browser: browser, deviceType: deviceType, privateIP: privateIP, localIP: localIP, publicIP: publicIP, formatIP: formatIP, detect: detect, onChange: onChange, requestBridge: requestBridge, installBridgeButton: installBridgeButton};
+  root.HSHDeviceInfo = {software: software, fallbackOS: fallbackOS, browser: browser, deviceType: deviceType, privateIP: privateIP, localIP: localIP, publicIP: publicIP, formatIP: formatIP, detect: detect, onChange: onChange, requestBridge: requestBridge, installBridgeButton: installBridgeButton, deviceLabel: deviceLabel, validateNative: validateNative, applyNative: applyNative, readNative: readNative, installNativeButton: installNativeButton};
 })(window);
 
 </script>
@@ -1130,9 +1212,10 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
     // ==========================================
     // 版本與改版記錄
     // ==========================================
-    const APP_VERSION = 'v2.7.2';
+    const APP_VERSION = 'v2.7.3';
     const BACKEND_MIN_VERSION = 'v2.5.0';
     const CHANGELOG = [
+{"v":"v2.7.3","date":"2026-10-12","notes":["新增 Windows 本機助手讀取電腦名稱與實際網卡 IP；多位址可選，並同步線上名單。","瀏覽器無法連接本機助手時可匯入本機剛匯出的資訊，並明確標示來源。"]},
 {"v":"v2.7.2","date":"2026-10-12","notes":["內網偵測補查候選位址、字串及描述資料，空候選不提前結束、失敗可重試。","線上資訊增加重新偵測；未取得內網時明確顯示瀏覽器未提供，不再只剩公網 IP。"]},
 {"v": "v2.7.1", "date": "2026-10-11", "notes": ["戰情室線上裝置改用瀏覽器提供的版本資訊判斷 Windows 10／11，並回報完整瀏覽器版本；取得完成後同步線上名單。", "未提供 Windows 平台版本時明確標示未提供，不猜成 Windows 10。"]},
 {"v": "v2.7.0", "date": "2026-10-06", "notes": ["新增明亮白、海軍藍、靜謐紫、暖米色、玫瑰紅五款風格，以及午夜藍、深紫黑、森林黑三款深色風格；原有五款完整保留，共十三款可選，登入與主畫面選項一致，本機記住選擇。"]},
@@ -1245,6 +1328,14 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       const info = await HSHDeviceInfo.detect();
       if (sequence === deviceDetectionSequence_) Object.assign(ENV, info);
     }
+    HSHDeviceInfo.onChange(function(info) {
+      ++deviceDetectionSequence_;
+      Object.assign(ENV, info);
+      renderMyDeviceInfo();
+      document.getElementById('warroomDeviceStatus').textContent = ENV.ip + (ENV.computerName ? ' · 電腦：' + ENV.computerName : '');
+      pingPresence(true);
+    });
+    HSHDeviceInfo.installNativeButton('#onlineList');
     async function refreshWarroomDeviceInfo_() {
       const button = document.getElementById('warroomDeviceRefresh');
       const status = document.getElementById('warroomDeviceStatus');
@@ -1252,7 +1343,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       try {
         await detectIp_();
         renderMyDeviceInfo();
-        status.textContent = ENV.ip;
+        status.textContent = ENV.ip + (ENV.computerName ? ' · 電腦：' + ENV.computerName : '');
         pingPresence(true);
       } catch (e) { status.textContent = '未取得本機資訊，請重新偵測。'; }
       finally { button.disabled = false; }
@@ -1262,6 +1353,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       const el = document.getElementById('myDeviceInfo');
       const icon = ENV.deviceType === '手機' ? '📱' : ENV.deviceType === '平板' ? '📟' : '💻';
       el.innerHTML = '本機：' + icon + ' ' + escHtml(ENV.deviceType) + ' · ' + escHtml(ENV.os || '未知系統') + ' · ' + escHtml(ENV.browser || '未知瀏覽器') +
+        (ENV.computerName ? '<br>電腦名稱：' + escHtml(ENV.computerName) : '') +
         '<br>IP：<span class="font-mono">' + escHtml(ENV.ip || '偵測中/未取得') + '</span> · 裝置 ID：<span class="font-mono">' + escHtml(MY_DEVICE_ID) + '</span>' +
         '<br><span class="text-slate-300">以上資訊會隨回報一併送到戰情室，方便追查是哪一台裝置回報的</span>';
     }
@@ -1616,7 +1708,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       el.innerHTML = '<table><thead><tr><th>#</th><th>IP</th><th>身分</th><th>頁面</th><th>裝置</th><th>作業系統</th><th>瀏覽器</th><th>裝置 ID</th><th>連線</th></tr></thead><tbody>' +
         ONLINE.users.map((u, i) => {
           const me = u.device === MY_DEVICE_ID;
-          return '<tr' + (me ? ' class="me"' : '') + '><td>' + (i + 1) + '</td><td class="mono">' + escHtml(u.ip || '未取得') + '</td><td>' + (me ? '本機 ' : '') + escHtml(u.who || '—') +
+          return '<tr' + (me ? ' class="me"' : '') + '><td>' + (i + 1) + '</td><td class="mono">' + escHtml(u.ip || '未取得') + (u.computerName ? '<br>電腦：' + escHtml(u.computerName) : '') + (u.localInfoSource ? '<br>來源：' + escHtml(u.localInfoSource) : '') + '</td><td>' + (me ? '本機 ' : '') + escHtml(u.who || '—') +
             '</td><td>' + pageName(u.page) + '</td><td>' + escHtml(u.deviceType || '—') + '</td><td>' + escHtml(u.os || '—') + '</td><td>' + escHtml(u.browser || '—') +
             '</td><td class="mono">' + escHtml(u.device) + '</td><td>' + onlineAgo_(u.since, ONLINE.now) + '</td></tr>';
         }).join('') + '</tbody></table><div class="ol-note">每 30 秒更新一次；同一台裝置開多個分頁只算一人；超過 75 秒沒回應視為離線。</div>';
@@ -1642,7 +1734,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
         if (presenceNeedsRefresh_) { presenceNeedsRefresh_ = false; setTimeout(pingPresence, 0); }
       };
       const timer = setTimeout(() => finish({ ok: false, count: 0, users: [], err: '雲端 API 超過 20 秒沒有回應' }), 20000);
-      apiPost({ action: 'presence', sid: MY_DEVICE_ID, ip: ENV.ip, os: ENV.os, browser: ENV.browser, deviceType: ENV.deviceType, page: 'report', who: whoAmI_() })
+      apiPost({ action: 'presence', sid: MY_DEVICE_ID, ip: ENV.ip, os: ENV.os, browser: ENV.browser, deviceType: ENV.deviceType, computerName: ENV.computerName || '', localInfoSource: ENV.localInfoSource || '', page: 'report', who: whoAmI_() })
         .then(d => { clearTimeout(timer); finish(d && d.ok ? { ok: true, count: d.count, users: d.users || [], now: d.now } : { ok: false, count: 0, users: [], err: (d && d.message) || '後端尚未更新為 v2.0.0（沒有線上人數功能）' }); })
         .catch(() => { clearTimeout(timer); finish({ ok: false, count: 0, users: [], err: '連不到雲端 API（網路或部署問題）' }); });
     }
