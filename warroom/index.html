@@ -308,50 +308,13 @@
       } catch(e){}
     })();
   </script>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN -->
+    <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Google Fonts: Orbitron & Rajdhani for Cyber/Tech UI -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            mono: ['"Roboto Mono"', 'Consolas', 'monospace'],
-            tech: ['"Noto Sans TC"', '"Microsoft JhengHei"', 'sans-serif'],
-          },
-          colors: {
-            // 品牌深色版：與圖面／標準文件查詢深色模式一致 (中性深灰 + 許瑞興紅點綴)
-            cyan: { 50: '#fafafa', 100: '#f4f4f5', 200: '#e4e4e7', 300: '#d4d4d8', 400: '#a1a1aa', 500: '#71717a', 600: '#52525b', 700: '#3f3f46', 800: '#27272a', 900: '#18181b', 950: '#0f0f11' },
-            sky:  { 50: '#fafafa', 100: '#f4f4f5', 200: '#e4e4e7', 300: '#d4d4d8', 400: '#a1a1aa', 500: '#71717a', 600: '#52525b', 700: '#3f3f46', 800: '#27272a', 900: '#18181b', 950: '#0f0f11' },
-            blue: { 50: '#fdf2f3', 100: '#fbe4e7', 200: '#f6c6cd', 300: '#ee9aa7', 400: '#e8455e', 500: '#d43a52', 600: '#c8102e', 700: '#a60d26', 800: '#870d22', 900: '#6f0e20', 950: '#3e040e' },
-            slate: { 50: '#fafafa', 100: '#f4f4f5', 200: '#e4e4e7', 300: '#d4d4d8', 400: '#a1a1aa', 500: '#71717a', 600: '#52525b', 700: '#3f3f46', 800: '#27272a', 900: '#18181b', 950: '#111113' },
-            brand: { DEFAULT: '#e8455e', deep: '#c8102e' },
-            tech: {
-              bg: '#111113',
-              card: 'rgba(28, 28, 31, 0.8)',
-              border: '#3f3f46',
-              glow: '#e8455e',
-              neonGreen: '#00FF9D',
-              neonRed: '#FF2E54',
-            }
-          },
-          boxShadow: {
-            'glow-cyan': '0 8px 28px rgba(0, 0, 0, 0.35)',
-            'glow-red': '0 0 20px rgba(255, 46, 84, 0.3)',
-            'glow-green': '0 0 20px rgba(0, 255, 157, 0.3)',
-            'inner-glow': 'inset 0 0 15px rgba(255, 255, 255, 0.03)',
-          }
-        }
-      }
-    }
-  </script>
 
   <style>
     /* 頂部風格切換 Badge */
@@ -814,6 +777,8 @@ html[data-theme="warm-beige"] :is(header,.hsh-dark-header) #headerVersionPill sp
 html[data-theme="warm-beige"] header :is([class*="bg-slate-"],[class*="bg-cyan-"],[class*="bg-black"],[class*="bg-emerald-"],[class*="bg-rose-"]) { background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; }
 html[data-theme="warm-beige"] header :is(input,select) { background: #fff !important; color: #1f2937 !important; border-color: #94a3b8 !important; color-scheme: light; }
 </style>
+  <!-- Tailwind 預先編譯 CSS（由 tools-build/build-tailwind.ps1 產生；放最後面，維持跟原本 CDN 相同的樣式優先順序） -->
+  <link rel="stylesheet" href="tailwind-index.css">
 </head>
 
 <body class="min-h-screen text-slate-100 font-tech p-4 lg:p-6 flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
@@ -1827,6 +1792,8 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
 
     let chartInstance = null;
     let LAST_DATA = [];        // 最近一次同步到的全部回報資料
+    const DATA_DAYS = 60;      // 向後端要最近幾天的資料（「全期歷史」＝這個範圍內的全部）
+    const SYNC = { since: 0, drev: '', lastOk: 0 }; // 增量同步游標
     let DATA_IS_DEMO = false;  // 目前畫面是否為示範資料（示範資料不能編輯／刪除）
 
     function escHtml(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -2084,7 +2051,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
         }
       }
     }
-    setInterval(updateClock, 1000);
+    setInterval(() => { if (!document.hidden) updateClock(); }, 1000);
     updateClock();
 
     // ==========================================
@@ -2243,7 +2210,14 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
           DATA_IS_DEMO = true;
         } else {
           // 使用標準 Fetch API 發送 GET 請求 (不帶自訂 Header，確保 302 跨域重定向順暢)
-          const response = await fetch(targetFetchUrl, {
+          // 只抓最近 DATA_DAYS 天；已有資料時改用 since 增量，後端有編輯／刪除時會自動整批回傳
+          const reqUrl = new URL(targetFetchUrl);
+          reqUrl.searchParams.set('days', String(DATA_DAYS));
+          if (!DATA_IS_DEMO && LAST_DATA.length && SYNC.since && SYNC.drev) {
+            reqUrl.searchParams.set('since', String(SYNC.since));
+            reqUrl.searchParams.set('drev', SYNC.drev);
+          }
+          const response = await fetch(reqUrl.toString(), {
             method: 'GET'
           });
 
@@ -2261,6 +2235,18 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
 
           // 若回傳為 { status: "success", data: [...] } 或直接為陣列
           telemetryData = Array.isArray(json) ? json : (json.data || json.records || []);
+
+          // 增量回應（full === false）：把新資料依 Record_ID 併進目前資料；否則整批取代
+          if (json && json.full === false && Array.isArray(telemetryData) && LAST_DATA.length) {
+            const byId = new Map();
+            LAST_DATA.forEach((r, i) => { if (r.Record_ID) byId.set(r.Record_ID, i); });
+            const merged = LAST_DATA.slice();
+            telemetryData.forEach(r => {
+              if (r.Record_ID && byId.has(r.Record_ID)) merged[byId.get(r.Record_ID)] = r;
+              else { if (r.Record_ID) byId.set(r.Record_ID, merged.length); merged.push(r); }
+            });
+            telemetryData = merged;
+          }
 
           if (!Array.isArray(telemetryData)) {
             throw new Error('回傳資料格式錯誤');
@@ -2298,7 +2284,11 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
             }
           }
 
-          setStatus(`數據同步成功！已成功載入 Google 試算表最新 ${telemetryData.length} 筆生產紀錄。${dateHint}` +
+          // 記住增量同步的游標（最新一筆時間 + 後端編輯版本），下次只抓新資料
+          let maxTs = 0;
+          telemetryData.forEach(r => { const t = new Date(r.Timestamp).getTime(); if (t > maxTs) maxTs = t; });
+          SYNC.since = maxTs; SYNC.drev = json.drev || '';
+          setStatus(`數據同步成功！已成功載入 Google 試算表最新 ${telemetryData.length} 筆生產紀錄${json.days ? `（資料範圍：最近 ${json.days} 天）` : ''}。${dateHint}` +
             (json.version ? '' : '（後端是舊版，請更新 Code.gs 才看得到 IP／裝置資訊與管理功能）'));
           DATA_IS_DEMO = false;
         }
@@ -3548,7 +3538,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
 
     // 啟動定時跳秒計時器
     if (!downtimeTicker) {
-      downtimeTicker = setInterval(tickDowntimeCounters, 1000);
+      downtimeTicker = setInterval(() => { if (!document.hidden) tickDowntimeCounters(); }, 1000);
     }
 
     // ==========================================
@@ -4050,17 +4040,23 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
       const threshSelect = document.getElementById('downtimeThresholdSelect');
       if (threshSelect) threshSelect.value = String(DOWNTIME_THRESHOLD_MINUTES);
       Promise.all([ENV_READY, detectIp_()]).then(() => { document.getElementById('warroomDeviceStatus').textContent = ENV.ip; pingPresence(true); });
-      setInterval(pingPresence, 30000);
+      // 線上人數每 60 秒回報一次（後端 TTL 130 秒）；背景分頁不回報，切回來時立刻補一次
+      setInterval(() => { if (!document.hidden) pingPresence(); }, 60000);
       window.addEventListener('pagehide', () => {
         try { navigator.sendBeacon && navigator.sendBeacon(getStoredGasUrl(), JSON.stringify({ token: getStoredToken(), action: 'presence', sid: MY_DEVICE_ID, leave: true })); } catch (e) {}
       });
       ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { if (ADMIN.unlocked) adminTouch(); }, { passive: true }));
       fetchTelemetryData();
 
-      // 每 30 秒自動排程重新擷取，維持戰情室即時性
-      setInterval(() => {
-        fetchTelemetryData();
-      }, 30000);
+      // 每 30 秒自動排程重新擷取，維持戰情室即時性；分頁在背景時暫停，切回來時若超過 30 秒沒更新就立刻補抓
+      let lastAutoFetch = Date.now();
+      const autoFetch_ = () => { lastAutoFetch = Date.now(); fetchTelemetryData(); };
+      setInterval(() => { if (!document.hidden) autoFetch_(); }, 30000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) return;
+        if (Date.now() - lastAutoFetch > 30000) autoFetch_();
+        pingPresence();
+      });
     });
   </script>
 <script>
