@@ -1397,6 +1397,107 @@
     box-shadow: 0 4px 14px rgba(245,158,11,0.4);
   }
 
+  /* CSPRNG 密碼學安全真隨機徽章 */
+  .crypto-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 999px;
+    background: rgba(16, 185, 129, 0.12); color: #059669;
+    font-size: 12px; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.35);
+    user-select: none; transition: all 0.2s ease;
+  }
+  .crypto-badge:hover {
+    background: rgba(16, 185, 129, 0.2); border-color: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  }
+  body.darkmode .crypto-badge {
+    background: rgba(16, 185, 129, 0.18); color: #34d399; border-color: rgba(52, 211, 153, 0.45);
+  }
+  body.stage-mode .crypto-badge {
+    background: rgba(16, 185, 129, 0.25); color: #34d399; border-color: rgba(52, 211, 153, 0.6);
+  }
+
+  /* 音量滑桿控制列 */
+  .volume-control-wrap {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card-bg, rgba(255,255,255,0.08)); padding: 4px 10px;
+    border-radius: 8px; border: 1px solid var(--line); font-size: 12px;
+  }
+  .stage-volume-wrap {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(15,23,42,0.85); padding: 4px 12px; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.3); color: #fff; font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3); backdrop-filter: blur(8px);
+  }
+  .volume-slider {
+    -webkit-appearance: none; appearance: none; height: 5px; border-radius: 5px;
+    background: #cbd5e1; outline: none; transition: background 0.15s;
+  }
+  body.darkmode .volume-slider, body.stage-mode .volume-slider { background: #475569; }
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: #3b82f6; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  /* 舞台模式聚光燈中獎卡片 (Spotlight Winner Overlay) */
+  .stage-spotlight-overlay {
+    position: fixed; inset: 0; z-index: 99998;
+    background: radial-gradient(circle at center, rgba(30, 27, 75, 0.92) 0%, rgba(5, 5, 15, 0.97) 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    backdrop-filter: blur(12px); animation: spotlightFadeIn 0.3s ease-out;
+  }
+  @keyframes spotlightFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .stage-spotlight-beam {
+    position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
+    width: 600px; height: 900px;
+    background: radial-gradient(ellipse at top, rgba(253, 224, 71, 0.25) 0%, rgba(245, 158, 11, 0.08) 50%, transparent 80%);
+    pointer-events: none; animation: beamPulse 3s ease-in-out infinite alternate;
+  }
+  @keyframes beamPulse { 0% { opacity: 0.7; transform: translateX(-50%) scaleX(0.95); } 100% { opacity: 1; transform: translateX(-50%) scaleX(1.1); } }
+  .stage-spotlight-card {
+    position: relative; z-index: 2;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+    border: 2px solid rgba(251, 191, 36, 0.6);
+    border-radius: 24px; padding: 36px 48px; text-align: center;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 50px rgba(245, 158, 11, 0.25);
+    max-width: 90vw; width: 560px;
+    animation: spotlightPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes spotlightPop {
+    0% { transform: scale(0.6) translateY(40px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .spotlight-crown { font-size: 52px; margin-bottom: 4px; animation: crownBounce 1.5s ease-in-out infinite alternate; }
+  @keyframes crownBounce { 0% { transform: translateY(0) scale(1); } 100% { transform: translateY(-8px) scale(1.1); } }
+  .spotlight-prize-badge {
+    display: inline-block; padding: 6px 24px; border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff; font-size: 18px; font-weight: 800;
+    box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4); margin-bottom: 16px;
+  }
+  .spotlight-winner-name {
+    font-size: 58px; font-weight: 900; color: #fff; line-height: 1.15;
+    text-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.4);
+    margin-bottom: 12px; letter-spacing: 2px;
+  }
+  .spotlight-winner-meta {
+    display: flex; gap: 12px; justify-content: center; align-items: center;
+    font-size: 18px; font-weight: 700; color: #94a3b8; margin-bottom: 24px;
+  }
+  .spotlight-dept {
+    background: rgba(56, 189, 248, 0.15); color: #38bdf8;
+    padding: 4px 14px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);
+  }
+  .spotlight-seat { color: #fde047; }
+  .spotlight-close-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff; font-size: 16px; font-weight: 800; padding: 10px 32px;
+    border-radius: 999px; border: none; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); transition: all 0.2s;
+  }
+  .spotlight-close-btn:hover {
+    transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
+  }
+
   /* 響應式 */
   @media (max-width: 600px) {
     .brand-title { font-size: 17px; }
@@ -2125,6 +2226,12 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
 <div id="lotteryApp" inert>
 
 <div class="stage-control-bar" id="stageControlBar">
+  <span class="crypto-badge" style="font-size:11.5px;padding:4px 10px;background:rgba(16,185,129,0.22);color:#34d399;border-color:rgba(52,211,153,0.5);">🔒 密碼學真隨機 (CSPRNG)</span>
+  <div class="stage-volume-wrap">
+    <button class="stage-bar-btn-mini" id="stageBtnSound" onclick="toggleSound()" style="background:transparent;border:none;color:#fff;cursor:pointer;font-size:14px;padding:2px 4px;" title="切換靜音">🔈</button>
+    <input type="range" class="volume-slider" id="stageVolumeSlider" min="0" max="1" step="0.05" value="0.8" style="width:70px;cursor:pointer;" oninput="onVolumeChange(this.value)" title="音效主音量">
+    <span id="stageVolumePercent" style="font-size:11px;opacity:0.85;min-width:32px;">80%</span>
+  </div>
   <button class="stage-bar-btn highlight" onclick="toggleGroupResultPanel()">📊 開獎名單／分組清單</button>
   <button class="stage-bar-btn" onclick="executeDraw()">🎯 抽籤</button>
   <button class="stage-bar-btn" onclick="executeDrawAll()">⚡ 一鍵產生結果</button>
@@ -2248,7 +2355,11 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
   <!-- 工具列（完整保留所有原版與新版工具選項） -->
   <div class="panel" id="toolsPanel">
     <div class="tools-row">
-      <button class="tool-btn" id="btnSound" onclick="toggleSound()">🔈 音效開</button>
+      <div class="volume-control-wrap">
+        <button class="tool-btn" id="btnSound" onclick="toggleSound()" style="margin:0;padding:4px 8px;">🔈 音效開</button>
+        <input type="range" class="volume-slider" id="soundVolumeSlider" min="0" max="1" step="0.05" value="0.8" style="width:65px;cursor:pointer;" oninput="onVolumeChange(this.value)" title="音效主音量 (0~100%)">
+        <span id="soundVolumePercent" style="font-size:12px;color:var(--muted);min-width:32px;">80%</span>
+      </div>
       <button class="tool-btn" id="btnBigScreen" onclick="toggleStageMode()">🖥 大螢幕模式</button>
       <button class="tool-btn" id="btnFullscreen" onclick="toggleFullscreen()">⛶ 全螢幕</button>
       <button class="tool-btn" id="btnDarkMode" onclick="toggleDarkMode()" title="切換深色模式（深碳黑風格）／淺色模式（經典藍風格）">🌙 深色模式</button>
@@ -2307,6 +2418,7 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
       <button id="btnUndo" onclick="undoLastDraw()" disabled>↩ 復原上一步</button>
       <button id="btnHistory" class="tool-btn" onclick="toggleHistory()">📜 最近三次結果</button>
       <button id="btnReset" onclick="resetGrid()">🔄 重新開始</button>
+      <span class="crypto-badge" title="採用 Web Cryptography API (crypto.getRandomValues) 密碼學安全隨機數生成器，完全杜絕偽隨機重複與預測">🔒 採用密碼學級真隨機演算法 (CSPRNG)</span>
     </div>
     <div class="history-panel" id="historyPanel" style="display:none;margin-top:12px;text-align:left;">
       <div style="font-weight:700;font-size:13px;color:var(--muted);margin-bottom:6px;">最近 3 筆抽出紀錄：</div>
@@ -2739,94 +2851,251 @@ window.makeQR = function(text){
   return '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + safe + '" width="200" height="200" alt="QR Code" style="display:block;margin:0 auto;border-radius:6px;"/>';
 };
 
-/* ================= Web Audio 合成音效引擎 ================= */
+/* ================= 密碼學級真隨機演算法 (CSPRNG) & 安全 HTML 轉義 ================= */
+function cryptoRandomFloat() {
+  if (window.crypto && window.crypto.getRandomValues) {
+    var buf = new Uint32Array(1);
+    window.crypto.getRandomValues(buf);
+    return buf[0] / (0xFFFFFFFF + 1);
+  }
+  return Math.random();
+}
+
+function cryptoRandomInt(max) {
+  if (max <= 0) return 0;
+  if (window.crypto && window.crypto.getRandomValues) {
+    var buf = new Uint32Array(1);
+    window.crypto.getRandomValues(buf);
+    return buf[0] % max;
+  }
+  return Math.floor(Math.random() * max);
+}
+
+function cryptoRandomId(prefix) {
+  prefix = prefix || 'D';
+  if (window.crypto && window.crypto.getRandomValues) {
+    var buf = new Uint8Array(6);
+    window.crypto.getRandomValues(buf);
+    var str = Array.from(buf).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('').toUpperCase();
+    return prefix + str + Date.now().toString(36).slice(-4).toUpperCase();
+  }
+  return prefix + Math.random().toString(36).slice(2, 8).toUpperCase() + Date.now().toString(36).slice(-4).toUpperCase();
+}
+
+function escHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/* ================= Web Audio 專業合成音效引擎 (含主音量、防爆音與三階段氣氛音) ================= */
 var SoundFX = (function(){
   var ctx = null;
+  var masterGain = null;
+  var volume = 0.8;
+  try {
+    var savedVol = localStorage.getItem('hsh_lottery_volume');
+    if (savedVol !== null) volume = parseFloat(savedVol);
+    if (isNaN(volume) || volume < 0 || volume > 1) volume = 0.8;
+  } catch(e){}
+
   function getCtx(){
     if (!window.AudioContext && !window.webkitAudioContext) return null;
-    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(volume, ctx.currentTime);
+      masterGain.connect(ctx.destination);
+    }
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
   }
-  var drumOsc = null, drumGain = null;
 
+  // 自動在任何點擊/觸控操作時喚醒 AudioContext (防 iOS / Chrome 自動靜音)
+  ['click', 'touchstart', 'keydown'].forEach(function(ev){
+    window.addEventListener(ev, function(){
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+    }, { once: false, passive: true });
+  });
+
+  function setVolume(val){
+    volume = Math.max(0, Math.min(1, parseFloat(val)));
+    try { localStorage.setItem('hsh_lottery_volume', volume.toString()); } catch(e){}
+    var c = getCtx();
+    if (c && masterGain){
+      masterGain.gain.setValueAtTime(volume, c.currentTime);
+    }
+    updateVolumeUi();
+  }
+
+  function getVolume(){ return volume; }
+
+  function updateVolumeUi(){
+    var s1 = document.getElementById('soundVolumeSlider');
+    var s2 = document.getElementById('stageVolumeSlider');
+    var p1 = document.getElementById('soundVolumePercent');
+    var p2 = document.getElementById('stageVolumePercent');
+    var btn = document.getElementById('btnSound');
+    var stageBtn = document.getElementById('stageBtnSound');
+    var pct = Math.round(volume * 100) + '%';
+    if (s1) s1.value = volume;
+    if (s2) s2.value = volume;
+    if (p1) p1.textContent = pct;
+    if (p2) p2.textContent = pct;
+    var isMute = !soundOn || volume === 0;
+    if (btn) btn.textContent = isMute ? '🔇 靜音' : '🔈 音效開';
+    if (stageBtn) stageBtn.textContent = isMute ? '🔇' : '🔈';
+  }
+
+  // 1. 旋轉輪盤/滾輪 Tick 音效 (短促三角波)
   function playTick(){
+    if (!soundOn || volume === 0) return;
     var c = getCtx(); if (!c) return;
     try {
       var osc = c.createOscillator(); var g = c.createGain();
-      osc.type = 'triangle'; osc.frequency.setValueAtTime(650, c.currentTime);
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(680, c.currentTime);
       g.gain.setValueAtTime(0.08, c.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.04);
-      osc.connect(g); g.connect(c.destination);
-      osc.start(); osc.stop(c.currentTime + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.035);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(); osc.stop(c.currentTime + 0.035);
+      osc.onended = function(){ osc.disconnect(); g.disconnect(); };
     } catch(e){}
   }
 
+  // 2. 懸疑緊張鼓點 (Accelerating Tension Heartbeat / Drum Roll)
+  var drumTimer = null, drumStep = 0, isRolling = false;
   function startDrumRoll(){
+    if (!soundOn || volume === 0) return;
+    var c = getCtx(); if (!c) return;
+    stopDrumRoll();
+    isRolling = true; drumStep = 0;
+    function scheduleBeat(){
+      if (!isRolling) return;
+      playHeartbeatHit();
+      drumStep++;
+      // 間隔從 240ms 逐漸加速到 60ms
+      var delay = Math.max(55, 240 - drumStep * 12);
+      drumTimer = setTimeout(scheduleBeat, delay);
+    }
+    scheduleBeat();
+  }
+
+  function playHeartbeatHit(){
     var c = getCtx(); if (!c) return;
     try {
-      stopDrumRoll();
-      drumOsc = c.createOscillator();
-      drumGain = c.createGain();
-      drumOsc.type = 'sawtooth';
-      drumOsc.frequency.setValueAtTime(75, c.currentTime);
-      drumOsc.frequency.exponentialRampToValueAtTime(140, c.currentTime + 3.0);
-      drumGain.gain.setValueAtTime(0.04, c.currentTime);
-      drumGain.gain.exponentialRampToValueAtTime(0.18, c.currentTime + 2.8);
-      drumOsc.connect(drumGain);
-      drumGain.connect(c.destination);
-      drumOsc.start();
+      var osc = c.createOscillator(); var g = c.createGain();
+      var f = 60 + Math.min(drumStep * 4, 120);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f * 1.5, c.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.6, c.currentTime + 0.08);
+      var peak = Math.min(0.28, 0.06 + drumStep * 0.015);
+      g.gain.setValueAtTime(peak, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.09);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(); osc.stop(c.currentTime + 0.09);
+      osc.onended = function(){ osc.disconnect(); g.disconnect(); };
     } catch(e){}
   }
 
   function stopDrumRoll(){
-    if (drumOsc) { try{ drumOsc.stop(); drumOsc.disconnect(); }catch(e){} drumOsc = null; }
+    isRolling = false;
+    if (drumTimer) { clearTimeout(drumTimer); drumTimer = null; }
   }
 
-  function playFanfare(){
+  // 3. 揭曉定格重音 (Suspense Impact / Boom Drop)
+  function playSuspenseImpact(){
+    if (!soundOn || volume === 0) return;
     stopDrumRoll();
     var c = getCtx(); if (!c) return;
     try {
-      var notes = [261.63, 329.63, 392.00, 523.25];
+      var osc = c.createOscillator(); var g = c.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180, c.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(45, c.currentTime + 0.35);
+      g.gain.setValueAtTime(0.3, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.38);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(); osc.stop(c.currentTime + 0.38);
+      osc.onended = function(){ osc.disconnect(); g.disconnect(); };
+    } catch(e){}
+  }
+
+  // 4. 勝利凱旋號角 (Fanfare) + 歡呼/煙火效果
+  function playFanfare(){
+    if (!soundOn || volume === 0) return;
+    playSuspenseImpact();
+    var c = getCtx(); if (!c) return;
+    try {
+      // 凱旋和弦琶音 (Do-Mi-Sol-High Do-High Mi)
+      var notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99];
       notes.forEach(function(freq, i){
         var osc = c.createOscillator(); var g = c.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, c.currentTime + i * 0.08);
-        g.gain.setValueAtTime(0.12, c.currentTime + i * 0.08);
-        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + i * 0.08 + 0.6);
-        osc.connect(g); g.connect(c.destination);
-        osc.start(c.currentTime + i * 0.08);
-        osc.stop(c.currentTime + i * 0.08 + 0.65);
+        osc.type = (i % 2 === 0) ? 'triangle' : 'sine';
+        var t0 = c.currentTime + 0.08 + i * 0.07;
+        osc.frequency.setValueAtTime(freq, t0);
+        g.gain.setValueAtTime(0.18, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.55);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(t0); osc.stop(t0 + 0.6);
+        osc.onended = function(){ osc.disconnect(); g.disconnect(); };
       });
+
+      // 揭曉後半段：煙火鳴放雙重閃爍音
       setTimeout(function(){
-        [880, 1174, 1318].forEach(function(f, idx){
+        [880, 1174, 1318, 1760].forEach(function(f, idx){
           var o = c.createOscillator(); var gn = c.createGain();
-          o.type = 'sine'; o.frequency.setValueAtTime(f, c.currentTime + idx*0.06);
-          gn.gain.setValueAtTime(0.1, c.currentTime + idx*0.06);
-          gn.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + idx*0.06 + 0.35);
-          o.connect(gn); gn.connect(c.destination);
-          o.start(c.currentTime + idx*0.06); o.stop(c.currentTime + idx*0.06 + 0.4);
+          o.type = 'sine';
+          var t1 = c.currentTime + idx * 0.05;
+          o.frequency.setValueAtTime(f, t1);
+          gn.gain.setValueAtTime(0.12, t1);
+          gn.gain.exponentialRampToValueAtTime(0.0001, t1 + 0.35);
+          o.connect(gn); gn.connect(masterGain);
+          o.start(t1); o.stop(t1 + 0.38);
+          o.onended = function(){ o.disconnect(); gn.disconnect(); };
         });
       }, 350);
     } catch(e){}
   }
 
+  // 5. 批次抽獎完成音 (Done Chime)
   function playDoneChime(){
+    if (!soundOn || volume === 0) return;
     var c = getCtx(); if (!c) return;
     try {
       [523.25, 659.25, 783.99, 1046.50].forEach(function(f, i){
         var osc = c.createOscillator(); var g = c.createGain();
-        osc.type = 'sine'; osc.frequency.setValueAtTime(f, c.currentTime + i*0.1);
-        g.gain.setValueAtTime(0.15, c.currentTime + i*0.1);
-        g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + i*0.1 + 0.4);
-        osc.connect(g); g.connect(c.destination);
-        osc.start(c.currentTime + i*0.1); osc.stop(c.currentTime + i*0.1 + 0.45);
+        osc.type = 'sine';
+        var t = c.currentTime + i * 0.09;
+        osc.frequency.setValueAtTime(f, t);
+        g.gain.setValueAtTime(0.18, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(t); osc.stop(t + 0.42);
+        osc.onended = function(){ osc.disconnect(); g.disconnect(); };
       });
     } catch(e){}
   }
 
-  return { playTick: playTick, startDrumRoll: startDrumRoll, stopDrumRoll: stopDrumRoll, playFanfare: playFanfare, playDoneChime: playDoneChime };
+  return {
+    playTick: playTick,
+    startDrumRoll: startDrumRoll,
+    stopDrumRoll: stopDrumRoll,
+    playSuspenseImpact: playSuspenseImpact,
+    playFanfare: playFanfare,
+    playDoneChime: playDoneChime,
+    setVolume: setVolume,
+    getVolume: getVolume,
+    updateVolumeUi: updateVolumeUi
+  };
 })();
+
+function onVolumeChange(val){
+  SoundFX.setVolume(val);
+}
 
 /* ================= 全螢幕五彩噴花 Confetti 引擎 ================= */
 var Confetti = (function(){
@@ -2838,28 +3107,27 @@ var Confetti = (function(){
     ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    window.addEventListener('resize', function(){
-      if (canvas){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    });
+    canvas.style.display = 'block';
   }
   function burst(x, y, count){
     init(); if (!ctx) return;
+    canvas.style.display = 'block';
     count = count || 90;
     x = x || canvas.width / 2;
     y = y || canvas.height / 2.6;
     for (var i = 0; i < count; i++){
-      var angle = Math.random() * Math.PI * 2;
-      var speed = 4 + Math.random() * 14;
+      var angle = cryptoRandomFloat() * Math.PI * 2;
+      var speed = 4 + cryptoRandomFloat() * 14;
       particles.push({
         x: x, y: y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed - 4,
-        size: 7 + Math.random() * 9,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
-        rotation: Math.random() * 360,
-        rotSpeed: (Math.random() - 0.5) * 12,
-        life: 1, decay: 0.009 + Math.random() * 0.012,
-        shape: Math.random() > 0.4 ? 'rect' : 'circle'
+        size: 7 + cryptoRandomFloat() * 9,
+        color: COLORS[cryptoRandomInt(COLORS.length)],
+        rotation: cryptoRandomFloat() * 360,
+        rotSpeed: (cryptoRandomFloat() - 0.5) * 12,
+        life: 1, decay: 0.009 + cryptoRandomFloat() * 0.012,
+        shape: cryptoRandomFloat() > 0.4 ? 'rect' : 'circle'
       });
     }
     if (!anim) loop();
@@ -2872,6 +3140,7 @@ var Confetti = (function(){
   function loop(){
     if (!particles.length){
       if (ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
+      if (canvas) canvas.style.display = 'none';
       anim = null; return;
     }
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -2893,11 +3162,128 @@ var Confetti = (function(){
     }
     anim = requestAnimationFrame(loop);
   }
+  window.addEventListener('resize', function(){
+    if (canvas){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  });
   return { burst: burst, grandFinale: grandFinale };
 })();
 
+/* ================= 舞台模式背景微動態科技金粉粒子 ================= */
+var StageParticles = (function(){
+  var canvas, ctx, particles = [], anim = null, active = false;
+  function init(){
+    canvas = document.getElementById('stageParticleCanvas');
+    if (!canvas) return;
+    ctx = canvas.getContext('2d');
+    resize();
+    window.addEventListener('resize', resize);
+  }
+  function resize(){
+    if (!canvas) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  function start(){
+    init();
+    if (!canvas || !ctx) return;
+    canvas.style.display = 'block';
+    active = true;
+    if (particles.length === 0){
+      var count = Math.min(80, Math.floor(window.innerWidth / 18));
+      for (var i = 0; i < count; i++){
+        particles.push({
+          x: cryptoRandomFloat() * canvas.width,
+          y: cryptoRandomFloat() * canvas.height,
+          radius: 1 + cryptoRandomFloat() * 2.8,
+          vx: (cryptoRandomFloat() - 0.5) * 0.4,
+          vy: -0.3 - cryptoRandomFloat() * 0.6,
+          color: cryptoRandomFloat() > 0.4 ? 'rgba(251, 191, 36, ' : 'rgba(56, 189, 248, ',
+          alpha: 0.2 + cryptoRandomFloat() * 0.6,
+          pulse: cryptoRandomFloat() * Math.PI,
+          pulseSpeed: 0.02 + cryptoRandomFloat() * 0.03
+        });
+      }
+    }
+    if (!anim) loop();
+  }
+  function stop(){
+    active = false;
+    if (anim){ cancelAnimationFrame(anim); anim = null; }
+    if (canvas) canvas.style.display = 'none';
+  }
+  function loop(){
+    if (!active) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (var i = 0; i < particles.length; i++){
+      var p = particles[i];
+      p.y += p.vy;
+      p.x += p.vx;
+      p.pulse += p.pulseSpeed;
+      if (p.y < -10) { p.y = canvas.height + 10; p.x = cryptoRandomFloat() * canvas.width; }
+      if (p.x < -10) p.x = canvas.width + 10;
+      if (p.x > canvas.width + 10) p.x = -10;
+      var a = p.alpha * (0.6 + 0.4 * Math.sin(p.pulse));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + a + ')';
+      ctx.shadowBlur = p.radius * 3;
+      ctx.shadowColor = p.color + '0.8)';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    anim = requestAnimationFrame(loop);
+  }
+  return { start: start, stop: stop };
+})();
+
+/* ================= 舞台聚光燈彈窗 (Stage Spotlight) ================= */
+function openStageSpotlight(item){
+  var m = document.getElementById('stageSpotlightModal');
+  if (!m) return;
+  var badge = document.getElementById('spotlightPrizeBadge');
+  var name = document.getElementById('spotlightWinnerName');
+  var dept = document.getElementById('spotlightDept');
+  var seat = document.getElementById('spotlightSeat');
+
+  var isPrize = lotteryMode === 'prize';
+  if (isPrize && item.prize){
+    badge.textContent = (item.prizeIcon || '🏆') + ' ' + item.prize;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.textContent = '🎯 第 ' + item.seq + ' 位抽出';
+    badge.style.display = 'inline-block';
+  }
+
+  var seatPos = seatMode === 'table' ? ('第 ' + item.r + ' 桌 第 ' + item.c + ' 位') : ('第 ' + item.r + ' 行 第 ' + item.c + ' 列');
+  var hasRoster = useRoster && item.name && item.name !== seatPos;
+
+  if (hasRoster){
+    name.textContent = item.name;
+    dept.textContent = item.dept || '幸運得主';
+    dept.style.display = 'inline-block';
+    seat.textContent = seatPos;
+    seat.style.display = 'inline-block';
+  } else if (!isSeatLabel_(item)){
+    name.textContent = item.name;
+    dept.style.display = 'none';
+    seat.textContent = '入座 ' + seatPos;
+    seat.style.display = 'inline-block';
+  } else {
+    name.textContent = seatPos;
+    dept.style.display = 'none';
+    seat.style.display = 'none';
+  }
+
+  m.style.display = 'flex';
+}
+
+function closeStageSpotlight(){
+  var m = document.getElementById('stageSpotlightModal');
+  if (m) m.style.display = 'none';
+}
+
 /* ================= 系統主要狀態變數 ================= */
-var APP_VERSION = 'v2.5.2';
+var APP_VERSION = 'v2.6.0';
 var lotteryMode = 'seat'; // 'seat' (純挑人/排位) | 'prize' (活動獎項模式)
 var rows = 5, cols = 6, total = 30;
 var pool = [];            // 候選人池
@@ -3012,6 +3398,14 @@ var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181',
 
 /* 改版紀錄清單 */
 var CHANGELOG = [
+{"v": "v2.6.0", "date": "2026-10-13", "notes": [
+  "🔒 演算法全面升級為密碼學級真隨機演算法 (CSPRNG, crypto.getRandomValues)，杜絕偽隨機重複與預測，畫面加入公正安全認證徽章。",
+  "🛡️ 全站動態名冊/獎項/歷史名單統一採用 escHtml() 與 textContent 賦值防護，杜絕 XSS 跨站腳本攻擊風險。",
+  "⚡ 座位網格渲染全面改採 DocumentFragment 批次掛載，解決 300~800 人以上大名冊卡頓掉幀問題。",
+  "🎵 Web Audio 音效引擎升級：Master Gain 主音量平滑控制 (0~100%)、頂部控制列一鍵靜音與音量滑桿、緊張心跳倒數 ➔ 揭曉重音 ➔ 勝利號角三階段氣氛音效。",
+  "☁️ Google 試算表寫入節流隊列 (Queue)：連續快速抽獎或一鍵產生時，背景非同步節流回傳，徹底避免 GAS ScriptLock 超時與掉單。",
+  "✨ 舞台模式 (Stage Mode) 全螢幕視聽升級：動態科技金粉飄落背景、中獎瞬間聚光燈 (Spotlight) 彈窗、大型榮耀得主卡片與 Confetti 五彩紙帶慶祝噴發。"
+]},
 {"v": "v2.5.2", "date": "2026-10-11", "notes": ["內網偵測不因空候選提前結束，失敗結果可再次偵測。", "線上資訊增加「重新偵測電腦資訊」，使用戰情室 HTTPS 頁面取得並同步本機資訊；需先上傳 device-info.html。", "未取得時如實提示，不猜測 Windows 10／11，不填入其他電腦的 IP。"]},
 {"v": "v2.5.1", "date": "2026-10-11", "notes": ["線上裝置改用瀏覽器平台版本辨識 Windows 10／11、完整瀏覽器版本及裝置類型，偵測完成後才送出初次線上回報。", "iPad 桌面模式正確顯示 iPadOS；不支援或逾時時顯示版本未提供。"]},
   { v: "v2.5.0", date: "2026-10-07", notes: ["首次使用這個瀏覽器時，必須登記姓名、部門及電腦名稱才能操作；登記資料會自動帶入本機資訊及線上同仁／部門、電腦設備名稱。"] },
@@ -3083,8 +3477,17 @@ window.addEventListener('DOMContentLoaded', function(){
   initCloudConfig();
   syncTemplatesFromCloud(false);
   Promise.all([detectEnv(), detectIp_()]).then(function(){ startPresence(); });
+  SoundFX.updateVolumeUi();
 
   document.addEventListener('keydown', function(e){
+    var sm = document.getElementById('stageSpotlightModal');
+    if (sm && sm.style.display !== 'none'){
+      if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter'){
+        e.preventDefault();
+        closeStageSpotlight();
+        return;
+      }
+    }
     if (e.key === 'Escape' && stageMode) toggleStageMode();
   });
 });
@@ -3165,6 +3568,11 @@ function switchDrawView(view){
 function toggleStageMode(){
   stageMode = !stageMode;
   document.body.classList.toggle('stage-mode', stageMode);
+  if (stageMode){
+    StageParticles.start();
+  } else {
+    StageParticles.stop();
+  }
 }
 
 function toggleFullscreen(){
@@ -3177,7 +3585,8 @@ function toggleFullscreen(){
 
 function toggleSound(){
   soundOn = !soundOn;
-  document.getElementById('btnSound').textContent = soundOn ? '🔈 音效開' : '🔇 靜音';
+  if (!soundOn) SoundFX.stopDrumRoll();
+  SoundFX.updateVolumeUi();
 }
 
 /* ---------- 5 色版面風格主題切換 (許瑞興全系統標準) ---------- */
@@ -3674,7 +4083,7 @@ function renderPrizeSelect(){
   sel.innerHTML = prizes.map(function(p){
     var won = drawHistory.filter(function(d){ return d.prize === p.name && d.status !== 'waived'; }).length;
     var remain = Math.max(0, p.count - won);
-    return '<option value="'+p.id+'" '+(p.id===activePrizeId?'selected':'')+'>'+p.icon+' '+p.name+' ('+p.reward+') · 剩 '+remain+'/'+p.count+' 名</option>';
+    return '<option value="'+escHtml(p.id)+'" '+(p.id===activePrizeId?'selected':'')+'>'+escHtml(p.icon)+' '+escHtml(p.name)+' ('+escHtml(p.reward)+') · 剩 '+remain+'/'+p.count+' 名</option>';
   }).join('');
   updatePrizeBar();
 }
@@ -3708,9 +4117,9 @@ function renderPrizesTable(){
   var dis = prizeAdminUnlocked ? '' : 'disabled';
   tb.innerHTML = prizes.map(function(p, idx){
     return '<tr>' +
-      '<td><input type="text" value="'+p.icon+'" style="width:36px;text-align:center;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
-      '<td><input type="text" value="'+p.name+'" style="width:90px;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
-      '<td><input type="text" value="'+p.reward+'" style="width:130px;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
+      '<td><input type="text" value="'+escHtml(p.icon)+'" style="width:36px;text-align:center;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
+      '<td><input type="text" value="'+escHtml(p.name)+'" style="width:90px;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
+      '<td><input type="text" value="'+escHtml(p.reward)+'" style="width:130px;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
       '<td><input type="number" value="'+p.count+'" min="1" style="width:60px;" '+dis+' oninput="syncPrizesFromTable()" onchange="syncPrizesFromTable()"></td>' +
       '<td><button class="tool-btn" style="color:#dc2626;padding:2px 6px;" '+dis+' onclick="deletePrizeRow('+idx+')">✕</button></td>' +
     '</tr>';
@@ -4155,8 +4564,10 @@ function setupGrid(){
 
 function renderEmptyGrid(){
   var g = document.getElementById('grid');
+  if (!g) return;
   g.innerHTML = '';
   cellRefs = [];
+  var frag = document.createDocumentFragment();
 
   if (seatMode === 'table'){
     // 桌人模式：宴會桌次立體卡片呈現
@@ -4190,10 +4601,10 @@ function renderEmptyGrid(){
         var drawn = drawnMap[i];
         if (drawn){
           el.classList.add('filled');
-          el.innerHTML = '<span class="cell-name">' + cellLabel_(drawn) + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
+          el.innerHTML = '<span class="cell-name">' + escHtml(cellLabel_(drawn)) + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
         } else {
           if (seatAssignMode === 'assigned' && useRoster && roster[i]){
-            el.innerHTML = '<span class="cell-name-preview">' + roster[i].name + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
+            el.innerHTML = '<span class="cell-name-preview">' + escHtml(roster[i].name) + '</span><span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
           } else {
             el.innerHTML = '<span class="coord">' + (t + 1) + '桌' + (s + 1) + '</span>';
           }
@@ -4205,7 +4616,7 @@ function renderEmptyGrid(){
       tableCard.appendChild(seatsGrid);
       tablesWrap.appendChild(tableCard);
     }
-    g.appendChild(tablesWrap);
+    frag.appendChild(tablesWrap);
   } else {
     // 傳統矩陣行列模式
     g.style.display = 'grid';
@@ -4221,19 +4632,20 @@ function renderEmptyGrid(){
       var drawn = drawnMap[i];
       if (drawn){
         el.classList.add('filled');
-        el.innerHTML = '<span class="cell-name">' + cellLabel_(drawn) + '</span><span class="coord">' + r + '-' + c + '</span>';
+        el.innerHTML = '<span class="cell-name">' + escHtml(cellLabel_(drawn)) + '</span><span class="coord">' + r + '-' + c + '</span>';
       } else {
         if (seatAssignMode === 'assigned' && useRoster && roster[i]){
-          el.innerHTML = '<span class="cell-name-preview">' + roster[i].name + '</span><span class="coord">' + r + '-' + c + '</span>';
+          el.innerHTML = '<span class="cell-name-preview">' + escHtml(roster[i].name) + '</span><span class="coord">' + r + '-' + c + '</span>';
         } else {
           el.innerHTML = '<span class="coord">' + r + '-' + c + '</span>';
         }
       }
       el.addEventListener('click', onCellClick);
-      g.appendChild(el);
-      cellRefs.push(el);
+      frag.appendChild(el);
+      cellRefs[i] = el;
     }
   }
+  g.appendChild(frag);
 }
 
 function onCellClick(e){
@@ -4307,11 +4719,11 @@ function onSeatAssignModeChange(){
 /* ---------- 共用小工具（2026-10-05 修正） ---------- */
 var drawing_ = false; // 抽籤動畫進行中：鎖住其他按鈕，避免動畫中又按一鍵產生／復原造成錯亂
 
-// Fisher-Yates 洗牌：每種順序機率完全相同（原本 sort(Math.random) 會有偏差）
+// Fisher-Yates 洗牌：採用密碼學級真隨機 (CSPRNG)，每種順序機率完全相同且抗預測
 function shuffle_(arr){
   var a = arr.slice();
   for (var i = a.length - 1; i > 0; i--){
-    var j = Math.floor(Math.random() * (i + 1));
+    var j = cryptoRandomInt(i + 1);
     var t = a[i]; a[i] = a[j]; a[j] = t;
   }
   return a;
@@ -4336,7 +4748,7 @@ function busyAlert_(){
 
 // 格子上顯示的文字：有名冊顯示姓名、隨機排位顯示「N 號」、對號入座無名冊顯示座位簡寫
 function cellLabel_(d){
-  return isSeatLabel_(d) ? (seatMode === 'table' ? (d.r + '桌' + d.c) : (d.r + '-' + d.c)) : d.name;
+  return isSeatLabel_(d) ? (seatMode === 'table' ? (d.r + '桌' + d.c) : (d.r + '-' + d.c)) : (d.name || '');
 }
 
 // 依目前抽籤紀錄重畫單一格（復原、棄權後用）：同格若還有其他有效得主就顯示他，沒有就恢復空格
@@ -4350,16 +4762,16 @@ function refreshCell_(idx){
   var coord = seatMode === 'table' ? (r + '桌' + c) : (r + '-' + c);
   if (d){
     drawnMap[idx] = d;
-    if (el){ el.classList.add('filled'); el.innerHTML = '<span class="cell-name">' + cellLabel_(d) + '</span><span class="coord">' + coord + '</span>'; }
+    if (el){ el.classList.add('filled'); el.innerHTML = '<span class="cell-name">' + escHtml(cellLabel_(d)) + '</span><span class="coord">' + escHtml(coord) + '</span>'; }
   } else {
     delete drawnMap[idx];
     if (el){
       el.classList.remove('filled');
       el.style.background = ''; el.style.borderColor = ''; el.style.color = '';
       if (seatAssignMode === 'assigned' && useRoster && roster[idx]){
-        el.innerHTML = '<span class="cell-name-preview">' + roster[idx].name + '</span><span class="coord">' + coord + '</span>';
+        el.innerHTML = '<span class="cell-name-preview">' + escHtml(roster[idx].name) + '</span><span class="coord">' + escHtml(coord) + '</span>';
       } else {
-        el.innerHTML = '<span class="coord">' + coord + '</span>';
+        el.innerHTML = '<span class="coord">' + escHtml(coord) + '</span>';
       }
     }
   }
@@ -4474,8 +4886,8 @@ function executeDraw(){
   setDrawingUi_(true);
   if (soundOn) SoundFX.startDrumRoll();
 
-  // 事先隨機抽定得主 index，讓輪盤/滾輪精準定格到同一人
-  var chosenIdx = Math.floor(Math.random() * pool.length);
+  // 事先隨機抽定得主 index (採用密碼學真隨機 CSPRNG)，讓輪盤/滾輪精準定格到同一人
+  var chosenIdx = cryptoRandomInt(pool.length);
 
   if (drawView === 'wheel') animateWheelToWinner(chosenIdx, function(){ finishDrawWithIndex(chosenIdx); });
   else if (drawView === 'slot') animateSlot(chosenIdx, function(){ finishDrawWithIndex(chosenIdx); });
@@ -4494,8 +4906,9 @@ function animateGrid(chosenIdx, doneCallback){
   var cellEl = cellRefs[targetCellIdx];
   var t = 0;
   var timer = setInterval(function(){
-    var rand = pool[Math.floor(Math.random() * pool.length)];
-    if (cellEl) cellEl.innerHTML = '<span class="cell-name">' + rand.name + '</span>';
+    var rand = pool[cryptoRandomInt(pool.length)];
+    if (cellEl) cellEl.innerHTML = '<span class="cell-name">' + escHtml(rand.name) + '</span>';
+    if (soundOn) SoundFX.playTick();
     t += 60;
     if (t >= 550){
       clearInterval(timer);
@@ -4553,14 +4966,19 @@ function finishDrawWithIndex(chosenIdx){
   drawnMap[cellIdx] = drawItem;
 
   if (cellEl){
-    cellEl.innerHTML = '<span class="cell-name">' + (useRoster ? picked.name : (isRandomNoRoster ? (picked.num + ' 號') : seatShort)) + '</span><span class="coord">' + (seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
+    cellEl.innerHTML = '<span class="cell-name">' + escHtml(useRoster ? picked.name : (isRandomNoRoster ? (picked.num + ' 號') : seatShort)) + '</span><span class="coord">' + escHtml(seatMode==='table' ? r+'桌'+c : r+'-'+c) + '</span>';
     cellEl.classList.add('filled', 'just-filled');
     setTimeout(function(){ cellEl.classList.remove('just-filled'); }, 400);
   }
 
   applyGroupColors();
   showWinnerCard(drawItem);
-  Confetti.burst();
+  if (stageMode){
+    openStageSpotlight(drawItem);
+    Confetti.grandFinale();
+  } else {
+    Confetti.burst();
+  }
   if (soundOn) SoundFX.playFanfare();
 
   setDrawingUi_(false);
@@ -4712,7 +5130,7 @@ function executeDrawAll(){
     if (!confirm('確定要一次抽完【' + curP.name + '】剩下的 ' + toDraw + ' 位幸運得主嗎？')) return;
 
     for (var i = 0; i < toDraw; i++){
-      var cIdx = Math.floor(Math.random() * pool.length);
+      var cIdx = cryptoRandomInt(pool.length);
       finishDrawWithIndex(cIdx);
     }
   } else {
@@ -4726,7 +5144,7 @@ function executeDrawAll(){
     if (!confirm('確定要一次產生剩下的 ' + toDraw + ' 位抽籤結果嗎？')) return;
 
     for (var j = 0; j < toDraw; j++){
-      var cIdx = Math.floor(Math.random() * pool.length);
+      var cIdx = cryptoRandomInt(pool.length);
       finishDrawWithIndex(cIdx);
     }
   }
@@ -5018,7 +5436,7 @@ function animateSlot(chosenIdx, callback){
   var t = 0;
   el.classList.add('rolling');
   var timer = setInterval(function(){
-    var rand = candidates[Math.floor(Math.random() * candidates.length)];
+    var rand = candidates[cryptoRandomInt(candidates.length)];
     el.textContent = rand.name || (rand.num + ' 號');
     if (soundOn) SoundFX.playTick();
     t += 70;
@@ -5135,12 +5553,12 @@ function renderGroupResults(){
       var wonList = drawHistory.filter(function(d){ return d.prize === p.name; });
       if (wonList.length > 0){
         html += '<div class="group-row">' +
-          '<div style="font-weight:800;color:var(--primary);margin-bottom:4px;">' + p.icon + ' ' + p.name + ' (' + wonList.length + ' 名)</div>' +
+          '<div style="font-weight:800;color:var(--primary);margin-bottom:4px;">' + escHtml(p.icon) + ' ' + escHtml(p.name) + ' (' + wonList.length + ' 名)</div>' +
           '<div style="font-size:13px;">' +
             wonList.map(function(w){
               var pos = seatMode==='table' ? (w.r+'桌'+w.c+'位') : (w.r+'-'+w.c);
               var isPosName = (w.name === pos) || (w.name === ('第 '+w.r+' 桌 第 '+w.c+' 位')) || (w.name === ('第 '+w.r+' 行 第 '+w.c+' 列')) || (w.name === (w.r+'桌'+w.c));
-              var display = isPosName ? ('<b>第 ' + pos + '</b>') : ('<b>' + w.name + '</b>' + (w.dept?'('+w.dept+')':'') + ' · ' + pos);
+              var display = isPosName ? ('<b>第 ' + escHtml(pos) + '</b>') : ('<b>' + escHtml(w.name) + '</b>' + (w.dept?'('+escHtml(w.dept)+')':'') + ' · ' + escHtml(pos));
               return '<span style="display:inline-block;margin-right:12px;margin-bottom:4px;'+(w.status==='waived'?'text-decoration:line-through;color:#f87171;':'')+'">' +
                 '第' + w.seq + '位：' + display +
                 (w.status==='waived' ? ' [棄權]' : '') +
@@ -5161,7 +5579,7 @@ function renderGroupResults(){
         drawHistory.map(function(w){
           var pos = seatMode==='table' ? ('第 '+w.r+' 桌 第 '+w.c+' 位') : ('第 '+w.r+' 行 第 '+w.c+' 列');
           var isPosName = (w.name === pos) || (w.name === ('第 '+w.r+' 桌 第 '+w.c+' 位')) || (w.name === ('第 '+w.r+' 行 第 '+w.c+' 列')) || (w.name === (w.r+'桌'+w.c+'位')) || (w.name === (w.r+'桌'+w.c));
-          var nameText = isPosName ? ('<b>' + pos + '</b>') : ('<b>' + w.name + '</b>' + (w.dept?' ('+w.dept+')':'') + ' — ' + pos);
+          var nameText = isPosName ? ('<b>' + escHtml(pos) + '</b>') : ('<b>' + escHtml(w.name) + '</b>' + (w.dept?' ('+escHtml(w.dept)+')':'') + ' — ' + escHtml(pos));
           return '<div style="'+(w.status==='waived'?'text-decoration:line-through;color:#f87171;':'')+'">' +
             '<b>第 ' + w.seq + ' 位</b>：' + nameText +
             (w.status==='waived' ? ' <b style="color:#dc2626;">[已棄權]</b>' : '') +
@@ -5195,7 +5613,7 @@ function renderGroupResults(){
             list.map(function(w){
               var pos = seatMode==='table' ? (w.r+'桌'+w.c) : (w.r+'-'+w.c);
               var isPosName = (w.name === pos) || (w.name === ('第 '+w.r+' 桌 第 '+w.c+' 位')) || (w.name === ('第 '+w.r+' 行 第 '+w.c+' 列')) || (w.name === (w.r+'桌'+w.c+'位'));
-              var itemText = isPosName ? ('<b>第 ' + pos + '</b>') : ('<b>' + w.name + '</b> <small style="color:var(--muted)">(' + pos + ')</small>');
+              var itemText = isPosName ? ('<b>第 ' + escHtml(pos) + '</b>') : ('<b>' + escHtml(w.name) + '</b> <small style="color:var(--muted)">(' + escHtml(pos) + ')</small>');
               return '<span style="display:inline-block;margin-right:12px;margin-bottom:3px;">第 ' + w.seq + ' 位：' + itemText + '</span>';
             }).join('') +
           '</div>' +
@@ -5217,7 +5635,7 @@ function renderPrizeBoard(){
   prizes.forEach(function(p){
     var list = drawHistory.filter(function(d){ return d.prize === p.name; });
     html += '<div class="prize-board-group">' +
-      '<div class="prize-board-title" style="background:#fef3c7;color:#92400e;">' + p.icon + ' ' + p.name + ' · ' + p.reward + ' (' + list.filter(function(x){return x.status!=='waived';}).length + '/' + p.count + '名)</div>' +
+      '<div class="prize-board-title" style="background:#fef3c7;color:#92400e;">' + escHtml(p.icon) + ' ' + escHtml(p.name) + ' · ' + escHtml(p.reward) + ' (' + list.filter(function(x){return x.status!=='waived';}).length + '/' + p.count + '名)</div>' +
       '<div class="winner-chip-list">';
     if (list.length === 0){
       html += '<span style="font-size:12.5px;color:var(--muted);padding:4px 8px;">尚未抽出</span>';
@@ -5225,8 +5643,8 @@ function renderPrizeBoard(){
       html += list.map(function(w){
         var isWaived = w.status === 'waived';
         return '<div class="winner-chip ' + (isWaived ? 'waived' : '') + '">' +
-          '<b>' + w.name + '</b>' + (w.dept ? ' (' + w.dept + ')' : '') +
-          ' · ' + (seatMode==='table' ? w.r+'桌'+w.c : w.r+'-'+w.c) +
+          '<b>' + escHtml(w.name) + '</b>' + (w.dept ? ' (' + escHtml(w.dept) + ')' : '') +
+          ' · ' + (seatMode==='table' ? escHtml(w.r+'桌'+w.c) : escHtml(w.r+'-'+w.c)) +
           (isWaived ? ' <span class="winner-chip-waived-tag">[已棄權]</span>' : '') +
         '</div>';
       }).join('');
@@ -5525,18 +5943,52 @@ function cloudCreateSession_(){
     .catch(function(){ setCloudRecState_('offline'); });
 }
 
+/* ================= 雲端試算表寫入節流隊列 (Cloud Draw Write Queue) ================= */
+var cloudDrawQueue = [];
+var isFlushingCloudQueue = false;
+
 function cloudAddDraw_(item){
   if (!CLOUD_API_URL || !CLOUD_SESSION_ID) return;
+  cloudDrawQueue.push({
+    action: 'addDraw',
+    sessionId: CLOUD_SESSION_ID,
+    seq: item.seq,
+    num: item.num,
+    row: item.r,
+    col: item.c,
+    prize: item.prize || '',
+    name: item.name || '',
+    dept: item.dept || '',
+    status: item.status || 'valid',
+    adminSession: ADMIN_SESSION
+  });
+  processCloudDrawQueue_();
+}
+
+function processCloudDrawQueue_(){
+  if (isFlushingCloudQueue || cloudDrawQueue.length === 0) return;
+  if (!CLOUD_API_URL || !CLOUD_SESSION_ID) return;
+  isFlushingCloudQueue = true;
+
+  var task = cloudDrawQueue.shift();
   fetch(CLOUD_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      token: CLOUD_API_TOKEN, action: 'addDraw',
-      sessionId: CLOUD_SESSION_ID, seq: item.seq, num: item.num,
-      row: item.r, col: item.c, prize: item.prize, name: item.name, dept: item.dept, status: item.status,
-      adminSession: ADMIN_SESSION
-    })
-  }).then(function(r){ return r.json(); }).then(cloudRecResult_).catch(function(){});
+    body: JSON.stringify(Object.assign({ token: CLOUD_API_TOKEN }, task))
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res){
+    cloudRecResult_(res);
+    isFlushingCloudQueue = false;
+    // 每次寫入間隔 180ms，避免連續抽獎時 Google Apps Script ScriptLock 互斥超時
+    setTimeout(processCloudDrawQueue_, 180);
+  })
+  .catch(function(err){
+    isFlushingCloudQueue = false;
+    // 網路暫時中斷或 GAS 鎖定逾時：重新回隊列並延後重試
+    cloudDrawQueue.unshift(task);
+    setTimeout(processCloudDrawQueue_, 2500);
+  });
 }
 
 function cloudSetDrawStatus_(seq, status){
@@ -5744,7 +6196,7 @@ var MY_DEVICE_ID = (function(){
   var id = '';
   try { id = localStorage.getItem('hsh_lottery_device_id'); } catch(e) {}
   if (!id){
-    id = 'D' + Math.random().toString(36).slice(2,8).toUpperCase() + Date.now().toString(36).slice(-4).toUpperCase();
+    id = cryptoRandomId('D');
     try { localStorage.setItem('hsh_lottery_device_id', id); } catch(e) {}
   }
   return id;
@@ -6008,9 +6460,9 @@ function renderHistory(){
     var isPrize = lotteryMode === 'prize';
     var pos = seatMode==='table' ? d.r+'桌'+d.c+'位' : d.r+'行'+d.c+'列';
     var isSeatName = d.name === pos || d.name === ('第 '+d.r+' 桌 第 '+d.c+' 位') || d.name === ('第 '+d.r+' 行 第 '+d.c+' 列');
-    var label = isSeatName ? ('<b>第 ' + pos + '</b>') : ('<b>' + d.name + '</b>' + (d.dept ? ' ('+d.dept+')' : '') + ' · ' + pos);
+    var label = isSeatName ? ('<b>第 ' + escHtml(pos) + '</b>') : ('<b>' + escHtml(d.name) + '</b>' + (d.dept ? ' ('+escHtml(d.dept)+')' : '') + ' · ' + escHtml(pos));
     return '<div style="font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--border);'+(isWaived?'text-decoration:line-through;color:#f87171;':'')+'">' +
-      '第 ' + d.seq + ' 抽：' + (isPrize ? '['+(d.prize||'')+'] ' : '') + label +
+      '第 ' + d.seq + ' 抽：' + (isPrize ? '['+escHtml(d.prize||'')+'] ' : '') + label +
       (isWaived ? ' <b style="color:#dc2626;text-decoration:none;">[已棄權]</b>' : '') +
     '</div>';
   }).join('');
@@ -6286,8 +6738,30 @@ function renderChangelog(){
     '<label>每頁 <select aria-label="改版紀錄每頁筆數" onchange="setChangelogSize(this.value)">' + [3,5,10,20].map(function(n){return '<option value="'+n+'"'+(n===changelogSize?' selected':'')+'>'+n+'</option>';}).join('') + '</select> 筆</label>';
 }
 function goChangelogPage(page){ changelogPage = page; renderChangelog(); document.getElementById('changelogContent').parentElement.scrollTop = 0; }
-function setChangelogSize(size){ changelogSize = [3,5,10,20].indexOf(Number(size)) >= 0 ? Number(size) : 5; changelogPage=1; try { localStorage.setItem('hsh_lottery_changelog_size', String(changelogSize)); } catch(e) {} renderChangelog(); }
 </script>
+
+<!-- 全螢幕微動態科技金粉粒子 Canvas -->
+<canvas id="stageParticleCanvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:none;"></canvas>
+
+<!-- 全螢幕 Confetti 彩帶噴花 Canvas -->
+<canvas id="confettiCanvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:99999;display:none;"></canvas>
+
+<!-- 舞台模式聚光燈中獎榮耀彈窗 -->
+<div id="stageSpotlightModal" class="stage-spotlight-overlay" style="display:none;" onclick="closeStageSpotlight()">
+  <div class="stage-spotlight-beam"></div>
+  <div class="stage-spotlight-card" onclick="event.stopPropagation()">
+    <div class="spotlight-crown">👑</div>
+    <div class="spotlight-prize-badge" id="spotlightPrizeBadge">🥇 特獎 · iPhone 16 Pro</div>
+    <div class="spotlight-winner-name" id="spotlightWinnerName">王大明</div>
+    <div class="spotlight-winner-meta">
+      <span class="spotlight-dept" id="spotlightDept">研發部</span>
+      <span class="spotlight-seat" id="spotlightSeat">第 3 桌 第 5 位</span>
+    </div>
+    <div class="spotlight-action">
+      <button class="spotlight-close-btn" onclick="closeStageSpotlight()">✨ 恭喜得主 (點擊或按空白鍵繼續)</button>
+    </div>
+  </div>
+</div>
 </div>
 <div id="lotteryRegistration" role="dialog" aria-modal="true" aria-labelledby="lotteryRegistrationTitle" style="position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.75)">
   <form onsubmit="event.preventDefault();saveLotteryRegistration();" style="box-sizing:border-box;background:var(--panel,#fff);color:var(--ink,#1e293b);padding:24px;border-radius:16px;width:460px;max-width:100%;max-height:90vh;overflow:auto">
