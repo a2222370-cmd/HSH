@@ -2,6 +2,61 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
+<script data-hsh-connection-state>
+/* Embedded in each standalone page; no additional hosted asset is required. */
+(function (root) {
+  'use strict';
+  var ttl = 130000, seq = 0, active = null, requestTimer = null, unavailable = null, refresh = null;
+  var state = {ok:false, lastOk:0, latency:null, message:'尚未取得在線資料'};
+  function render() {
+    if (!root.document) return;
+    root.document.documentElement.dataset.hshConnection = state.ok ? 'ok' : 'unknown';
+    var status = root.document.getElementById('hshConnectionStatus');
+    var latency = root.document.getElementById('hshConnectionLatency');
+    if (status) status.textContent = state.ok ? '在線服務回報正常 · ' + new Date(state.lastOk).toLocaleTimeString('zh-TW', {timeZone:'Asia/Taipei',hour12:false}) + ' 更新' : '在線狀態未知 · ' + state.message;
+    if (latency) latency.textContent = state.ok ? state.latency + ' ms（最近一次回報）' : '未取得';
+  }
+  function unknown(message) {
+    clearTimeout(requestTimer); active = null; seq++;
+    state = {ok:false,lastOk:0,latency:null,message:message || '暫時無法取得在線資料'};
+    render(); if (unavailable) unavailable(state.message);
+  }
+  function current(ticket) { return !!ticket && active === ticket && ticket.seq === seq; }
+  function expired() { if (state.ok && Date.now() - state.lastOk >= ttl) unknown('在線資料已逾期，等待重新回報'); }
+  var api = {
+    tabId: 'tab_' + (root.crypto && root.crypto.randomUUID ? root.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)),
+    configure: function (options) { ttl=options.ttl || ttl; unavailable=options.unavailable || null; refresh=options.refresh || null; render(); },
+    begin: function () {
+      expired(); if (active) return null;
+      if (root.navigator && root.navigator.onLine === false) { unknown('瀏覽器離線'); return null; }
+      var ticket = {seq:++seq, started:root.performance.now()}; active=ticket;
+      requestTimer=setTimeout(function(){ if(current(ticket))unknown('在線服務超過 20 秒未回應'); },20000);
+      return ticket;
+    },
+    current: current,
+    markSent: function (ticket) { if(!current(ticket))return false;ticket.started=root.performance.now();return true; },
+    succeed: function (ticket) {
+      if (!current(ticket)) return false;
+      clearTimeout(requestTimer); active=null;
+      state={ok:true,lastOk:Date.now(),latency:Math.max(0,Math.round(root.performance.now()-ticket.started)),message:''};
+      render(); return true;
+    },
+    fail: function (ticket,message) { if(!current(ticket))return false;unknown(message);return true; },
+    unknown: unknown,
+    known: function () {expired();return state.ok;},
+    state: function () {expired();return Object.assign({},state);},
+    render: render
+  };
+  root.HSHConnection = api;
+  root.addEventListener('offline',function(){unknown('瀏覽器離線');});
+  root.addEventListener('online',function(){if(refresh)refresh();});
+  root.document.addEventListener('visibilitychange',function(){expired();render();});
+  root.document.addEventListener('DOMContentLoaded',render);
+  setInterval(expired,5000);
+})(window);
+</script>
+<style>html:not([data-hsh-connection="ok"]) #modalOnline .animate-pulse,html:not([data-hsh-connection="ok"]) #onlineBtn .online-dot,html:not([data-hsh-connection="ok"]) .mol-status-badge .mol-pulse-dot,html:not([data-hsh-connection="ok"]) #onlineBadge .dot-pulse{background:#94a3b8!important;animation:none!important}html:not([data-hsh-connection="ok"]) #hshConnectionStatus,html:not([data-hsh-connection="ok"]) #hshConnectionLatency{color:#64748b!important}</style>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>許瑞興工業｜抽籤／幸運抽獎系統</title>
 <script>
@@ -2267,7 +2322,7 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
         </div>
         <div class="top-version-badge" id="onlineBadge" onclick="openOnlineStatusModal()" title="點擊查看目前在線同仁清單與連線狀態">
           <span class="dot-pulse" id="onlineDot"></span>
-          <span class="online">線上: <b id="onlineCount">1</b> 人</span>
+          <span class="online">線上: <b id="onlineCount">—</b> 台</span>
           <span class="sep">|</span>
           <span id="versionTag">v2.2.0</span>
           <span class="sep">|</span>
@@ -2725,10 +2780,10 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
           <i class="ph-bold ph-broadcast"></i>
         </div>
         <div>
-          <h3 class="mol-title">目前連線與全公司在線狀態</h3>
+          <h3 class="mol-title">目前連線與本系統在線狀態</h3><small>閒置 30 分鐘收合設定視窗並提醒，不會自動登出。</small>
           <span class="mol-status-badge">
             <span class="mol-pulse-dot"></span>
-            連線穩定良好 · 30分鐘無操作自動登出保護中
+            <span id="hshConnectionStatus">尚未取得在線資料</span>
           </span>
         </div>
       </div>
@@ -2769,8 +2824,8 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
             </div>
           </div>
           <div class="mol-grid-row">
-            <span class="mol-label">伺服器延遲：</span>
-            <span class="mol-val-green">良好 (約 25ms)</span>
+            <span class="mol-label">在線服務往返：</span>
+            <span class="mol-val-green" id="hshConnectionLatency">未取得</span>
           </div>
           <div class="mol-grid-box mol-bg-emerald">
             <span class="mol-box-label text-emerald">
@@ -2800,7 +2855,7 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
           </div>
         </div>
         <div class="mol-card-footer">
-          <span>🛡️ 閒置逾時機制：<b class="text-emerald">30 分鐘無操作自動安全保護</b></span>
+          <span>🛡️ 閒置逾時機制：<b class="text-emerald">閒置 30 分鐘收合設定視窗並提醒</b></span>
           <span>📡 IP 探測模式：<b>WebRTC 區域網路探測 + 公網解析</b></span>
         </div>
       </div>
@@ -2810,7 +2865,7 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
         <div class="mol-list-header">
           <h4 class="mol-list-title">
             <i class="ph-bold ph-users-three" style="color:#4f46e5"></i>
-            <span>全公司目前在線裝置 (<span id="mdlOnlineCount" style="color:#4f46e5">1</span> 台連線中)</span>
+            <span>本系統目前在線裝置 (<span id="mdlOnlineCount" style="color:#4f46e5">—</span> 台連線中)</span>
           </h4>
           <span class="mol-list-hint">每 30 分鐘無活動自動剔除</span>
         </div>
@@ -6335,17 +6390,10 @@ function detectIp_(){
 }
 
 var ONLINE = { ok: false, count: 0, users: [], now: 0 };
-function getCleanOnlineUsers_(){
-  return (ONLINE.users || []).filter(function(u){
-    if (u.device === MY_DEVICE_ID) return true;
-    // 排除無 IP 且帶有其他系統/爬蟲特徵的異常幽靈紀錄 (例如 dev_ 開頭、無 IP、browser 為 Web 等)
-    if ((!u.ip || u.ip === '未取得') && (u.browser === 'Web' || u.device.indexOf('dev_') === 0)) return false;
-    if (u.page && u.page !== 'lottery') return false;
-    return true;
-  });
-}
+HSHConnection.configure({ttl:75000,unavailable:function(message){ONLINE={ok:false,count:null,users:[]};document.getElementById('onlineCount').textContent='—';document.getElementById('onlineBadge').classList.add('off');var count=document.getElementById('mdlOnlineCount');if(count)count.textContent='—';var body=document.getElementById('mdlOnlineTableBody');if(body){body.replaceChildren();var row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=5;cell.textContent='暫時無法取得在線名單：'+message;row.appendChild(cell);body.appendChild(row);}},refresh:pingLotteryPresence_});
+function getCleanOnlineUsers_(){return (ONLINE.users||[]).filter(function(u){return u&&typeof u.device==='string'&&(!u.page||u.page==='lottery');});}
 
-// 30 分鐘無操作自動安全保護機制
+// 30 分鐘無操作提醒（不登出、不限制操作）
 var lastLotteryActive = Date.now();
 var LOTTERY_IDLE_MS = 30 * 60 * 1000;
 ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(function(ev){
@@ -6359,7 +6407,7 @@ setInterval(function(){
         var el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
-      alert("⚠️【系統閒置保護提醒】\n您已超過 30 分鐘未進行任何操作，為確保抽籤公正性與安全，畫面已自動重置保護！");
+      alert("⚠️【系統閒置保護提醒】\n您已超過 30 分鐘未進行任何操作，已收合部分設定視窗；若要繼續使用，可直接操作。");
     } catch(e){}
   }
 }, 20000);
@@ -6372,22 +6420,15 @@ function startPresence(){
   if (!lotteryPresenceTimer) lotteryPresenceTimer = setInterval(pingLotteryPresence_, 30000);
 }
 function pingLotteryPresence_(){
-  if (!CLOUD_API_URL || !validLotteryProfile_(LOTTERY_PROFILE)) return;
-  var request = ++lotteryPresenceRequest;
-  fetch(CLOUD_API_URL, {
-    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token: CLOUD_API_TOKEN, action: 'presence',
-      sid: MY_DEVICE_ID, ip: ENV.ip, os: ENV.os, browser: ENV.browser,
-      deviceType: ENV.deviceType, page: 'lottery', who: LOTTERY_PROFILE.name,
-      department: LOTTERY_PROFILE.department, deviceName: LOTTERY_PROFILE.deviceName,computerName:hshSystemNative_.computerName||'',localInfoSource:hshSystemNative_.localInfoSource||'' })
-  }).then(function(r){ return r.json(); }).then(function(res){
-    if (request !== lotteryPresenceRequest || !res.ok) return;
-    ONLINE = res;
-    var clean = getCleanOnlineUsers_();
-    document.getElementById('onlineCount').textContent = clean.length;
-    document.getElementById('onlineBadge').classList.remove('off');
-    if (document.getElementById('modalOnline').style.display !== 'none') renderOnlineStatusListModal_();
-  }).catch(function(){});
+  if(!CLOUD_API_URL||!validLotteryProfile_(LOTTERY_PROFILE)){HSHConnection.unknown('尚未登記或未設定雲端服務');return;}
+  var ticket=HSHConnection.begin();if(!ticket)return;
+  fetch(CLOUD_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:CLOUD_API_TOKEN,action:'presence',sid:MY_DEVICE_ID,tabId:HSHConnection.tabId,ip:ENV.ip,os:ENV.os,browser:ENV.browser,deviceType:ENV.deviceType,page:'lottery',who:LOTTERY_PROFILE.name,department:LOTTERY_PROFILE.department,deviceName:LOTTERY_PROFILE.deviceName,computerName:hshSystemNative_.computerName||'',localInfoSource:hshSystemNative_.localInfoSource||''})})
+    .then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json();}).then(function(res){
+      if(!res||!res.ok||!Array.isArray(res.users)||!Number.isInteger(res.count)||res.count<0){HSHConnection.fail(ticket,'在線服務回傳失敗');return;}
+      if(!HSHConnection.succeed(ticket))return;ONLINE=res;var clean=getCleanOnlineUsers_();
+      document.getElementById('onlineCount').textContent=clean.length;document.getElementById('onlineBadge').classList.remove('off');
+      if(document.getElementById('modalOnline').style.display!=='none')renderOnlineStatusListModal_();
+    }).catch(function(){HSHConnection.fail(ticket,'在線服務連線失敗');});
 }
 
 function openOnlineStatusModal(){
@@ -6442,7 +6483,7 @@ function renderOnlineStatusListModal_(){
   var tbody = document.getElementById("mdlOnlineTableBody");
   if (!tbody) return;
   var users = getCleanOnlineUsers_();
-  var count = users.length || 1;
+  var count = HSHConnection.known() ? users.length : "—";
   var cntEl = document.getElementById("mdlOnlineCount");
   if (cntEl) cntEl.innerText = count;
 
