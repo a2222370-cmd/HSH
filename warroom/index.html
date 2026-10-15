@@ -1,7 +1,62 @@
 <!DOCTYPE html>
 <html lang="zh-TW" class="dark">
 <head>
-  <meta charset="UTF-8" />
+<meta charset="UTF-8" />
+<script data-hsh-connection-state>
+/* Embedded in each standalone page; no additional hosted asset is required. */
+(function (root) {
+  'use strict';
+  var ttl = 130000, seq = 0, active = null, requestTimer = null, unavailable = null, refresh = null;
+  var state = {ok:false, lastOk:0, latency:null, message:'尚未取得在線資料'};
+  function render() {
+    if (!root.document) return;
+    root.document.documentElement.dataset.hshConnection = state.ok ? 'ok' : 'unknown';
+    var status = root.document.getElementById('hshConnectionStatus');
+    var latency = root.document.getElementById('hshConnectionLatency');
+    if (status) status.textContent = state.ok ? '在線服務回報正常 · ' + new Date(state.lastOk).toLocaleTimeString('zh-TW', {timeZone:'Asia/Taipei',hour12:false}) + ' 更新' : '在線狀態未知 · ' + state.message;
+    if (latency) latency.textContent = state.ok ? state.latency + ' ms（最近一次回報）' : '未取得';
+  }
+  function unknown(message) {
+    clearTimeout(requestTimer); active = null; seq++;
+    state = {ok:false,lastOk:0,latency:null,message:message || '暫時無法取得在線資料'};
+    render(); if (unavailable) unavailable(state.message);
+  }
+  function current(ticket) { return !!ticket && active === ticket && ticket.seq === seq; }
+  function expired() { if (state.ok && Date.now() - state.lastOk >= ttl) unknown('在線資料已逾期，等待重新回報'); }
+  var api = {
+    tabId: 'tab_' + (root.crypto && root.crypto.randomUUID ? root.crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)),
+    configure: function (options) { ttl=options.ttl || ttl; unavailable=options.unavailable || null; refresh=options.refresh || null; render(); },
+    begin: function () {
+      expired(); if (active) return null;
+      if (root.navigator && root.navigator.onLine === false) { unknown('瀏覽器離線'); return null; }
+      var ticket = {seq:++seq, started:root.performance.now()}; active=ticket;
+      requestTimer=setTimeout(function(){ if(current(ticket))unknown('在線服務超過 20 秒未回應'); },20000);
+      return ticket;
+    },
+    current: current,
+    markSent: function (ticket) { if(!current(ticket))return false;ticket.started=root.performance.now();return true; },
+    succeed: function (ticket) {
+      if (!current(ticket)) return false;
+      clearTimeout(requestTimer); active=null;
+      state={ok:true,lastOk:Date.now(),latency:Math.max(0,Math.round(root.performance.now()-ticket.started)),message:''};
+      render(); return true;
+    },
+    fail: function (ticket,message) { if(!current(ticket))return false;unknown(message);return true; },
+    unknown: unknown,
+    known: function () {expired();return state.ok;},
+    state: function () {expired();return Object.assign({},state);},
+    render: render
+  };
+  root.HSHConnection = api;
+  root.addEventListener('offline',function(){unknown('瀏覽器離線');});
+  root.addEventListener('online',function(){if(refresh)refresh();});
+  root.document.addEventListener('visibilitychange',function(){expired();render();});
+  root.document.addEventListener('DOMContentLoaded',render);
+  setInterval(expired,5000);
+})(window);
+</script>
+<style>html:not([data-hsh-connection="ok"]) #modalOnline .animate-pulse,html:not([data-hsh-connection="ok"]) #onlineBtn .online-dot,html:not([data-hsh-connection="ok"]) .mol-status-badge .mol-pulse-dot,html:not([data-hsh-connection="ok"]) #onlineBadge .dot-pulse{background:#94a3b8!important;animation:none!important}html:not([data-hsh-connection="ok"]) #hshConnectionStatus,html:not([data-hsh-connection="ok"]) #hshConnectionLatency{color:#64748b!important}</style>
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>許瑞興機台回報戰情室 | HSH Machine Status War Room</title>
   <script>
@@ -849,7 +904,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
         <!-- 線上人數 -->
         <button id="onlineBadge" onclick="toggleOnlineList()" class="px-3 py-2 text-xs font-mono rounded bg-emerald-950/50 border border-emerald-500/50 text-emerald-300 flex items-center gap-1.5" title="點擊查看目前在線的裝置">
           <span id="onlineDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
-          線上 <b id="onlineCount">—</b> 人 <span id="onlineArrow">▾</span>
+          線上 <b id="onlineCount">—</b> 台 <span id="onlineArrow">▾</span>
         </button>
 
         <!-- Telegram 群組 -->
@@ -2726,11 +2781,12 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     }
 
     // ==========================================
-    // 線上人數（跟電腦挑人抽籤系統同樣做法：每 30 秒回報一次）
+    // 在線瀏覽器裝置：每 60 秒回報，背景暫停，130 秒租約
     // ==========================================
     let ONLINE = { ok: false, pending: true, count: null, users: [] };
     let presenceBusy = false;
     let presenceNeedsRefresh_ = false;
+    HSHConnection.configure({ttl:130000,unavailable:function(message){presenceBusy=false;ONLINE={ok:false,count:null,users:[],err:message};updateOnlineBadge_();renderOnlineList_();},refresh:pingPresence});
     function updateOnlineBadge_() {
       document.getElementById('onlineCount').textContent = ONLINE.ok ? ONLINE.count : ONLINE.pending ? '…' : '✕';
       document.getElementById('onlineDot').className = 'w-2 h-2 rounded-full ' + (ONLINE.ok ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500');
@@ -2745,7 +2801,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
           const me = u.device === MY_DEVICE_ID;
           return `<tr class="border-t border-slate-800 ${me ? 'text-emerald-300 font-bold' : 'text-slate-300'}"><td class="py-1 px-2">${i + 1}</td><td class="px-2">${escHtml(u.ip || '未取得')}${u.computerName ? '<br>電腦：' + escHtml(u.computerName) : ''}${u.localInfoSource ? '<br>來源：' + escHtml(u.localInfoSource) : ''}</td><td class="px-2">${me ? '本機 ' : ''}${escHtml(u.who || '—')}</td>` +
             `<td class="px-2">${u.page === 'dashboard' ? '戰情室' : u.page === 'report' ? '回報頁' : '—'}</td><td class="px-2">${escHtml(u.deviceType || '—')}</td><td class="px-2">${escHtml(u.os || '—')}</td><td class="px-2">${escHtml(u.browser || '—')}</td><td class="px-2">${escHtml(u.device)}</td><td class="px-2">${ago(u.since)}</td></tr>`;
-        }).join('') + '</tbody></table><div class="text-slate-500 mt-2">每 30 秒更新；同一台裝置多分頁只算一人；超過 75 秒沒回應視為離線。</div>';
+        }).join('') + '</tbody></table><div class="text-slate-500 mt-2">每 60 秒回報；同一瀏覽器多分頁合併為一台裝置；背景分頁暫停，130 秒未回報視為離線。</div>';
     }
     function toggleOnlineList() {
       const el = document.getElementById('onlineList');
@@ -2756,12 +2812,14 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     }
     function pingPresence(refresh) {
       if (presenceBusy) { if (refresh === true) presenceNeedsRefresh_ = true; return; }
+      const connectionTicket=HSHConnection.begin();if(!connectionTicket)return;
       presenceBusy = true;
       let done = false;
-      const finish = r => { if (done) return; done = true; presenceBusy = false; ONLINE = r; updateOnlineBadge_(); if (!document.getElementById('onlineList').classList.contains('hidden')) renderOnlineList_(); if (presenceNeedsRefresh_) { presenceNeedsRefresh_ = false; setTimeout(pingPresence, 0); } };
+      const finish = r => { if (done) return; if(!HSHConnection.current(connectionTicket))return;
+        done=true;presenceBusy=false;if(r.ok)HSHConnection.succeed(connectionTicket);else HSHConnection.fail(connectionTicket,r.err);ONLINE=r; updateOnlineBadge_(); if (!document.getElementById('onlineList').classList.contains('hidden')) renderOnlineList_(); if (presenceNeedsRefresh_) { presenceNeedsRefresh_ = false; setTimeout(pingPresence, 0); } };
       const timer = setTimeout(() => finish({ ok: false, users: [], err: '雲端 API 超過 20 秒沒有回應' }), 20000);
-      apiPost({ action: 'presence', sid: MY_DEVICE_ID, ip: ENV.ip, os: ENV.os, browser: ENV.browser, deviceType: ENV.deviceType, computerName: ENV.computerName || '', localInfoSource: ENV.localInfoSource || '', page: 'dashboard', who: ADMIN.unlocked ? '管理員 ' + ADMIN.name : '戰情室看板' })
-        .then(d => { clearTimeout(timer); finish(d && d.ok ? { ok: true, count: d.count, users: d.users || [], now: d.now } : { ok: false, users: [], err: (d && d.message) || '後端尚未更新為 v2.0.0' }); })
+      apiPost({ action: 'presence', sid: MY_DEVICE_ID, tabId:HSHConnection.tabId, ip: ENV.ip, os: ENV.os, browser: ENV.browser, deviceType: ENV.deviceType, computerName: ENV.computerName || '', localInfoSource: ENV.localInfoSource || '', page: 'dashboard', who: ADMIN.unlocked ? '管理員 ' + ADMIN.name : '戰情室看板' })
+        .then(d => { clearTimeout(timer); finish(d && d.ok && Number.isInteger(d.count) && d.count >= 0 && Array.isArray(d.users) ? { ok: true, count: d.count, users: d.users || [], now: d.now } : { ok: false, users: [], err: (d && (d.message || d.error)) || '在線服務回傳格式不正確' }); })
         .catch(() => { clearTimeout(timer); finish({ ok: false, users: [], err: '連不到雲端 API' }); });
     }
 
@@ -4043,7 +4101,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
       // 線上人數每 60 秒回報一次（後端 TTL 130 秒）；背景分頁不回報，切回來時立刻補一次
       setInterval(() => { if (!document.hidden) pingPresence(); }, 60000);
       window.addEventListener('pagehide', () => {
-        try { navigator.sendBeacon && navigator.sendBeacon(getStoredGasUrl(), JSON.stringify({ token: getStoredToken(), action: 'presence', sid: MY_DEVICE_ID, leave: true })); } catch (e) {}
+        try { navigator.sendBeacon && navigator.sendBeacon(getStoredGasUrl(), JSON.stringify({ token: getStoredToken(), action: 'presence', sid: MY_DEVICE_ID, tabId:HSHConnection.tabId, leave: true })); } catch (e) {}
       });
       ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { if (ADMIN.unlocked) adminTouch(); }, { passive: true }));
       fetchTelemetryData();
