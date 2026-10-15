@@ -2629,21 +2629,22 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
       <button class="tool-btn highlight" id="btnUnlockTg" onclick="unlockTgAdmin()">🔑 管理者解鎖</button>
     </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">
-      可即時推播中獎喜報到公司 Telegram 群組，已內建許瑞興 Telegram Bot 設定：
+      可即時推播中獎喜報到公司 Telegram 群組。Bot Token 與 Chat ID 存在雲端後端，網頁原始碼看不到，管理者解鎖後才會顯示：
     </div>
     <div class="field" style="margin-bottom:10px;">
       <label>Telegram Bot Token (機密金鑰)</label>
-      <input type="password" id="tgTokenInput" style="font-family:monospace;font-size:12px;" value="8877416210:AAFrcexthULtHnEwIjrmLo41BUSrgAxqylc" disabled>
+      <input type="password" id="tgTokenInput" style="font-family:monospace;font-size:12px;" value="" placeholder="🔒 管理者解鎖後顯示" autocomplete="off" disabled>
     </div>
     <div class="field" style="margin-bottom:10px;">
       <label>群組 Chat ID (頻道/群組)</label>
-      <input type="password" id="tgChatInput" style="font-family:monospace;font-size:12px;" value="-5524528569" disabled>
+      <input type="password" id="tgChatInput" style="font-family:monospace;font-size:12px;" value="" placeholder="🔒 管理者解鎖後顯示" autocomplete="off" disabled>
     </div>
     <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin-bottom:14px;">
       <input type="checkbox" id="tgAutoNotify" checked disabled>
       <label for="tgAutoNotify" style="cursor:pointer;">抽中特獎/頭獎時，自動發送中獎喜報到 Telegram 群組</label>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="tool-btn" id="btnSaveTg" onclick="saveTelegramConfig()" disabled>💾 儲存設定</button>
       <button class="tool-btn" id="btnTestTg" onclick="testTelegram()" disabled>🔔 測試推播 (限管理者)</button>
       <button class="tool-btn highlight" id="btnBroadcastTg" onclick="broadcastWinnersToTelegram()" disabled>🚀 立即推播目前得獎名冊 (限管理者)</button>
     </div>
@@ -3321,11 +3322,8 @@ var currentPrizeTemplateKey = 'preset_standard';
 var currentRosterTemplateKey = 'demo';
 
 // Telegram 設定
-var tgConfig = {
-  token: '8877416210:AAFrcexthULtHnEwIjrmLo41BUSrgAxqylc',
-  chatId: '-5524528569',
-  autoNotify: true
-};
+// Bot Token／Chat ID 不再寫在網頁裡：存在 GAS 後端（指令碼屬性），管理者解鎖後才從後端讀回
+var tgConfig = { autoNotify: true };
 
 // 雲端設定 (Google Apps Script)
 var DEFAULT_CLOUD_API_URL = 'https://script.google.com/macros/s/AKfycbwzJhYBVkOoho6i5XDnPhe_Jc66dbpYY-L0GYZI2TDZDx7rUyV88FFGAmCBdViUTFjZjA/exec';
@@ -3398,6 +3396,10 @@ var GROUP_COLORS_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181',
 
 /* 改版紀錄清單 */
 var CHANGELOG = [
+{"v": "v2.6.1", "date": "2026-10-15", "notes": [
+  "🔐 Telegram Bot Token 與群組 Chat ID 移出網頁原始碼，改存 GAS 後端；按「🔑 管理者解鎖」驗證通過後才從雲端讀回顯示，重新上鎖即清除畫面上的金鑰。",
+  "📢 測試推播、得獎名冊推播與特獎／頭獎自動喜報改由後端代發，瀏覽器的網路紀錄也看不到金鑰；新增「💾 儲存設定」可直接更新後端的 Token／Chat ID（需搭配後端 v2.3.0）。"
+]},
 {"v": "v2.6.0", "date": "2026-10-13", "notes": [
   "🔒 演算法全面升級為密碼學級真隨機演算法 (CSPRNG, crypto.getRandomValues)，杜絕偽隨機重複與預測，畫面加入公正安全認證徽章。",
   "🛡️ 全站動態名冊/獎項/歷史名單統一採用 escHtml() 與 textContent 賦值防護，杜絕 XSS 跨站腳本攻擊風險。",
@@ -3475,6 +3477,7 @@ window.addEventListener('DOMContentLoaded', function(){
   restoreProgress_();
   renderChangelog();
   initCloudConfig();
+  loadTgStatus_();
   syncTemplatesFromCloud(false);
   Promise.all([detectEnv(), detectIp_()]).then(function(){ startPresence(); });
   SoundFX.updateVolumeUi();
@@ -5702,6 +5705,17 @@ function exportGridAsPng(){
 /* ================= Telegram 推播模組（含管理者密碼鎖定） ================= */
 var tgAdminUnlocked = false;
 
+function tgPost_(payload){
+  if (!CLOUD_API_URL) return Promise.reject(new Error('尚未設定雲端 GAS API 網址'));
+  payload.token = CLOUD_API_TOKEN;
+  payload.adminSession = ADMIN_SESSION;
+  return fetch(CLOUD_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); });
+}
+
 function unlockTgAdmin(){
   if (tgAdminUnlocked){
     lockTgAdmin();
@@ -5710,14 +5724,33 @@ function unlockTgAdmin(){
   var pw = prompt('請輸入管理者密碼進行解鎖：');
   if (!pw) return;
   verifyAdminRemote_(pw, function(){
-    tgAdminUnlocked = true;
-    applyTgAdminLockState();
-    alert('🔓 管理者解鎖成功！Token 與 Chat ID 已解除遮蔽，開放推播操作。');
+    var status = document.getElementById('tgLockStatus');
+    if (status) status.textContent = '⏳ 正在從雲端讀取 Telegram 設定…';
+    tgPost_({ action: 'getTelegramConfig' }).then(function(res){
+      if (!res || !res.ok){
+        handleAdminWriteResult_(res, 'Telegram 設定');
+        applyTgAdminLockState();
+        if (!(res && res.needAdmin)) alert('讀取 Telegram 設定失敗：' + ((res && res.error) || '後端未回應，請確認 GAS 已更新到 v2.3.0'));
+        return;
+      }
+      document.getElementById('tgTokenInput').value = res.token || '';
+      document.getElementById('tgChatInput').value = res.chatId || '';
+      document.getElementById('tgAutoNotify').checked = res.autoNotify !== false;
+      tgConfig.autoNotify = res.autoNotify !== false;
+      tgAdminUnlocked = true;
+      applyTgAdminLockState();
+    }).catch(function(err){
+      applyTgAdminLockState();
+      alert('讀取 Telegram 設定失敗：' + err.message);
+    });
   });
 }
 
 function lockTgAdmin(){
   tgAdminUnlocked = false;
+  // 上鎖時把金鑰從畫面清掉，不留在網頁裡
+  var t = document.getElementById('tgTokenInput'); if (t) t.value = '';
+  var c = document.getElementById('tgChatInput'); if (c) c.value = '';
   applyTgAdminLockState();
 }
 
@@ -5728,28 +5761,55 @@ function applyTgAdminLockState(){
   var tokenInput = document.getElementById('tgTokenInput');
   var chatInput = document.getElementById('tgChatInput');
   var autoNotify = document.getElementById('tgAutoNotify');
+  var btnSave = document.getElementById('btnSaveTg');
   var btnTest = document.getElementById('btnTestTg');
   var btnBroadcast = document.getElementById('btnBroadcastTg');
 
   if (tgAdminUnlocked){
     if (bar) bar.classList.add('unlocked');
-    if (status) status.textContent = '🔓 管理者已解鎖：已明文顯示金鑰與群組，開放推播與修改權限';
+    if (status) status.textContent = '🔓 管理者已解鎖：已從雲端讀取金鑰與群組，開放推播與修改權限';
     if (btn) btn.textContent = '🔒 重新上鎖';
     if (tokenInput){ tokenInput.type = 'text'; tokenInput.disabled = false; }
     if (chatInput){ chatInput.type = 'text'; chatInput.disabled = false; }
     if (autoNotify) autoNotify.disabled = false;
+    if (btnSave) btnSave.disabled = false;
     if (btnTest) btnTest.disabled = false;
     if (btnBroadcast) btnBroadcast.disabled = false;
   } else {
     if (bar) bar.classList.remove('unlocked');
     if (status) status.textContent = '🔒 權限保護中：Token、Chat ID 與推播功能僅限管理者操作';
     if (btn) btn.textContent = '🔑 管理者解鎖';
-    if (tokenInput){ tokenInput.type = 'password'; tokenInput.disabled = true; }
-    if (chatInput){ chatInput.type = 'password'; chatInput.disabled = true; }
-    if (autoNotify) autoNotify.disabled = true;
+    if (tokenInput){ tokenInput.type = 'password'; tokenInput.disabled = true; tokenInput.value = ''; }
+    if (chatInput){ chatInput.type = 'password'; chatInput.disabled = true; chatInput.value = ''; }
+    if (autoNotify){ autoNotify.disabled = true; autoNotify.checked = tgConfig.autoNotify !== false; }
+    if (btnSave) btnSave.disabled = true;
     if (btnTest) btnTest.disabled = true;
     if (btnBroadcast) btnBroadcast.disabled = true;
   }
+}
+
+// 開頁時只向後端詢問「是否自動推播」，不會拿到任何金鑰
+function loadTgStatus_(){
+  if (!CLOUD_API_URL) return;
+  fetch(CLOUD_API_URL + '?action=tgStatus').then(function(r){ return r.json(); }).then(function(res){
+    if (res && res.ok){
+      tgConfig.autoNotify = res.autoNotify !== false;
+      if (!tgAdminUnlocked) applyTgAdminLockState();
+    }
+  }).catch(function(){});
+}
+
+function saveTelegramConfig(){
+  if (!tgAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
+  var token = document.getElementById('tgTokenInput').value.trim();
+  var chatId = document.getElementById('tgChatInput').value.trim();
+  var auto = document.getElementById('tgAutoNotify').checked;
+  if (!token || !chatId){ alert('請填寫 Token 與 Chat ID'); return; }
+  tgPost_({ action: 'saveTelegramConfig', tgToken: token, tgChatId: chatId, autoNotify: auto }).then(function(res){
+    handleAdminWriteResult_(res, 'Telegram 設定');
+    if (res && res.ok){ tgConfig.autoNotify = auto; alert('✅ Telegram 設定已儲存到雲端後端'); }
+    else if (!(res && res.needAdmin)) alert('儲存失敗：' + ((res && res.error) || '後端未回應'));
+  }).catch(function(err){ alert('儲存失敗：' + err.message); });
 }
 
 function testTelegram(){
@@ -5758,16 +5818,15 @@ function testTelegram(){
   var chatId = document.getElementById('tgChatInput').value.trim();
   if (!token || !chatId){ alert('請填寫 Token 與 Chat ID'); return; }
   var text = '🔔 <b>【許瑞興工業抽籤／幸運抽獎系統｜測試連線】</b>\n連線測試成功！系統已就緒，可發送中獎喜報。';
-  sendTgApi(token, chatId, text, function(ok){
-    alert(ok ? 'Telegram 測試訊息已成功送出！' : '發送失敗，請檢查 Token 與 Chat ID');
-  });
+  // 用畫面上目前的值測試（尚未儲存也可以先測）
+  sendTgApi(text, function(ok, err){
+    alert(ok ? 'Telegram 測試訊息已成功送出！' : '發送失敗：' + (err || '請檢查 Token 與 Chat ID'));
+  }, { tgToken: token, tgChatId: chatId });
 }
 
 function broadcastWinnersToTelegram(){
   if (!tgAdminUnlocked){ alert('此操作需管理者解鎖'); return; }
   if (drawHistory.length === 0){ alert('目前尚無中獎紀錄'); return; }
-  var token = document.getElementById('tgTokenInput').value.trim();
-  var chatId = document.getElementById('tgChatInput').value.trim();
   var validList = drawHistory.filter(function(d){ return d.status !== 'waived'; });
 
   var text = '🎉 <b>【許瑞興工業抽籤／幸運抽獎系統｜獲獎名單榮譽榜】</b>\n\n';
@@ -5782,32 +5841,31 @@ function broadcastWinnersToTelegram(){
     }
   });
   text += '恭喜所有幸運獲獎同仁！🎊';
-  sendTgApi(token, chatId, text, function(ok){
-    alert(ok ? '中獎名單已成功推播至 Telegram 群組！' : '推播失敗');
+  sendTgApi(text, function(ok, err){
+    alert(ok ? '中獎名單已成功推播至 Telegram 群組！' : '推播失敗：' + (err || ''));
   });
 }
 
 function autoNotifyTelegramWinner(d){
   if (!document.getElementById('tgAutoNotify').checked) return;
   if (d.prize !== '特獎' && d.prize !== '頭獎') return;
-  var token = document.getElementById('tgTokenInput').value.trim();
-  var chatId = document.getElementById('tgChatInput').value.trim();
+  if (!ADMIN_SESSION) return; // 推播由後端代發，需要管理者通行證（避免外人冒名發訊息到群組）
   var text = '🎉 <b>【許瑞興工業抽籤／幸運抽獎系統｜中獎快訊】</b>\n' +
     d.prizeIcon + ' <b>' + d.prize + '</b> 幸運開出！\n\n' +
     '恭喜得主：<b>' + d.name + '</b>' + (d.dept ? '（' + d.dept + '）' : '') + '\n' +
     '開獎位置：' + (seatMode==='table' ? '第 '+d.r+' 桌 第 '+d.c+' 位' : '第 '+d.r+' 行 第 '+d.c+' 列') + '\n\n' +
     '全場歡呼！🎊';
-  sendTgApi(token, chatId, text);
+  sendTgApi(text, null, { kind: 'auto' });
 }
 
-function sendTgApi(token, chatId, htmlText, cb){
-  fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text: htmlText, parse_mode: 'HTML' })
-  }).then(function(r){ return r.json(); })
-    .then(function(res){ if (cb) cb(res.ok); })
-    .catch(function(){ if (cb) cb(false); });
+// 推播一律交給 GAS 後端代發，瀏覽器不會接觸到 Bot Token
+function sendTgApi(htmlText, cb, extra){
+  var payload = { action: 'sendTelegram', text: htmlText };
+  if (extra) Object.keys(extra).forEach(function(k){ payload[k] = extra[k]; });
+  tgPost_(payload).then(function(res){
+    if (res && res.needAdmin) handleAdminWriteResult_(res, 'Telegram 推播');
+    if (cb) cb(!!(res && res.ok), res && res.error);
+  }).catch(function(err){ if (cb) cb(false, err.message); });
 }
 
 /* ================= 雲端同步模組 (GAS) ================= */
