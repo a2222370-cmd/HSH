@@ -270,6 +270,7 @@
   try {
     var source = new URL(target);
     allowed = source.origin === target && source.protocol === 'https:' && (source.hostname === 'script.google.com' || source.hostname.endsWith('.googleusercontent.com') || source.origin === location.origin);
+    if (!allowed) allowed = source.origin === target && source.protocol === 'http:' && source.hostname === '192.168.1.178'; /* 公司 NAS：圖面查詢、SOP 看板 */
   } catch(e) {}
   var opener = window.opener, busy = false;
   async function run() {
