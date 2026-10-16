@@ -1,131 +1,327 @@
-<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>許瑞興電腦資訊偵測</title>
-<style>body{font-family:system-ui;background:#f1f5f9;color:#0f172a;margin:24px}main{background:white;padding:24px;border-radius:16px}h1{font-size:22px}dl{display:grid;grid-template-columns:110px 1fr;gap:12px}dd{margin:0;overflow-wrap:anywhere}button{padding:10px 16px;border-radius:8px;border:1px solid #94a3b8;cursor:pointer}</style>
-<main><h1>電腦資訊偵測</h1><p id="status">正在偵測這台電腦的作業系統、瀏覽器及 IP…</p><dl id="facts"></dl><button id="retry">重新偵測</button><p>只回傳此電腦資訊至您開啟的系統，不會更改業務資料。</p></main><script>/* HSH 2026-10-11: browser-provided device information, with bounded detection. */
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>本機電腦資訊偵測</title>
+<style>body{font:16px/1.7 system-ui,"Microsoft JhengHei",sans-serif;margin:0;background:#f1f5f9;color:#0f172a}main{max-width:600px;margin:32px auto;background:white;padding:24px;border-radius:12px}dt{font-weight:bold;margin-top:12px}dd{margin:0;overflow-wrap:anywhere}button{padding:10px 16px;margin-top:16px;border:1px solid #94a3b8;border-radius:8px;cursor:pointer}#status{color:#475569}</style>
+<script>
+/* 本機電腦資訊：僅使用瀏覽器提供的資料，不從在線名單補入 IP。 */
 (function(root) {
   'use strict';
+  var bridgeData = null, bridgePending = null, localPending = null, listeners = [], nativeInfo = null, nativePairPending = null;
+  var bridgeOrigin = 'https://a-a2222370.vercel.app';
   function deviceType(nav) {
-    var ua=nav.userAgent||'';
-    if (/iPad|Tablet|PlayBook|Silk/i.test(ua)||(/Macintosh/.test(ua)&&nav.maxTouchPoints>1)||(/Android/i.test(ua)&&!/Mobile/i.test(ua))) return '平板';
-    return ((nav.userAgentData||{}).mobile||/Mobi|iPhone|iPod|Android.*Mobile/i.test(ua))?'手機':'電腦';
+    var ua = nav.userAgent || '';
+    if (/iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return '平板';
+    return ((nav.userAgentData || {}).mobile || /Mobi|iPhone|iPod|Android.*Mobile/i.test(ua)) ? '手機' : '電腦';
   }
   function fallbackOS(nav) {
-    var ua=nav.userAgent||'',m;
-    if (/Windows NT 10/.test(ua)) return 'Windows 10／11（瀏覽器未提供版本）';
+    nav = nav || root.navigator;
+    var ua = nav.userAgent || '', match;
+    if (/Windows NT 10/.test(ua)) return 'Windows（10／11 版本未提供）';
     if (/Windows NT 6\.3/.test(ua)) return 'Windows 8.1';
     if (/Windows NT 6\.2/.test(ua)) return 'Windows 8';
     if (/Windows NT 6\.1/.test(ua)) return 'Windows 7';
     if (/Windows/.test(ua)) return 'Windows（版本未提供）';
-    if (/iPad/.test(ua)||(/Macintosh/.test(ua)&&nav.maxTouchPoints>1)) return 'iPadOS';
-    if (/iPhone|iPod/.test(ua)) return 'iOS'+((m=ua.match(/OS ([\d_]+)/))?' '+m[1].replace(/_/g,'.'):'');
+    if (/iPad/.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1)) return 'iPadOS';
+    if (/iPhone|iPod/.test(ua)) return 'iOS' + ((match = ua.match(/OS ([\d_]+)/)) ? ' ' + match[1].replace(/_/g, '.') : '');
     if (/Android/.test(ua)) return 'Android（版本未提供）';
     if (/CrOS/.test(ua)) return 'ChromeOS';
     if (/Macintosh|Mac OS X/.test(ua)) return 'macOS（版本未提供）';
-    return /Linux/.test(ua)?'Linux':'未提供作業系統';
+    return /Linux/.test(ua) ? 'Linux' : '作業系統未提供';
   }
   function browserInfo(nav) {
-    var ua=nav.userAgent||'',m,name='未提供瀏覽器',version='';
-    var patterns=[['LINE',/Line\/([\d.]+)/i],['WeChat',/MicroMessenger\/([\d.]+)/],['Facebook',/FBAV\/([\d.]+)/],['Samsung Browser',/SamsungBrowser\/([\d.]+)/],['Edge',/(?:EdgA|EdgiOS|Edg|Edge)\/([\d.]+)/],['Opera',/(?:OPR|OPiOS)\/([\d.]+)/],['Firefox',/(?:Firefox|FxiOS)\/([\d.]+)/],['Chrome',/(?:Chrome|CriOS)\/([\d.]+)/],['Safari',/Version\/([\d.]+).*Safari/],['IE',/(?:MSIE |rv:)([\d.]+)/]];
-    for(var i=0;i<patterns.length;i++) if((m=ua.match(patterns[i][1]))) {name=patterns[i][0];version=m[1];break;}
-    return {name:name,version:version};
+    var ua = nav.userAgent || '', match;
+    var patterns = [['LINE', /Line\/([\d.]+)/i], ['WeChat', /MicroMessenger\/([\d.]+)/], ['Samsung Browser', /SamsungBrowser\/([\d.]+)/], ['Edge', /(?:EdgA|EdgiOS|Edg|Edge)\/([\d.]+)/], ['Opera', /(?:OPR|OPiOS)\/([\d.]+)/], ['Firefox', /(?:Firefox|FxiOS)\/([\d.]+)/], ['Chrome', /(?:Chrome|CriOS)\/([\d.]+)/], ['Safari', /Version\/([\d.]+).*Safari/], ['IE', /(?:MSIE |rv:)([\d.]+)/]];
+    for (var i = 0; i < patterns.length; i++) {
+      if ((match = ua.match(patterns[i][1]))) return {name: patterns[i][0], version: match[1]};
+    }
+    return {name: '瀏覽器未提供', version: ''};
+  }
+  function browser(nav) {
+    var info = browserInfo(nav || root.navigator);
+    return browserLabel(info);
   }
   function browserLabel(info) {
-    return info.name+(info.version?' '+(/^\d+\.0\.0\.0$/.test(info.version)?info.version.split('.')[0]+'（完整版本未提供）':info.version):'');
+    return info.name + (info.version ? ' ' + info.version + (/^\d+\.0\.0\.0$/.test(info.version) ? '（完整版本未提供）' : '') : '');
   }
   async function software(nav) {
-    if(!nav&&bridgeData)return {os:bridgeData.os,browser:bridgeData.browser,deviceType:bridgeData.deviceType};
-    nav=nav||root.navigator;var info=browserInfo(nav),os=fallbackOS(nav),d=nav.userAgentData,timer;
-    if(d&&typeof d.getHighEntropyValues==='function') {
+    nav = nav || root.navigator;
+    var info = browserInfo(nav), os = fallbackOS(nav), hints = nav.userAgentData, timer;
+    if (hints && typeof hints.getHighEntropyValues === 'function') {
       try {
-        var h=await Promise.race([Promise.resolve().then(function(){return d.getHighEntropyValues(['platformVersion','fullVersionList']);}),new Promise(function(resolve){timer=setTimeout(function(){resolve({});},1500);})]);
-        var pv=String(h.platformVersion||''),major=parseInt(pv.split('.')[0],10);
-        if(d.platform==='Windows') {if(major>=13)os='Windows 11';else if(major>=1&&major<=10)os='Windows 10';}
-        else if(/^(macOS|Android|Chrome OS|Linux)$/.test(d.platform||'')) os=d.platform+(pv&&pv!=='0.0.0'?' '+pv:'');
-        var brands=(h.fullVersionList||[]),pick=brands.find(function(b){return /Edge/.test(b.brand)&&info.name==='Edge';})||brands.find(function(b){return /Opera/.test(b.brand)&&info.name==='Opera';})||brands.find(function(b){return /Google Chrome/.test(b.brand)&&info.name==='Chrome';});
-        if(pick&&/^\d+(\.\d+)*$/.test(pick.version)) info.version=pick.version;
-      } catch(e) {} finally {clearTimeout(timer);}
+        var high = await Promise.race([
+          Promise.resolve().then(function() { return hints.getHighEntropyValues(['platformVersion', 'fullVersionList']); }),
+          new Promise(function(resolve) { timer = setTimeout(function() { resolve({}); }, 1800); })
+        ]);
+        var version = String(high.platformVersion || ''), major = parseInt(version.split('.')[0], 10);
+        if (hints.platform === 'Windows' && /^\d+(\.\d+)*$/.test(version)) {
+          if (major >= 13) os = 'Windows 11';
+          else if (major >= 1 && major <= 10) os = 'Windows 10';
+        } else if (/^(macOS|Android|Chrome OS|Linux)$/.test(hints.platform || '')) {
+          os = hints.platform + (version && version !== '0.0.0' ? ' ' + version : '');
+        }
+        var expected = {Edge: 'Microsoft Edge', Chrome: 'Google Chrome', Opera: 'Opera'}[info.name];
+        var brand = (Array.isArray(high.fullVersionList) ? high.fullVersionList : []).find(function(b) { return expected && b.brand === expected; });
+        if (brand && /^\d+(\.\d+)*$/.test(brand.version)) info.version = brand.version;
+      } catch (e) {} finally { clearTimeout(timer); }
     }
-    return bridgeData||{os:os,browser:browserLabel(info),deviceType:deviceType(nav)};
+    return {os: os, browser: browserLabel(info), deviceType: deviceType(nav)};
+  }
+  function ipv4(value) {
+    var parts = String(value || '').trim().split('.');
+    return parts.length === 4 && parts.every(function(p) { return /^(0|[1-9]\d{0,2})$/.test(p) && Number(p) <= 255; }) ? parts.join('.') : '';
   }
   function privateIP(value) {
-    value=String(value||'').trim();var parts=value.split('.');
-    if(parts.length!==4||parts.some(function(p){return !/^\d{1,3}$/.test(p)||Number(p)>255;}))return '';
-    return (parts[0]==='10'||(parts[0]==='192'&&parts[1]==='168')||(parts[0]==='172'&&Number(parts[1])>=16&&Number(parts[1])<=31))?value:'';
+    var ip = ipv4(value), parts = ip.split('.');
+    return ip && (parts[0] === '10' || (parts[0] === '192' && parts[1] === '168') || (parts[0] === '172' && Number(parts[1]) >= 16 && Number(parts[1]) <= 31)) ? ip : '';
   }
-  var localPromise;
+  function publicAddress(value) {
+    var ip = ipv4(value);
+    return ip && !privateIP(ip) && !/^(0|127|169\.254|224|255)\./.test(ip) ? ip : '';
+  }
   function localIP() {
-    if(bridgeData&&bridgeData.localIp)return Promise.resolve(bridgeData.localIp);
-    if(localPromise)return localPromise;
-    localPromise=new Promise(function(resolve){
-      var Peer=root.RTCPeerConnection||root.webkitRTCPeerConnection||root.mozRTCPeerConnection,pc,timer,done=false;
-      function finish(ip){if(done)return;done=true;clearTimeout(timer);try{if(pc)pc.close();}catch(e){}resolve(ip||'');}
-      function scan(text){var matches=String(text||'').match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g)||[];for(var i=0;i<matches.length;i++){var ip=privateIP(matches[i]);if(ip){finish(ip);return;}}}
-      if(!Peer){finish('');return;}
-      timer=setTimeout(function(){finish('');},1800);
+    if (localPending) return localPending;
+    var pending = new Promise(function(resolve) {
+      var Peer = root.RTCPeerConnection || root.webkitRTCPeerConnection || root.mozRTCPeerConnection, pc, timer, done = false;
+      function finish(ip) { if (done) return; done = true; clearTimeout(timer); try { if (pc) pc.close(); } catch (e) {} resolve(ip || ''); }
+      function scan(text) {
+        var matches = String(text || '').match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g) || [];
+        for (var i = 0; i < matches.length; i++) { var ip = privateIP(matches[i]); if (ip) { finish(ip); return; } }
+      }
+      function scanDescription() { if (pc && !done) scan((pc.localDescription || {}).sdp); }
+      if (!Peer) { finish(''); return; }
+      timer = setTimeout(function() { scanDescription(); finish(''); }, 2500);
       try {
-        pc=new Peer({iceServers:[]});
-        // Match the working warroom: null candidates do not end the probe early.
-        pc.onicecandidate=function(e){if(done)return;if(e&&e.candidate){var ip=privateIP(e.candidate.address);if(ip){finish(ip);return;}scan(e.candidate.candidate);}else{scan((pc.localDescription||{}).sdp);}};
-        pc.onicegatheringstatechange=function(){if(pc.iceGatheringState==='complete')scan((pc.localDescription||{}).sdp);};
+        pc = new Peer({iceServers: []});
+        // 空候選只補查描述資料，仍等待後續候選或到期；不快取失敗結果。
+        pc.onicecandidate = function(e) {
+          if (done) return;
+          if (e && e.candidate) {
+            var ip = privateIP(e.candidate.address);
+            if (ip) { finish(ip); return; }
+            scan(e.candidate.candidate);
+          }
+          scanDescription();
+        };
+        pc.onicegatheringstatechange = scanDescription;
         pc.createDataChannel('hsh-ip-probe');
-        Promise.resolve(pc.createOffer()).then(function(offer){if(!done)return pc.setLocalDescription(offer);}).then(function(){if(!done)scan((pc.localDescription||{}).sdp);}).catch(function(){finish('');});
-      }catch(e){finish('');}
+        Promise.resolve(pc.createOffer()).then(function(offer) { if (!done) return pc.setLocalDescription(offer); }).then(scanDescription).catch(function() { finish(''); });
+      } catch (e) { finish(''); }
     });
-    var pending=localPromise;
-    pending.then(function(){if(localPromise===pending)localPromise=null;});
+    localPending = pending;
+    pending.then(function() { if (localPending === pending) localPending = null; });
     return pending;
   }
   function publicIP() {
-    return new Promise(function(resolve){
-      var done=false,controller=typeof root.AbortController==='function'?new root.AbortController():null;
-      var timer=setTimeout(function(){finish('');if(controller)controller.abort();},2500);
-      function finish(ip){if(done)return;done=true;clearTimeout(timer);resolve(ip||'');}
-      Promise.resolve().then(function(){return root.fetch('https://api.ipify.org?format=json',{cache:'no-store',signal:controller?controller.signal:undefined});}).then(function(r){return r.json();}).then(function(d){finish(d&&d.ip);}).catch(function(){finish('');});
+    return new Promise(function(resolve) {
+      var done = false, controller = typeof root.AbortController === 'function' ? new root.AbortController() : null;
+      var timer = setTimeout(function() { finish(''); if (controller) controller.abort(); }, 3000);
+      function finish(ip) { if (done) return; done = true; clearTimeout(timer); resolve(publicAddress(ip)); }
+      Promise.resolve().then(function() { return root.fetch('https://api.ipify.org?format=json', {cache: 'no-store', signal: controller ? controller.signal : undefined}); }).then(function(r) { if (!r.ok) throw new Error('IP 偵測失敗'); return r.json(); }).then(function(d) { finish(d && d.ip); }).catch(function() { finish(''); });
     });
   }
-  function formatIP(ext,local) {return (ext||'未取得')+(local?' (內網: '+local+')':'');}
-  async function ip() {var pair=await Promise.all([publicIP(),localIP()]);return bridgeData?Object.assign({},bridgeData):{publicIp:pair[0],localIp:pair[1],ip:formatIP(pair[0],pair[1])};}
-  var bridgeData=null, listeners=[], bridgeOrigin='https://a-a2222370.vercel.app';
-  function onChange(fn){listeners.push(fn);}
+  function formatIP(ext, local, missingLocal) { return (ext || '公網 IP 未取得') + ' (內網: ' + (local || missingLocal || '瀏覽器未提供') + ')'; }
+  async function detect() {
+    var values = await Promise.all([software(), publicIP(), localIP()]);
+    return mergeNative(Object.assign({}, values[0], {publicIp: values[1], localIp: values[2], ip: formatIP(values[1], values[2]), computerName: '', localInfoSource: ''}));
+  }
+  function onChange(fn) { listeners.push(fn); }
+  function notify(info) { listeners.forEach(function(fn) { try { fn(info); } catch (e) { if (root.console) root.console.warn('本機資訊同步失敗', e); } }); }
+  function deviceLabel(info) { return info.os + ' - ' + info.browser + (info.computerName ? ' · 電腦：' + info.computerName : ''); }
+  function cleanName(value) { return typeof value === 'string' && value.length <= 255 && !/[\x00-\x1f\x7f]/.test(value) ? value.trim() : ''; }
+  function validateNative(data) {
+    if (!data || data.schema !== 'hsh-local-device-v1' || !cleanName(data.computerName) || !Array.isArray(data.interfaces) || data.interfaces.length > 64) throw new Error('不是有效的本機資訊檔。');
+    var time = Date.parse(data.collectedAt), age = Date.now() - time;
+    if (!Number.isFinite(time) || age < -120000 || age > 10 * 60 * 1000) throw new Error('資訊已超過 10 分鐘，請在目前電腦重新匯出或讀取。');
+    var interfaces = data.interfaces.filter(function(item) { return item && privateIP(item.ip); }).map(function(item) { return {ip: privateIP(item.ip), adapter: cleanName(item.adapter) || '網路介面'}; });
+    return {computerName: cleanName(data.computerName), os: cleanName(data.os), collectedAt: new Date(time).toISOString(), interfaces: interfaces};
+  }
+  function mergeNative(info) {
+    if (!nativeInfo || Date.now() - Date.parse(nativeInfo.collectedAt) > 10 * 60 * 1000) return info;
+    return Object.assign({}, info, {os: nativeInfo.os || info.os, computerName: nativeInfo.computerName, localIp: nativeInfo.localIp, ip: formatIP(info.publicIp, nativeInfo.localIp, '本機未取得有效 IPv4'), localInfoSource: nativeInfo.source, collectedAt: nativeInfo.collectedAt});
+  }
+  async function applyNative(data, source, selectedIp) {
+    var valid = validateNative(data), ip = selectedIp;
+    if (ip === undefined) {
+      if (valid.interfaces.length === 1) ip = valid.interfaces[0].ip;
+      else if (valid.interfaces.length > 1) {
+        var choice = root.prompt('這台電腦有多個內網位址，請選擇要顯示的編號：\n' + valid.interfaces.map(function(item, i) { return (i + 1) + '. ' + item.adapter + '：' + item.ip; }).join('\n'), '');
+        if (choice === null) throw new Error('已取消選擇。');
+        var index = Number(choice) - 1;
+        if (!Number.isInteger(index) || index < 0 || index >= valid.interfaces.length) throw new Error('請重新讀取並選擇有效編號。');
+        ip = valid.interfaces[index].ip;
+      } else ip = '';
+    }
+    if (ip && !valid.interfaces.some(function(item) { return item.ip === ip; })) throw new Error('選擇的 IP 不在這台電腦的資訊內。');
+    nativeInfo = Object.assign({}, valid, {localIp: ip || '', source: source});
+    var pair = await Promise.all([software(), publicIP()]);
+    var info = mergeNative(Object.assign({}, pair[0], {publicIp: pair[1], localIp: '', ip: formatIP(pair[1], '')}));
+    notify(info);
+    return info;
+  }
+  async function readNative(code) {
+    code = String(code || '').trim();
+    if (!/^[a-f0-9]{64}$/.test(code)) throw new Error('請貼上本機助手顯示的完整配對碼。');
+    var controller = new root.AbortController(), timer = setTimeout(function() { controller.abort(); }, 10000);
+    try {
+      var response = await root.fetch('http://127.0.0.1:17621/device-info', {method: 'GET', headers: {Authorization: 'Bearer ' + code}, cache: 'no-store', credentials: 'omit', signal: controller.signal});
+      if (response.status === 403) throw new Error('配對碼不符，請使用目前電腦本機助手的配對碼。');
+      if (!response.ok) throw new Error('本機助手回應失敗。');
+      return await applyNative(await response.json(), '本機助手');
+    } catch (e) {
+      if (e.name === 'TypeError' || e.name === 'AbortError') throw new Error('無法連接本機助手。請先啟動助手並允許瀏覽器存取本機網路，或改用「匯入本機資訊」。');
+      throw e;
+    } finally { clearTimeout(timer); }
+  }
+  function requestNativePair() {
+    if (nativePairPending) return nativePairPending;
+    nativePairPending = new Promise(function(resolve, reject) {
+      var bytes = new Uint8Array(16); root.crypto.getRandomValues(bytes);
+      var nonce = Array.from(bytes, function(v) { return v.toString(16).padStart(2, '0'); }).join(''), popup, timer, closedTimer, accepting = false;
+      function clean() { clearTimeout(timer); clearInterval(closedTimer); root.removeEventListener('message', receive); try { if (popup) popup.close(); } catch (e) {} }
+      function fail(message) { clean(); reject(new Error(message)); }
+      async function receive(e) {
+        if (accepting || e.origin !== 'http://127.0.0.1:17621' || e.source !== popup || !e.data || e.data.type !== 'hsh-local-device-result' || e.data.nonce !== nonce) return;
+        accepting = true;
+        try {
+          if (typeof e.data.selectedIp !== 'string') throw new Error('本機配對頁尚未選擇 IP。');
+          var info = await applyNative(e.data.info, '本機助手', e.data.selectedIp);
+          clean(); resolve(info);
+        } catch (err) { fail(err.message); }
+      }
+      root.addEventListener('message', receive);
+      try { popup = root.open('http://127.0.0.1:17621/pair#' + new URLSearchParams({origin:root.location.origin, nonce:nonce}), 'hsh_local_' + nonce, 'width=650,height=700'); }
+      catch (e) { fail('無法開啟本機配對頁，請允許開啟視窗。'); return; }
+      if (!popup) { fail('請允許開啟本機配對視窗，再重新讀取。'); return; }
+      timer = setTimeout(function() { fail('尚未收到本機資訊。請啟動最新版助手，在本機配對頁完成讀取及同步，或使用匯入本機資訊。'); }, 120000);
+      closedTimer = setInterval(function() { if (!accepting && popup.closed) fail('本機配對頁已關閉，請重新讀取。'); }, 500);
+    });
+    var pending = nativePairPending;
+    pending.then(function() { if (nativePairPending === pending) nativePairPending = null; }, function() { if (nativePairPending === pending) nativePairPending = null; });
+    return pending;
+  }
+  function installNativeButton(selector) {
+    function install() {
+      var panel = root.document.querySelector(selector);
+      if (!panel || root.document.getElementById('hshNativeRead')) return;
+      var besideList = panel.id === 'onlineList' || panel.id === 'modalOnlineUsersList';
+      var parent = besideList ? panel.parentElement : panel, reference = besideList ? panel : panel.firstChild;
+      var box = root.document.createElement('div'), button = root.document.createElement('button'), fallbackButton = root.document.createElement('button'), importButton = root.document.createElement('button'), download = root.document.createElement('a'), input = root.document.createElement('input'), status = root.document.createElement('span');
+      box.style.cssText = 'padding:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px';
+      button.id = 'hshNativeRead'; button.type = importButton.type = 'button'; button.textContent = '讀取本機 IP 與電腦名稱'; importButton.textContent = '匯入本機資訊';
+      fallbackButton.type = 'button'; fallbackButton.textContent = '改用本機配對頁'; fallbackButton.hidden = true;
+      [button, fallbackButton, importButton].forEach(function(b) { b.style.cssText = 'padding:7px 10px;border:1px solid #94a3b8;border-radius:8px;background:#f1f5f9;color:#0f172a;cursor:pointer'; });
+      input.type = 'file'; input.accept = '.json,application/json'; input.hidden = true; status.setAttribute('role', 'status');
+      download.href = bridgeOrigin + '/warroom/local-device-helper.zip'; download.target = '_blank'; download.rel = 'noopener'; download.textContent = '下載本機助手'; download.style.cssText = 'color:inherit;text-decoration:underline';
+      status.textContent = '需先啟動這台 Windows 電腦的本機助手。';
+      function show(info) { status.textContent = '讀取完成。'; }
+      button.onclick = async function() {
+        var code = root.prompt('請先啟動本機助手，再貼上助手視窗顯示的配對碼。', '');
+        if (code === null) { fallbackButton.hidden = false; return; }
+        button.disabled = true; status.textContent = '正在讀取目前電腦…';
+        try { show(await readNative(code)); fallbackButton.hidden = true; } catch (e) { status.textContent = e.message; fallbackButton.hidden = false; } finally { button.disabled = false; }
+      };
+      fallbackButton.onclick = async function() {
+        fallbackButton.disabled = true;
+        button.disabled = true; status.textContent = '請在本機配對頁貼上助手配對碼，讀取後按「同步回原系統」。';
+        try { show(await requestNativePair()); fallbackButton.hidden = true; } catch (e) { status.textContent = e.message; } finally { fallbackButton.disabled = false; button.disabled = false; }
+      };
+      importButton.onclick = function() { input.click(); };
+      input.onchange = async function() {
+        var file = input.files[0]; if (!file) return;
+        try {
+          if (file.size > 32768) throw new Error('資訊檔過大，請使用助手剛匯出的 JSON。');
+          var data = JSON.parse((await file.text()).replace(/^\uFEFF/, '')), valid = validateNative(data);
+          if (!root.confirm('確認這份資訊是在「目前這台電腦」剛匯出的嗎？\n電腦：' + valid.computerName + '\n位址：' + valid.interfaces.map(function(item) { return item.ip; }).join('、') + '\n匯入後會標示來源為本機檔案匯入。')) return;
+          show(await applyNative(data, '本機檔案匯入（使用者確認）'));
+        } catch (e) { status.textContent = e.message; } finally { input.value = ''; }
+      };
+      [download, button, fallbackButton, importButton, input, status].forEach(function(el) { box.appendChild(el); }); parent.insertBefore(box, reference);
+    }
+    if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', install); else install();
+  }
   function requestBridge() {
-    return new Promise(function(resolve,reject){
-      var bytes=new Uint8Array(16);root.crypto.getRandomValues(bytes);
-      var nonce=Array.from(bytes,function(v){return v.toString(16).padStart(2,'0');}).join('');
-      var popup, timer;
-      function clean(){clearTimeout(timer);root.removeEventListener('message',receive);try{if(popup)popup.close();}catch(e){}}
-      function receive(e){
-        if(e.origin!==bridgeOrigin||e.source!==popup||!e.data||e.data.type!=='hsh-device-result'||e.data.nonce!==nonce)return;
-        var d=e.data.info;
-        if(!d||typeof d.os!=='string'||typeof d.browser!=='string'||d.os.length>100||d.browser.length>100)return;
-        bridgeData={os:d.os,browser:d.browser,deviceType:['電腦','手機','平板'].indexOf(d.deviceType)>=0?d.deviceType:'電腦',publicIp:String(d.publicIp||'').slice(0,60),localIp:privateIP(d.localIp)};
-        bridgeData.ip=formatIP(bridgeData.publicIp,bridgeData.localIp);
-        clean();listeners.forEach(function(fn){try{fn(bridgeData);}catch(err){root.console.warn('連線資訊同步失敗',err);}});
-        [['mdlOnlineOsText',bridgeData.os],['mdlOnlineBrowserText',bridgeData.browser],['mdlOnlineIp',bridgeData.publicIp||'未取得'],['mdlOnlineIntranetIp',bridgeData.localIp||'瀏覽器未提供']].forEach(function(pair){var el=root.document.getElementById(pair[0]);if(el)el.textContent=pair[1];});
+    if (bridgePending) return bridgePending;
+    bridgeData = null;
+    bridgePending = new Promise(function(resolve, reject) {
+      var popup, timer, closedTimer, nonce;
+      function clean() { clearTimeout(timer); clearInterval(closedTimer); root.removeEventListener('message', receive); try { if (popup) popup.close(); } catch (e) {} }
+      function fail(message) { clean(); reject(new Error(message)); }
+      function receive(e) {
+        if (e.origin !== bridgeOrigin || e.source !== popup || !e.data || e.data.type !== 'hsh-device-result' || e.data.nonce !== nonce) return;
+        var d = e.data.info;
+        if (!d || typeof d.os !== 'string' || typeof d.browser !== 'string' || d.os.length > 100 || d.browser.length > 100) return;
+        bridgeData = {os: d.os || '作業系統未提供', browser: d.browser || '瀏覽器未提供', deviceType: ['電腦', '手機', '平板'].indexOf(d.deviceType) >= 0 ? d.deviceType : '裝置類型未提供', publicIp: publicAddress(d.publicIp), localIp: privateIP(d.localIp)};
+        bridgeData.computerName = cleanName(d.computerName);
+        bridgeData.localInfoSource = cleanName(d.localInfoSource);
+        bridgeData = mergeNative(bridgeData);
+        bridgeData.ip = formatIP(bridgeData.publicIp, bridgeData.localIp, bridgeData.localInfoSource ? '本機未取得有效 IPv4' : '瀏覽器未提供');
+        clean();
+        listeners.forEach(function(fn) { try { fn(bridgeData); } catch (err) { if (root.console) root.console.warn('本機資訊同步失敗', err); } });
         resolve(bridgeData);
       }
-      root.addEventListener('message',receive);
-      popup=root.open(bridgeOrigin+'/warroom/device-info.html#'+new URLSearchParams({origin:root.location.origin,nonce:nonce}),'hsh_device_'+nonce,'width=560,height=540');
-      if(!popup){clean();reject(new Error('請允許開啟偵測視窗，再按一次重新偵測。'));return;}
-      timer=setTimeout(function(){clean();reject(new Error('偵測未完成。請確認已上傳戰情室的 device-info.html，並允許開啟視窗。'));},20000);
+      try {
+        var bytes = new Uint8Array(16); root.crypto.getRandomValues(bytes);
+        nonce = Array.from(bytes, function(v) { return v.toString(16).padStart(2, '0'); }).join('');
+        root.addEventListener('message', receive);
+        popup = root.open(bridgeOrigin + '/warroom/device-info.html#' + new URLSearchParams({origin: root.location.origin, nonce: nonce}), 'hsh_device_' + nonce, 'width=600,height=600');
+        if (!popup) { fail('請允許開啟偵測視窗，再按一次重新偵測。'); return; }
+        timer = setTimeout(function() { fail('未收到電腦資訊。請先上傳 device-info.html 至戰情室 /warroom/，再重新偵測。'); }, 20000);
+        closedTimer = setInterval(function() { if (popup.closed) fail('偵測視窗已關閉，請重新偵測。'); }, 500);
+      } catch (e) { fail('無法開啟偵測視窗：' + e.message); }
     });
+    var pending = bridgePending;
+    pending.then(function() { if (bridgePending === pending) bridgePending = null; }, function() { if (bridgePending === pending) bridgePending = null; });
+    return pending;
   }
-  function installBridgeButton(selector){
-    function install(){var panel=root.document.querySelector(selector);if(!panel)return;
-      if(selector==='#modalOnlineUsersList')panel=panel.parentElement;
-      var box=root.document.createElement('div'),button=root.document.createElement('button'),label=root.document.createElement('span');
-      box.style.cssText='padding:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
-      button.type='button';button.textContent='重新偵測電腦資訊';button.style.cssText='padding:7px 12px;border:1px solid #94a3b8;border-radius:8px;background:#f1f5f9;color:#0f172a;cursor:pointer';
-      label.style.cssText='font-size:12px';label.textContent='無法取得時，開啟戰情室 HTTPS 偵測視窗。';
-      button.onclick=function(){button.disabled=true;label.textContent='正在偵測…';requestBridge().then(function(d){label.textContent=d.localIp?'已更新作業系統、瀏覽器及內網 IP。':'已更新作業系統與瀏覽器；此瀏覽器仍未提供內網 IP。';}).catch(function(e){label.textContent=e.message;}).finally(function(){button.disabled=false;});};
-      box.append(button,label);panel.prepend(box);
+  function installBridgeButton(selector, refresh) {
+    function install() {
+      var panel = root.document.querySelector(selector);
+      if (!panel || root.document.getElementById('hshDeviceRefresh')) return;
+      if (selector === '#modalOnlineUsersList') panel = panel.parentElement;
+      var box = root.document.createElement('div'), button = root.document.createElement('button'), label = root.document.createElement('span');
+      box.style.cssText = 'padding:10px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+      button.id = 'hshDeviceRefresh'; button.type = 'button'; button.textContent = '重新偵測電腦資訊';
+      button.style.cssText = 'padding:7px 12px;border:1px solid #94a3b8;border-radius:8px;background:#f1f5f9;color:#0f172a;cursor:pointer';
+      label.style.cssText = 'font-size:12px;color:#475569'; label.setAttribute('role', 'status');
+      label.textContent = '未取得資訊時，可開啟戰情室 HTTPS 偵測視窗。';
+      button.onclick = function() {
+        button.disabled = true; label.textContent = '正在偵測本機資訊…';
+        var request = requestBridge();
+        if (refresh) refresh().catch(function() {});
+        request.then(function(d) { label.textContent = '本機資訊已同步；' + (d.localIp ? '已取得內網 IP。' : '瀏覽器未提供內網 IP。') + (d.publicIp ? '' : '公網 IP 未取得。'); }).catch(function(e) { label.textContent = e.message; }).finally(function() { button.disabled = false; });
+      };
+      box.appendChild(button); box.appendChild(label); panel.insertBefore(box, panel.firstChild);
     }
-    if(root.document.readyState==='loading')root.document.addEventListener('DOMContentLoaded',install);else install();
+    if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', install); else install();
   }
-  root.HSHDeviceInfo={software:software,fallbackOS:fallbackOS,browser:function(nav){return browserLabel(browserInfo(nav||root.navigator));},deviceType:deviceType,privateIP:privateIP,localIP:localIP,publicIP:publicIP,formatIP:formatIP,ip:ip};
-  Object.assign(root.HSHDeviceInfo,{onChange:onChange,requestBridge:requestBridge,installBridgeButton:installBridgeButton});
+  root.HSHDeviceInfo = {software: software, fallbackOS: fallbackOS, browser: browser, deviceType: deviceType, privateIP: privateIP, localIP: localIP, publicIP: publicIP, formatIP: formatIP, detect: detect, onChange: onChange, requestBridge: requestBridge, installBridgeButton: installBridgeButton, deviceLabel: deviceLabel, validateNative: validateNative, applyNative: applyNative, readNative: readNative, requestNativePair: requestNativePair, installNativeButton: installNativeButton};
 })(window);
-</script><script>
-const params=new URLSearchParams(location.hash.slice(1)),nonce=params.get('nonce'),origin=params.get('origin');
-function allowedOrigin(value){try{const u=new URL(value);if(u.origin!==value)return false;return (u.protocol==='https:'&&(u.hostname==='a-a2222370.vercel.app'||u.hostname==='script.google.com'||/(^|[.-])script\.googleusercontent\.com$/.test(u.hostname)))||(['http:','https:'].includes(u.protocol)&&(!!HSHDeviceInfo.privateIP(u.hostname)||u.hostname==='localhost'));}catch(e){return false;}}
-async function run(){document.getElementById('retry').disabled=true;try{const pair=await Promise.all([HSHDeviceInfo.software(),HSHDeviceInfo.ip()]),info=Object.assign({},pair[0],pair[1]);const facts=document.getElementById('facts');facts.replaceChildren();[['作業系統',info.os],['瀏覽器',info.browser],['內網 / VPN IP',info.localIp||'瀏覽器未提供'],['外網 IP',info.publicIp||'未取得']].forEach(([key,value])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=key;dd.textContent=value;facts.append(dt,dd);});if(window.opener&&allowedOrigin(origin)&&/^[a-f0-9]{32}$/.test(nonce||'')){window.opener.postMessage({type:'hsh-device-result',nonce:nonce,info:info},origin);document.getElementById('status').textContent='已回傳至原系統，可以關閉此視窗。';}else document.getElementById('status').textContent='偵測完成。請從原系統的「重新偵測電腦資訊」按鈕開啟，才能同步回傳。';}catch(e){document.getElementById('status').textContent='偵測失敗，請重新偵測。';}finally{document.getElementById('retry').disabled=false;}}
-document.getElementById('retry').onclick=run;run();
-</script></html>
+
+</script></head><body><main><h1>本機電腦資訊偵測</h1><p id="status" role="status">正在偵測這台裝置…</p><dl><dt>作業系統</dt><dd id="os">偵測中…</dd><dt>瀏覽器</dt><dd id="browser">偵測中…</dd><dt>公網 IP</dt><dd id="publicIp">偵測中…</dd><dt>內網 IP</dt><dd id="localIp">偵測中…</dd></dl><button id="retry" type="button">重新偵測</button><p>瀏覽器未提供的資訊會明確標示；不會填入其他電腦的 IP。</p></main><script>
+(function() {
+  var params = new URLSearchParams(location.hash.slice(1));
+  var target = params.get('origin') || '', nonce = params.get('nonce') || '', allowed = false;
+  try {
+    var source = new URL(target);
+    allowed = source.origin === target && source.protocol === 'https:' && (source.hostname === 'script.google.com' || source.hostname.endsWith('.googleusercontent.com') || source.origin === location.origin);
+  } catch(e) {}
+  var opener = window.opener, busy = false;
+  async function run() {
+    if (busy) return;
+    busy = true; document.getElementById('retry').disabled = true;
+    document.getElementById('status').textContent = '正在偵測這台裝置…';
+    try {
+      var info = await HSHDeviceInfo.detect();
+      ['os','browser','publicIp','localIp'].forEach(function(key) { document.getElementById(key).textContent = info[key] || (key === 'localIp' ? '瀏覽器未提供' : '未取得'); });
+      if (opener && allowed && /^[a-f0-9]{32}$/.test(nonce)) {
+        opener.postMessage({type:'hsh-device-result', nonce:nonce, info:info}, target);
+        document.getElementById('status').textContent = '偵測完成，已回傳本機資訊至訂單後台。';
+      } else {
+        document.getElementById('status').textContent = '偵測完成。若要同步後台，請從後台按「重新偵測電腦資訊」開啟此頁。';
+      }
+    } catch(e) { document.getElementById('status').textContent = '未取得電腦資訊，請重新偵測。'; }
+    finally { busy = false; document.getElementById('retry').disabled = false; }
+  }
+  document.getElementById('retry').onclick = run;
+  run();
+})();
+</script></body></html>
