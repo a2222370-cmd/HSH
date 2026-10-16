@@ -5,7 +5,7 @@
 /* 本機電腦資訊：僅使用瀏覽器提供的資料，不從在線名單補入 IP。 */
 (function(root) {
   'use strict';
-  var bridgeData = null, bridgePending = null, localPending = null, listeners = [], nativeInfo = null, nativePairPending = null;
+  var bridgeData = null, bridgePending = null, localPending = null, listeners = [], nativeInfo = null;
   var bridgeOrigin = 'https://a-a2222370.vercel.app';
   function deviceType(nav) {
     var ua = nav.userAgent || '';
@@ -171,58 +171,25 @@
       throw e;
     } finally { clearTimeout(timer); }
   }
-  function requestNativePair() {
-    if (nativePairPending) return nativePairPending;
-    nativePairPending = new Promise(function(resolve, reject) {
-      var bytes = new Uint8Array(16); root.crypto.getRandomValues(bytes);
-      var nonce = Array.from(bytes, function(v) { return v.toString(16).padStart(2, '0'); }).join(''), popup, timer, closedTimer, accepting = false;
-      function clean() { clearTimeout(timer); clearInterval(closedTimer); root.removeEventListener('message', receive); try { if (popup) popup.close(); } catch (e) {} }
-      function fail(message) { clean(); reject(new Error(message)); }
-      async function receive(e) {
-        if (accepting || e.origin !== 'http://127.0.0.1:17621' || e.source !== popup || !e.data || e.data.type !== 'hsh-local-device-result' || e.data.nonce !== nonce) return;
-        accepting = true;
-        try {
-          if (typeof e.data.selectedIp !== 'string') throw new Error('本機配對頁尚未選擇 IP。');
-          var info = await applyNative(e.data.info, '本機助手', e.data.selectedIp);
-          clean(); resolve(info);
-        } catch (err) { fail(err.message); }
-      }
-      root.addEventListener('message', receive);
-      try { popup = root.open('http://127.0.0.1:17621/pair#' + new URLSearchParams({origin:root.location.origin, nonce:nonce}), 'hsh_local_' + nonce, 'width=650,height=700'); }
-      catch (e) { fail('無法開啟本機配對頁，請允許開啟視窗。'); return; }
-      if (!popup) { fail('請允許開啟本機配對視窗，再重新讀取。'); return; }
-      timer = setTimeout(function() { fail('尚未收到本機資訊。請啟動最新版助手，在本機配對頁完成讀取及同步，或使用匯入本機資訊。'); }, 120000);
-      closedTimer = setInterval(function() { if (!accepting && popup.closed) fail('本機配對頁已關閉，請重新讀取。'); }, 500);
-    });
-    var pending = nativePairPending;
-    pending.then(function() { if (nativePairPending === pending) nativePairPending = null; }, function() { if (nativePairPending === pending) nativePairPending = null; });
-    return pending;
-  }
   function installNativeButton(selector) {
     function install() {
       var panel = root.document.querySelector(selector);
       if (!panel || root.document.getElementById('hshNativeRead')) return;
       var besideList = panel.id === 'onlineList' || panel.id === 'modalOnlineUsersList';
       var parent = besideList ? panel.parentElement : panel, reference = besideList ? panel : panel.firstChild;
-      var box = root.document.createElement('div'), button = root.document.createElement('button'), fallbackButton = root.document.createElement('button'), importButton = root.document.createElement('button'), download = root.document.createElement('a'), input = root.document.createElement('input'), status = root.document.createElement('span');
+      var box = root.document.createElement('div'), button = root.document.createElement('button'), importButton = root.document.createElement('button'), download = root.document.createElement('a'), input = root.document.createElement('input'), status = root.document.createElement('span');
       box.style.cssText = 'padding:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px';
       button.id = 'hshNativeRead'; button.type = importButton.type = 'button'; button.textContent = '讀取本機 IP 與電腦名稱'; importButton.textContent = '匯入本機資訊';
-      fallbackButton.type = 'button'; fallbackButton.textContent = '改用本機配對頁'; fallbackButton.hidden = true;
-      [button, fallbackButton, importButton].forEach(function(b) { b.style.cssText = 'padding:7px 10px;border:1px solid #94a3b8;border-radius:8px;background:#f1f5f9;color:#0f172a;cursor:pointer'; });
+      [button, importButton].forEach(function(b) { b.style.cssText = 'padding:7px 10px;border:1px solid #94a3b8;border-radius:8px;background:#f1f5f9;color:#0f172a;cursor:pointer'; });
       input.type = 'file'; input.accept = '.json,application/json'; input.hidden = true; status.setAttribute('role', 'status');
       download.href = bridgeOrigin + '/warroom/local-device-helper.zip'; download.target = '_blank'; download.rel = 'noopener'; download.textContent = '下載本機助手'; download.style.cssText = 'color:inherit;text-decoration:underline';
       status.textContent = '需先啟動這台 Windows 電腦的本機助手。';
       function show(info) { status.textContent = '讀取完成。'; }
       button.onclick = async function() {
         var code = root.prompt('請先啟動本機助手，再貼上助手視窗顯示的配對碼。', '');
-        if (code === null) { fallbackButton.hidden = false; return; }
+        if (code === null) return;
         button.disabled = true; status.textContent = '正在讀取目前電腦…';
-        try { show(await readNative(code)); fallbackButton.hidden = true; } catch (e) { status.textContent = e.message; fallbackButton.hidden = false; } finally { button.disabled = false; }
-      };
-      fallbackButton.onclick = async function() {
-        fallbackButton.disabled = true;
-        button.disabled = true; status.textContent = '請在本機配對頁貼上助手配對碼，讀取後按「同步回原系統」。';
-        try { show(await requestNativePair()); fallbackButton.hidden = true; } catch (e) { status.textContent = e.message; } finally { fallbackButton.disabled = false; button.disabled = false; }
+        try { show(await readNative(code)); } catch (e) { status.textContent = e.message; } finally { button.disabled = false; }
       };
       importButton.onclick = function() { input.click(); };
       input.onchange = async function() {
@@ -234,7 +201,7 @@
           show(await applyNative(data, '本機檔案匯入（使用者確認）'));
         } catch (e) { status.textContent = e.message; } finally { input.value = ''; }
       };
-      [download, button, fallbackButton, importButton, input, status].forEach(function(el) { box.appendChild(el); }); parent.insertBefore(box, reference);
+      [download, button, importButton, input, status].forEach(function(el) { box.appendChild(el); }); parent.insertBefore(box, reference);
     }
     if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', install); else install();
   }
@@ -293,7 +260,7 @@
     }
     if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', install); else install();
   }
-  root.HSHDeviceInfo = {software: software, fallbackOS: fallbackOS, browser: browser, deviceType: deviceType, privateIP: privateIP, localIP: localIP, publicIP: publicIP, formatIP: formatIP, detect: detect, onChange: onChange, requestBridge: requestBridge, installBridgeButton: installBridgeButton, deviceLabel: deviceLabel, validateNative: validateNative, applyNative: applyNative, readNative: readNative, requestNativePair: requestNativePair, installNativeButton: installNativeButton};
+  root.HSHDeviceInfo = {software: software, fallbackOS: fallbackOS, browser: browser, deviceType: deviceType, privateIP: privateIP, localIP: localIP, publicIP: publicIP, formatIP: formatIP, detect: detect, onChange: onChange, requestBridge: requestBridge, installBridgeButton: installBridgeButton, deviceLabel: deviceLabel, validateNative: validateNative, applyNative: applyNative, readNative: readNative, installNativeButton: installNativeButton};
 })(window);
 
 </script></head><body><main><h1>本機電腦資訊偵測</h1><p id="status" role="status">正在偵測這台裝置…</p><dl><dt>作業系統</dt><dd id="os">偵測中…</dd><dt>瀏覽器</dt><dd id="browser">偵測中…</dd><dt>公網 IP</dt><dd id="publicIp">偵測中…</dd><dt>內網 IP</dt><dd id="localIp">偵測中…</dd></dl><button id="retry" type="button">重新偵測</button><p>瀏覽器未提供的資訊會明確標示；不會填入其他電腦的 IP。</p></main><script>
