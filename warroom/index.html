@@ -801,6 +801,78 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
 </style>
   <!-- Tailwind 預先編譯 CSS（由 tools-build/build-tailwind.ps1 產生；放最後面，維持跟原本 CDN 相同的樣式優先順序） -->
   <link rel="stylesheet" href="tailwind-index.css">
+  <style id="hsh-login-input-and-theme-grad">
+    .hsh-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+    .hsh-input-wrap .hsh-input-ico {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      line-height: 1;
+      opacity: 0.78;
+      pointer-events: none;
+      user-select: none;
+      z-index: 2;
+    }
+    .hsh-input-wrap input {
+      width: 100% !important;
+      padding-left: 36px !important;
+      margin-bottom: 0 !important;
+    }
+    .hsh-input-wrap.has-toggle input {
+      padding-right: 40px !important;
+    }
+    .hsh-pwd-toggle {
+      position: absolute !important;
+      right: 6px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      width: 28px !important;
+      height: 28px !important;
+      min-height: 28px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: none !important;
+      border-radius: 6px !important;
+      background: transparent !important;
+      color: #94a3b8 !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 14px !important;
+      line-height: 1 !important;
+      box-shadow: none !important;
+      z-index: 3;
+      transition: background 0.15s ease, opacity 0.15s ease;
+    }
+    .hsh-pwd-toggle:hover {
+      background: rgba(148, 163, 184, 0.18) !important;
+    }
+    /* 13 款主題管理員解鎖彈窗背景與登入/驗證按鈕漸層連動 */
+    #adminLoginModal {
+      background: radial-gradient(circle at 50% 25%, rgba(15, 23, 42, 0.72), rgba(2, 6, 23, 0.88)) !important;
+    }
+    html[data-theme="safety-blue"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #2563eb 0%, #38bdf8 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="bright-white"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="warm-beige"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #9a7044 0%, #b48655 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="energy-orange"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #ea580c 0%, #f97316 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="forest-green"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="steel-silver"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="crimson-gold"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="purple-royal"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="copper-bronze"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #c2410c 0%, #fb923c 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="teal-ocean"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #0891b2 0%, #22d3ee 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="titanium-blue"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%) !important; color: #fff !important; border: none !important; }
+    html[data-theme="lime-safety"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #65a30d 0%, #a3e635 100%) !important; color: #0f172a !important; border: none !important; }
+    html[data-theme="cyber-red"] :is(#adminLoginBtn, #cfgSaveBtn) { background: linear-gradient(135deg, #c8102e 0%, #f43f5e 100%) !important; color: #fff !important; border: none !important; }
+  </style>
 </head>
 
 <body class="min-h-screen text-slate-100 font-tech p-4 lg:p-6 flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
@@ -1422,8 +1494,12 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
 
         <div class="p-3 rounded bg-amber-950/40 border border-amber-700/60">
           <label class="block text-amber-300 mb-1 font-semibold">🔒 管理員密碼（只有管理員可以修改端點設定）</label>
-          <input id="cfgAdminPw" type="password" autocomplete="off" oncontextmenu="return false;" oncopy="return false;" oncut="return false;" onkeydown="if(event.key==='Enter') saveGasUrlAndReload();"
-            class="w-full bg-black/70 border border-slate-700 rounded px-3 py-2 text-amber-200 text-sm focus:outline-none focus:border-amber-400">
+          <div class="hsh-input-wrap has-toggle">
+            <span class="hsh-input-ico" aria-hidden="true">🔒</span>
+            <input id="cfgAdminPw" type="password" autocomplete="off" oncontextmenu="return false;" oncopy="return false;" oncut="return false;" onkeydown="if(event.key==='Enter') saveGasUrlAndReload();"
+              class="w-full bg-black/70 border border-slate-700 rounded px-3 py-2 text-amber-200 text-sm focus:outline-none focus:border-amber-400">
+            <button type="button" class="hsh-pwd-toggle" onclick="toggleWarRoomPwd('cfgAdminPw', this)" title="顯示密碼" aria-label="顯示或隱藏密碼">👁️</button>
+          </div>
           <div id="cfgErr" class="hidden text-xs font-bold text-rose-400 mt-2"></div>
         </div>
 
@@ -1499,7 +1575,11 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
       <p class="text-[11px] text-slate-400 mb-4">解鎖後可編輯、刪除回報資料。密碼由後端驗證；同一台電腦連續輸錯 5 次會暫時鎖住 15 分鐘。解鎖 30 分鐘沒有操作會自動上鎖。</p>
       <div class="text-xs text-slate-300 mb-3">管理員：<b class="text-amber-300">資訊課-Kenny</b></div>
       <label class="block text-xs text-slate-300 mb-1">管理員密碼</label>
-      <input id="adminPwInput" type="password" autocomplete="off" oncontextmenu="return false;" oncopy="return false;" oncut="return false;" onkeydown="if(event.key==='Enter') adminUnlock();" class="w-full bg-black/70 border border-slate-700 rounded px-3 py-2 text-amber-200 text-sm mb-2 focus:outline-none focus:border-amber-400">
+      <div class="hsh-input-wrap has-toggle mb-2">
+        <span class="hsh-input-ico" aria-hidden="true">🔒</span>
+        <input id="adminPwInput" type="password" autocomplete="off" oncontextmenu="return false;" oncopy="return false;" oncut="return false;" onkeydown="if(event.key==='Enter') adminUnlock();" class="w-full bg-black/70 border border-slate-700 rounded px-3 py-2 text-amber-200 text-sm focus:outline-none focus:border-amber-400">
+        <button type="button" class="hsh-pwd-toggle" onclick="toggleWarRoomPwd('adminPwInput', this)" title="顯示密碼" aria-label="顯示或隱藏密碼">👁️</button>
+      </div>
       <div id="adminLoginErr" class="hidden text-xs font-bold text-rose-400 mb-2"></div>
       <div class="flex justify-end gap-2 mt-3">
         <button onclick="closeAdminLogin()" class="px-4 py-2 rounded bg-slate-800 text-slate-300 text-xs">取消</button>
@@ -2803,15 +2883,34 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     let adminPage = 1;
     let adminSelected = {};
 
+    function toggleWarRoomPwd(inputId, btnEl) {
+      const inp = document.getElementById(inputId);
+      if (!inp) return;
+      const isPwd = inp.type === 'password';
+      inp.type = isPwd ? 'text' : 'password';
+      if (btnEl) {
+        btnEl.textContent = isPwd ? '🙈' : '👁️';
+        btnEl.title = isPwd ? '隱藏密碼' : '顯示密碼';
+      }
+    }
+    function resetWarRoomPwdField(inputId) {
+      const inp = document.getElementById(inputId);
+      if (!inp) return;
+      inp.type = 'password';
+      const btn = inp.parentElement && inp.parentElement.querySelector('.hsh-pwd-toggle');
+      if (btn) { btn.textContent = '👁️'; btn.title = '顯示密碼'; }
+    }
     function onAdminBtn() {
       if (ADMIN.unlocked) { document.getElementById('adminSection').scrollIntoView({ behavior: 'smooth' }); return; }
       document.getElementById('adminPwInput').value = '';
+      resetWarRoomPwdField('adminPwInput');
       document.getElementById('adminLoginErr').classList.add('hidden');
       document.getElementById('adminLoginModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('adminPwInput').focus(), 50);
     }
     function closeAdminLogin() {
       document.getElementById('adminPwInput').value = '';
+      resetWarRoomPwdField('adminPwInput');
       document.getElementById('adminLoginModal').classList.add('hidden');
     }
     function adminLoginError(msg) {
