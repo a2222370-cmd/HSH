@@ -1207,9 +1207,10 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
     // ==========================================
     // 版本與改版記錄
     // ==========================================
-    const APP_VERSION = 'v2.7.4';
+    const APP_VERSION = 'v2.7.5';
     const BACKEND_MIN_VERSION = 'v2.6.0';
     const CHANGELOG = [
+      {v:'v2.7.5',date:'2026-10-17',notes:['管理解鎖休眠返回先檢查30分鐘逾時，再接受操作或續期。','忽略程式產生的操作事件；重新登入重新開始閒置計時。']},
 {"v":"v2.7.4","date":"2026-10-16","notes":["移除線上資訊的「改用本機配對頁」按鈕（實際使用無作用）；讀取本機資訊請用「讀取本機 IP 與電腦名稱」或「匯入本機資訊」。"]},
 {"v":"v2.7.3","date":"2026-10-12","notes":["新增 Windows 本機助手讀取電腦名稱與實際網卡 IP；多位址可選，並同步線上名單。","瀏覽器無法連接本機助手時可匯入本機剛匯出的資訊，並明確標示來源。"]},
 {"v":"v2.7.2","date":"2026-10-12","notes":["內網偵測補查候選位址、字串及描述資料，空候選不提前結束、失敗可重試。","線上資訊增加重新偵測；未取得內網時明確顯示瀏覽器未提供，不再只剩公網 IP。"]},
@@ -1491,7 +1492,14 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
     const RADMIN = { token: '', timer: null, pending: null };
     const RADMIN_IDLE_MS = 30 * 60 * 1000; // 閒置 30 分鐘自動登出
     let radminLastAct = Date.now(), radminLastPing = Date.now();
+    function checkReportAdminIdle(){
+      if(RADMIN.token&&Date.now()-radminLastAct>=RADMIN_IDLE_MS){adminLock_();return true;}
+      return false;
+    }
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkReportAdminIdle();});
+    window.addEventListener('pageshow',checkReportAdminIdle);
     function adminTouch_() {
+      if(checkReportAdminIdle())return false;
       radminLastAct = Date.now();
       if (RADMIN.token && Date.now() - radminLastPing > 60000) {
         radminLastPing = Date.now();
@@ -1507,14 +1515,14 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       const el = document.getElementById('ddIdleTip');
       if (el) { const m = Math.ceil(left / 60000); el.textContent = m <= 5 ? `（${m} 分鐘後自動登出）` : '（閒置 30 分鐘自動登出）'; }
     }, 5000);
-    ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { if (RADMIN.token) adminTouch_(); }, { passive: true }));
+    ['mousemove','keydown','pointerdown','wheel','touchstart'].forEach(ev=>document.addEventListener(ev,e=>{if(e.isTrusted&&RADMIN.token)adminTouch_();},{passive:true,capture:true}));
     function adminLock_() {
       if (RADMIN.token) apiPost({ action: 'logoutAdmin', adminToken: RADMIN.token }).catch(() => {});
       RADMIN.token = '';
       renderDropdownAdminBar(); renderDropdownManageList();
     }
     function requireAdmin(fn) {
-      if (RADMIN.token) { adminTouch_(); fn(); return; }
+      if (RADMIN.token) { if(adminTouch_()===false)return; fn(); return; }
       RADMIN.pending = fn;
       document.getElementById('adminPwInput').value = '';
       document.getElementById('adminErr').classList.add('hidden');
@@ -1540,7 +1548,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       btn.disabled = true; btn.textContent = '驗證中…';
       verifyAdminPw_(pw).then(tok => {
         if (!tok) throw new Error('後端還是舊版（沒有通行證功能），請更新 Code.gs 到 ' + BACKEND_MIN_VERSION + ' 並重新部署');
-        RADMIN.token = tok; radminLastPing = Date.now(); adminTouch_();
+        RADMIN.token = tok; radminLastPing = Date.now(); radminLastAct = Date.now(); adminTouch_();
         const fn = RADMIN.pending; closeAdminModal();
         renderDropdownAdminBar(); renderDropdownManageList();
         if (fn) fn();
@@ -1559,6 +1567,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
     }
 
     function syncDropdownField(field) {
+      if(adminTouch_()===false||!RADMIN.token)return;
       cacheDropdown();
       renderDatalists();
       setDropdownMsg('☁️ 正在同步到雲端…');
@@ -1657,6 +1666,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       syncDropdownField(field);
     }
     function reScanAllDropdownData() {
+      if(adminTouch_()===false||!RADMIN.token)return;
       if (!confirm('確定從所有回報資料重新掃描機台、異常代碼與部門，合併到歷史選單？（手動新增的選項會保留）')) return;
       setDropdownMsg('🔄 掃描中…');
       apiPost({ action: 'rescanDropdown', adminToken: RADMIN.token, sid: MY_DEVICE_ID, ip: ENV.ip }).then(res => {
@@ -2093,7 +2103,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       btn.disabled = true; btn.textContent = '驗證中…';
       verifyAdminPw_(pwEl.value, val).then(tok => {
         if (val === DEFAULT_GAS_URL) lsDel('GAS_POST_URL'); else lsSet('GAS_POST_URL', val);
-        RADMIN.token = tok || ''; if (tok) { radminLastPing = Date.now(); adminTouch_(); }
+        RADMIN.token = tok || ''; if (tok) { radminLastPing = Date.now(); radminLastAct = Date.now(); adminTouch_(); }
         toggleConfigModal();
         refreshEndpointDisplay();
         loadDropdownFromCloud();

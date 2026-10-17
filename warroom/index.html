@@ -1738,8 +1738,9 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     // ==========================================
     // 版本與歷史改版記錄（與回報頁 report.html 共用同一份內容）
     // ==========================================
-    const APP_VERSION = 'v2.7.4';
+    const APP_VERSION = 'v2.7.5';
     const CHANGELOG = [
+      {v:'v2.7.5',date:'2026-10-17',notes:['管理解鎖休眠返回先檢查30分鐘逾時，再接受操作或續期。','忽略程式產生的操作事件；重新登入重新開始閒置計時。']},
 {"v":"v2.7.4","date":"2026-10-16","notes":["移除線上資訊的「改用本機配對頁」按鈕（實際使用無作用）；讀取本機資訊請用「讀取本機 IP 與電腦名稱」或「匯入本機資訊」。"]},
 {"v":"v2.7.3","date":"2026-10-12","notes":["新增 Windows 本機助手讀取電腦名稱與實際網卡 IP；多位址可選，並同步線上名單。","瀏覽器無法連接本機助手時可匯入本機剛匯出的資訊，並明確標示來源。"]},
 {"v":"v2.7.2","date":"2026-10-12","notes":["內網偵測補查候選位址、字串及描述資料，空候選不提前結束、失敗可重試。","線上資訊增加重新偵測；未取得內網時明確顯示瀏覽器未提供，不再只剩公網 IP。"]},
@@ -2833,7 +2834,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
             document.getElementById('adminSection').classList.remove('hidden');
             document.getElementById('adminBtnText').textContent = '管理中：' + name;
             document.getElementById('adminWhoTag').textContent = 'ADMIN · ' + name + ' · 閒置 30 分鐘自動登出';
-            adminLastPing = Date.now();
+            adminLastPing = Date.now(); adminLastAct = Date.now();
             adminTouch();
             renderAdminTable();
             pingPresence();
@@ -2847,7 +2848,14 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     }
     // 閒置計時：有操作（點擊、鍵盤、移動滑鼠、捲動、觸控）就重新計時；每 5 秒檢查一次，剩 5 分鐘顯示倒數
     let adminLastAct = Date.now(), adminLastPing = Date.now();
+    function checkWarAdminIdle(){
+      if(ADMIN.unlocked&&Date.now()-adminLastAct>=ADMIN_IDLE_MS){adminLock();return true;}
+      return false;
+    }
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkWarAdminIdle();});
+    window.addEventListener('pageshow',checkWarAdminIdle);
     function adminTouch() {
+      if(checkWarAdminIdle())return false;
       adminLastAct = Date.now();
       if (ADMIN.unlocked && Date.now() - adminLastPing > 60000) {
         adminLastPing = Date.now();
@@ -2878,7 +2886,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     }
     // 管理員操作共用：密碼錯誤或被鎖時自動上鎖
     function adminCall(payload) {
-      adminTouch();
+      if(adminTouch()===false||!ADMIN.unlocked)return Promise.reject(new Error('管理登入已逾時，請重新解鎖。'));
       return apiPost(Object.assign({ adminToken: ADMIN.token, sid: MY_DEVICE_ID, ip: ENV.ip }, payload)).then(d => {
         if (!d || d.status !== 'success') {
           const msg = (d && d.message) || '操作失敗';
@@ -2985,7 +2993,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     }
     function openClearModal() {
       if (!ADMIN.unlocked) return;
-      adminTouch();
+      if(adminTouch()===false)return;
       if (DATA_IS_DEMO) { alert('目前顯示的是示範資料（沒連上試算表），無法清除。'); return; }
       document.querySelector('input[name=clearScope][value=all]').checked = true;
       document.getElementById('clearFrom').value = '';
@@ -3051,7 +3059,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     function openEditModal(id) {
       const r = LAST_DATA.find(x => String(x.Record_ID) === String(id));
       if (!r || !ADMIN.unlocked) return;
-      adminTouch();
+      if(adminTouch()===false)return;
       editingId = id;
       EDIT_FIELDS.forEach(f => { document.getElementById('ed_' + f).value = r[f] == null ? '' : r[f]; });
       if (![...document.getElementById('ed_Status').options].some(o => o.value === r.Status)) {
@@ -4071,7 +4079,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
       window.addEventListener('pagehide', () => {
         try { navigator.sendBeacon && navigator.sendBeacon(getStoredGasUrl(), JSON.stringify({ token: getStoredToken(), action: 'presence', sid: MY_DEVICE_ID, tabId:HSHConnection.tabId, leave: true })); } catch (e) {}
       });
-      ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { if (ADMIN.unlocked) adminTouch(); }, { passive: true }));
+      ['mousemove','keydown','pointerdown','wheel','touchstart'].forEach(ev=>document.addEventListener(ev,e=>{if(e.isTrusted&&ADMIN.unlocked)adminTouch();},{passive:true,capture:true}));
       fetchTelemetryData();
 
       // 每 30 秒自動排程重新擷取，維持戰情室即時性；分頁在背景時暫停，切回來時若超過 30 秒沒更新就立刻補抓
