@@ -2221,6 +2221,79 @@ html[data-theme="warm-beige"] header nav.view-switch-bar button.active,
 html[data-theme="warm-beige"] header nav.view-switch-bar button.active:hover { background: #805c36 !important; color: #fff !important; border-bottom-color: #805c36 !important; }
 html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
 </style>
+<style id="hsh-login-input-and-theme-grad">
+  .hsh-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+  .hsh-input-wrap .hsh-input-ico {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0.75;
+    pointer-events: none;
+    user-select: none;
+    z-index: 2;
+  }
+  .hsh-input-wrap input {
+    width: 100% !important;
+    padding-left: 36px !important;
+    margin: 0 !important;
+  }
+  .hsh-input-wrap.has-toggle input {
+    padding-right: 40px !important;
+  }
+  .hsh-pwd-toggle {
+    position: absolute !important;
+    right: 6px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    color: var(--muted) !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+    z-index: 3;
+    transition: background 0.15s ease;
+  }
+  .hsh-pwd-toggle:hover {
+    background: rgba(148, 163, 184, 0.16) !important;
+  }
+  /* 13 款主題彈窗背景與解鎖/儲存按鈕漸層連動 */
+  .modal-overlay {
+    background: radial-gradient(circle at 50% 22%, color-mix(in srgb, var(--accent, #2563eb) 26%, rgba(15, 23, 42, 0.72)), rgba(2, 6, 23, 0.85)) !important;
+    backdrop-filter: blur(6px);
+  }
+  html[data-theme="safety-blue"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="energy-orange"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="forest-green"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #047857 0%, #10b981 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="steel-silver"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #334155 0%, #475569 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="carbon-dark"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #dc2626 0%, #f43f5e 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="bright-white"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #334155 0%, #475569 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="navy-blue"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="quiet-purple"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="warm-beige"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #805c36 0%, #9a7044 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="rose-red"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #be123c 0%, #e11d48 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="midnight-dark"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="deep-purple"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%) !important; color: #fff !important; border: none !important; }
+  html[data-theme="forest-dark"] :is(#btnUnlockRoster, #btnUnlockPrize, #btnUnlockTg, #btnUnlockCloud, #btnCloudSave, #btnApplyRoster, #btnSavePrizeSettings, .theme-accent-btn, button.primary) { background: linear-gradient(135deg, #15803d 0%, #22c55e 100%) !important; color: #fff !important; border: none !important; }
+</style>
 </head>
 <body>
 <div id="lotteryApp" inert>
@@ -2633,11 +2706,19 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
     </div>
     <div class="field" style="margin-bottom:10px;">
       <label>Telegram Bot Token (機密金鑰)</label>
-      <input type="password" id="tgTokenInput" style="font-family:monospace;font-size:12px;" value="8877416210:AAFrcexthULtHnEwIjrmLo41BUSrgAxqylc" disabled>
+      <div class="hsh-input-wrap has-toggle">
+        <span class="hsh-input-ico" aria-hidden="true">🔒</span>
+        <input type="password" id="tgTokenInput" style="font-family:monospace;font-size:12px;" value="8877416210:AAFrcexthULtHnEwIjrmLo41BUSrgAxqylc" disabled>
+        <button type="button" class="hsh-pwd-toggle" onclick="toggleLotteryPwd('tgTokenInput', this)" title="顯示或隱藏內容" aria-label="顯示或隱藏內容">👁️</button>
+      </div>
     </div>
     <div class="field" style="margin-bottom:10px;">
       <label>群組 Chat ID (頻道/群組)</label>
-      <input type="password" id="tgChatInput" style="font-family:monospace;font-size:12px;" value="-5524528569" disabled>
+      <div class="hsh-input-wrap has-toggle">
+        <span class="hsh-input-ico" aria-hidden="true">🔒</span>
+        <input type="password" id="tgChatInput" style="font-family:monospace;font-size:12px;" value="-5524528569" disabled>
+        <button type="button" class="hsh-pwd-toggle" onclick="toggleLotteryPwd('tgChatInput', this)" title="顯示或隱藏內容" aria-label="顯示或隱藏內容">👁️</button>
+      </div>
     </div>
     <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin-bottom:14px;">
       <input type="checkbox" id="tgAutoNotify" checked disabled>
@@ -2679,11 +2760,19 @@ html[data-theme="warm-beige"] header .top-version-badge .sep { opacity: 1; }
     </div>
     <div class="field" style="margin-bottom:10px;">
       <label>GAS API 網址 (/exec)</label>
-      <input type="password" id="cloudUrlInput" disabled style="font-size:12px;" placeholder="••••••••••••••••••••（需管理者解鎖檢視）">
+      <div class="hsh-input-wrap has-toggle">
+        <span class="hsh-input-ico" aria-hidden="true">🔒</span>
+        <input type="password" id="cloudUrlInput" disabled style="font-size:12px;" placeholder="••••••••••••••••••••（需管理者解鎖檢視）">
+        <button type="button" class="hsh-pwd-toggle" onclick="toggleLotteryPwd('cloudUrlInput', this)" title="顯示或隱藏內容" aria-label="顯示或隱藏內容">👁️</button>
+      </div>
     </div>
     <div class="field" style="margin-bottom:10px;">
       <label>API 驗證碼 (Token，選填：後端 API_TOKEN 留空時不用填)</label>
-      <input type="password" id="cloudTokenInput" disabled style="font-size:12px;" placeholder="••••••••••••••••••••">
+      <div class="hsh-input-wrap has-toggle">
+        <span class="hsh-input-ico" aria-hidden="true">🔒</span>
+        <input type="password" id="cloudTokenInput" disabled style="font-size:12px;" placeholder="••••••••••••••••••••">
+        <button type="button" class="hsh-pwd-toggle" onclick="toggleLotteryPwd('cloudTokenInput', this)" title="顯示或隱藏內容" aria-label="顯示或隱藏內容">👁️</button>
+      </div>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="tool-btn highlight" id="btnCloudSave" onclick="saveCloudSettings()" disabled>💾 儲存設定</button>
@@ -5703,6 +5792,21 @@ function exportGridAsPng(){
 
 /* ================= Telegram 推播模組（含管理者密碼鎖定） ================= */
 var tgAdminUnlocked = false;
+
+function toggleLotteryPwd(inputId, btnEl){
+  var inp = document.getElementById(inputId);
+  if (!inp) return;
+  if (inp.disabled && !tgAdminUnlocked && !CLOUD_ADMIN_UNLOCKED){
+    alert('🔒 請先點擊「🔑 管理者解鎖」並輸入管理者密碼，方可顯示機密欄位！');
+    return;
+  }
+  var isPwd = inp.type === 'password';
+  inp.type = isPwd ? 'text' : 'password';
+  if (btnEl){
+    btnEl.textContent = isPwd ? '🙈' : '👁️';
+    btnEl.title = isPwd ? '隱藏內容' : '顯示內容';
+  }
+}
 
 function unlockTgAdmin(){
   if (tgAdminUnlocked){
