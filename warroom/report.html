@@ -1207,9 +1207,10 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
     // ==========================================
     // 版本與改版記錄
     // ==========================================
-    const APP_VERSION = 'v2.7.5';
+    const APP_VERSION = 'v2.7.6';
     const BACKEND_MIN_VERSION = 'v2.6.0';
     const CHANGELOG = [
+      {v:'v2.7.6',date:'2026-10-23',notes:['配合後端 v2.6.1：回報太頻繁或照片不合格（限 JPEG／PNG、2MB 內）時，直接顯示原因，已填內容保留可重送。']},
       {v:'v2.7.5',date:'2026-10-17',notes:['管理解鎖休眠返回先檢查30分鐘逾時，再接受操作或續期。','忽略程式產生的操作事件；重新登入重新開始閒置計時。']},
 {"v":"v2.7.4","date":"2026-10-16","notes":["移除線上資訊的「改用本機配對頁」按鈕（實際使用無作用）；讀取本機資訊請用「讀取本機 IP 與電腦名稱」或「匯入本機資訊」。"]},
 {"v":"v2.7.3","date":"2026-10-12","notes":["新增 Windows 本機助手讀取電腦名稱與實際網卡 IP；多位址可選，並同步線上名單。","瀏覽器無法連接本機助手時可匯入本機剛匯出的資訊，並明確標示來源。"]},
@@ -2148,7 +2149,7 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
       setLoading(true);
       try {
         const responseData = await apiPost(payload).catch(() => { throw new Error('連不到雲端 API'); });
-        if (responseData && responseData.status === 'error') throw new Error(responseData.message || '後端驗證失敗');
+        if (responseData && responseData.status === 'error') { const err = new Error(responseData.message || '後端驗證失敗'); err.code = responseData.code || ''; throw err; }
         rememberValue('Machine_ID', machineId);
         bumpMachineUsage(machineId);
         rememberValue('Error_Code', errorCode);
@@ -2157,7 +2158,8 @@ html[data-theme] select[data-hsh-theme-picker] option { background:#fff !importa
         resetForm();
       } catch (error) {
         console.error('[機台報工] 送出失敗：', error);
-        alert(`❌ 送出失敗！\n原因：${error.message}\n\n請檢查網路連線或確認 GAS 部署網址是否正確。`);
+        // v2.7.6：頻率限制或照片不合格時，原因已寫清楚，不再附上「檢查網路／部署網址」的提示；已填內容保留可直接重送
+        alert(error.code ? `❌ 送出失敗！\n原因：${error.message}` : `❌ 送出失敗！\n原因：${error.message}\n\n請檢查網路連線或確認 GAS 部署網址是否正確。`);
       } finally {
         setLoading(false);
       }
