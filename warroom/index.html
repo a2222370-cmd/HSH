@@ -1387,6 +1387,7 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
             </select>
             <button id="adminBatchDelBtn" onclick="adminBatchDelete()" class="hidden px-3 py-1.5 rounded bg-rose-700/70 hover:bg-rose-600 border border-rose-400 text-white">🗑️ 刪除勾選 (0)</button>
             <button onclick="exportDataToCsv(true)" class="px-3 py-1.5 rounded bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/70 text-emerald-300 font-bold" title="匯出當前搜尋篩選結果為 CSV 檔案">📥 匯出篩選</button>
+            <button onclick="openAnnualArchive()" class="px-3 py-1.5 rounded bg-amber-950/80 hover:bg-slate-800 border border-amber-500/30 text-amber-300 font-bold" title="前年度舊回報依月份封存到獨立年度試算表；可調閱、下載與設定每日自動排程">📦 年度歷史封存</button>
             <button onclick="openClearModal()" class="px-3 py-1.5 rounded bg-rose-950/70 hover:bg-rose-900 border border-rose-500/70 text-rose-300">🧹 一鍵清除數據</button>
             <button onclick="adminLock()" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300">🔒 鎖定退出</button>
           </div>
@@ -1818,8 +1819,9 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
     // ==========================================
     // 版本與歷史改版記錄（與回報頁 report.html 共用同一份內容）
     // ==========================================
-    const APP_VERSION = 'v2.7.5';
+    const APP_VERSION = 'v2.7.6';
     const CHANGELOG = [
+      {v:'v2.7.6',date:'2026-10-24',notes:['【戰情室】管理員新增「📦 年度歷史封存」（比照工程文件管理系統）：前年度以前且超過 90 天的回報，依月份打包到獨立年度試算表，讀回驗證後才從回報資料表移除。','【戰情室】封存視窗可查看待封存數量、立即執行、啟用／停用每日 02:17 自動排程，並可依年度調閱、搜尋、下載 CSV 或開啟年度試算表。','【後端】需搭配 code.gs v2.7.0；執行結果寫入 AdminLog。']},
       {v:'v2.7.5',date:'2026-10-17',notes:['管理解鎖休眠返回先檢查30分鐘逾時，再接受操作或續期。','忽略程式產生的操作事件；重新登入重新開始閒置計時。']},
 {"v":"v2.7.4","date":"2026-10-16","notes":["移除線上資訊的「改用本機配對頁」按鈕（實際使用無作用）；讀取本機資訊請用「讀取本機 IP 與電腦名稱」或「匯入本機資訊」。"]},
 {"v":"v2.7.3","date":"2026-10-12","notes":["新增 Windows 本機助手讀取電腦名稱與實際網卡 IP；多位址可選，並同步線上名單。","瀏覽器無法連接本機助手時可匯入本機剛匯出的資訊，並明確標示來源。"]},
@@ -2973,7 +2975,14 @@ html[data-theme="warm-beige"] header :is(input,select) { background: #fff !impor
       document.getElementById('adminBtnText').textContent = '管理中：' + ADMIN.name + tip;
       document.getElementById('adminWhoTag').textContent = 'ADMIN · ' + ADMIN.name + (m <= 5 ? ` · ${m} 分鐘後自動登出` : ' · 閒置 30 分鐘自動登出');
     }, 5000);
+    function openAnnualArchive() {
+      if (!ADMIN.unlocked) return;
+      if (adminTouch() === false) return;
+      if (DATA_IS_DEMO) { alert('目前顯示的是示範資料（沒連上試算表），無法使用年度封存。'); return; }
+      HshAnnualArchive.open();
+    }
     function adminLock() {
+      try { HshAnnualArchive.close(); } catch (e) {}
       if (ADMIN.token) apiPost({ action: 'logoutAdmin', adminToken: ADMIN.token }).catch(() => {});
       ADMIN.unlocked = false; ADMIN.token = '';
       adminSelected = {};
@@ -5475,5 +5484,165 @@ window.addEventListener('DOMContentLoaded', initHshTheme);
 initHshTheme();
 </script>
 
+<script>
+
+// ===== 年度歷史封存管理（比照工程文件管理系統：可看、可操作、自動排程）=====
+// 使用：HshAnnualArchive.init({ call:(action,arg)=>Promise, loggedIn:()=>bool, summary:(bundle)=>html, hideColumns:[...] }); HshAnnualArchive.open();
+var HshAnnualArchive = (function () {
+  var cfg = {}, dlg = null, busy = false, year = '', page = 1, query = '', lastStatus = null, currentBundle = null, watch = null;
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function $(id) { return dlg && dlg.querySelector('#' + id); }
+  function tw(iso) { if (!iso) return ''; var d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }); }
+  function msg(s, bad) { var el = $('hshAAMsg'); if (!el) return; el.textContent = s || ''; el.className = 'aa-msg' + (bad ? ' bad' : '') + (s ? '' : ' empty'); }
+  function setBusy(on) { busy = on; if (dlg) dlg.querySelectorAll('button[data-aa],input[data-aa]').forEach(function (b) { b.disabled = on; }); }
+  async function req(action, arg, quiet) {
+    if (busy) return null;
+    if (cfg.loggedIn && !cfg.loggedIn()) { msg('管理登入已失效，請重新登入後再開啟。', true); return null; }
+    setBusy(true); if (!quiet) msg(action === 'run' ? '封存執行中，資料量大時約需 1～4 分鐘，請勿關閉…' : '讀取中…');
+    try {
+      var r = await cfg.call(action, arg || {});
+      if (!r || r.success === false || r.ok === false || r.status === 'error') throw new Error(r && (r.message || r.error) || '操作失敗');
+      if (!quiet) msg(r.message || ''); return r;
+    } catch (e) { msg((e && e.message) || String(e), true); return null; }
+    finally { setBusy(false); }
+  }
+  function cell(v, header) {
+    if (v && v.__hshDate) return esc(tw(v.__hshDate));
+    var s = String(v == null ? '' : v);
+    if (/^https:\/\//i.test(s)) return '<a href="' + esc(s) + '" target="_blank" rel="noopener noreferrer">開啟連結</a>';
+    if (s.length > 80) return '<details><summary>' + esc(s.slice(0, 40)) + '…</summary><div class="aa-long">' + esc(s) + '</div></details>';
+    return esc(s);
+  }
+  function csvVal(v) { if (v && v.__hshDate) v = tw(v.__hshDate); var s = String(v == null ? '' : v); return /[",\n\r]/.test(s) || /^[=+\-@]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  function visibleCols(t) { var hide = cfg.hideColumns || []; return t.headers.map(function (h, i) { return i; }).filter(function (i) { return hide.indexOf(String(t.headers[i])) < 0; }); }
+  function downloadCsv(key) {
+    var b = currentBundle; if (!b) return; var keys = key ? [key] : Object.keys(b.tables), lines = [];
+    keys.forEach(function (k) {
+      var t = b.tables[k], cols = visibleCols(t);
+      if (!key) lines.push(csvVal('【' + (t.title || k) + '】'));
+      lines.push(cols.map(function (i) { return csvVal(t.headers[i]); }).join(','));
+      t.rows.forEach(function (r) { lines.push(cols.map(function (i) { return csvVal(r[i]); }).join(',')); });
+      if (!key) lines.push('');
+    });
+    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = (cfg.fileName || '年度歷史') + '_' + String(b.label || b.id).replace(/[\\/:*?"<>|｜\s]+/g, '_') + (key ? '_' + (b.tables[key].title || key) : '') + '.csv';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  async function status() {
+    var r = await req('status', {}, true); if (!r) return; lastStatus = r; msg('');
+    var can = r.canManage !== false, last = r.last, h = '';
+    h += '<div class="aa-card"><h3>📦 封存規則</h3><p class="aa-muted">' + esc(r.rule) + '</p>';
+    h += '<div class="aa-sched ' + (r.enabled ? 'on' : 'off') + '">⏰ <b>自動排程：</b>' + (r.enabled === true ? '已啟用，每日約 02:17（台灣時間）自動檢測並封存，無須人工操作。' : r.enabled === false ? '尚未啟用。' : '無法確認（' + esc(r.scheduleError) + '）') + '</div>';
+    h += '<ul class="aa-list"><li>符合條件待封存：<b>' + r.pending + '</b> 個' + esc(r.unitLabel) + '（約 ' + r.pendingRows + ' ' + esc(r.rowLabel) + '）' + (r.running ? '　<span class="aa-tag">執行中</span>' : '') + '</li>';
+    if (r.pendingList && r.pendingList.length) h += '<li class="aa-muted">' + r.pendingList.slice(0, 12).map(function (x) { return esc(x.label) + '（' + x.rows + '）'; }).join('、') + (r.pendingList.length > 12 ? '…' : '') + '</li>';
+    h += '<li>最近一次執行：' + (last ? esc(tw(last.at)) + '（' + esc(last.by || '') + '）完成 ' + last.moved + ' 個' + esc(r.unitLabel) + (last.success ? '' : '，<span class="aa-bad">中止：' + esc(last.error) + '</span>') + (last.remaining ? '，剩 ' + last.remaining + ' 個待下次' : '') : '尚未執行過') + '</li></ul>';
+    h += '<div class="aa-row">';
+    if (can) {
+      h += '<button type="button" data-aa class="aa-primary" id="hshAARun">📦 立即檢測並執行年度封存</button>';
+      h += '<button type="button" data-aa id="hshAASchedOn">' + (r.enabled ? '🔁 重新安裝自動排程' : '⏰ 啟用自動排程') + '</button>';
+      if (r.enabled) h += '<button type="button" data-aa id="hshAASchedOff">⏸ 停用自動排程</button>';
+    } else h += '<span class="aa-muted">您可調閱與下載歷史資料；執行封存與排程設定僅限全系統最高管理員。</span>';
+    h += '<button type="button" data-aa id="hshAARefresh">↻ 重新整理</button></div></div>';
+    h += '<div class="aa-card"><h3>📁 已建立的歷史年度封存庫</h3>';
+    if (!r.years.length) h += '<p class="aa-muted">（尚無歷史封存年度）</p>';
+    else h += '<div class="aa-years">' + r.years.map(function (y) {
+      return '<div class="aa-year' + (y.year === year ? ' sel' : '') + '"><b>' + esc(y.year) + ' 年度</b><span>' + y.count + ' 個' + esc(r.unitLabel) + '・' + y.rows + ' ' + esc(r.rowLabel) + '</span>' +
+        '<div><button type="button" data-aa data-year="' + esc(y.year) + '">調閱</button>' + (y.fileId ? '<a href="https://docs.google.com/spreadsheets/d/' + encodeURIComponent(y.fileId) + '/edit" target="_blank" rel="noopener">開啟試算表 ↗</a>' : '') + '</div></div>';
+    }).join('') + '</div>';
+    h += '<p class="aa-muted">💡 封存資料為唯讀，完整保存；可在此調閱、下載 CSV，或直接開啟年度試算表。</p></div>';
+    $('hshAAStatus').innerHTML = h;
+    var bind = function (id, fn) { var el = $(id); if (el) el.onclick = fn; };
+    bind('hshAARefresh', status);
+    bind('hshAARun', async function () {
+      if (!confirm('確定依目前規則執行年度封存？\n\n資料會先寫入年度歷史試算表並讀回驗證，成功後才從主資料表移除；封存後仍可在此調閱與下載。')) return;
+      var x = await req('run'); if (x) { var m = x.message; if (cfg.onChanged) { try { cfg.onChanged(); } catch (e) { } } await status(); msg(m); if (year) await history(); msg(m); }
+    });
+    bind('hshAASchedOn', async function () { var x = await req('schedule', { enabled: true }); if (x) { var m = x.message; await status(); msg(m); } });
+    bind('hshAASchedOff', async function () { if (!confirm('確定停用年度封存自動排程？\n（已封存資料不受影響，之後可隨時重新啟用）')) return; var x = await req('schedule', { enabled: false }); if (x) { var m = x.message; await status(); msg(m); } });
+    $('hshAAStatus').querySelectorAll('button[data-year]').forEach(function (b) { b.onclick = function () { year = b.getAttribute('data-year'); page = 1; query = ''; $('hshAAStatus').querySelectorAll('.aa-year').forEach(function (el) { el.classList.toggle('sel', el.contains(b)); }); history(); }; });
+  }
+  async function history() {
+    var r = await req('history', { year: year, page: page, query: query }, true); if (!r) return; msg('');
+    var unit = lastStatus ? lastStatus.unitLabel : '項目', rl = lastStatus ? lastStatus.rowLabel : '筆';
+    var h = '<div class="aa-card"><h3>🗂 ' + esc(year) + ' 年度歷史（唯讀）</h3><div class="aa-row"><input data-aa id="hshAAQuery" placeholder="搜尋' + esc(unit) + '名稱…" value="' + esc(query) + '"><button type="button" data-aa id="hshAASearch">搜尋</button></div>';
+    if (!r.records.length) h += '<p class="aa-muted">沒有符合的資料。</p>';
+    else h += '<table class="aa-table"><thead><tr><th>' + esc(unit) + '</th><th>筆數</th><th>封存時間</th><th></th></tr></thead><tbody>' + r.records.map(function (x) {
+      return '<tr><td>' + esc(x.label) + '</td><td>' + x.rows + ' ' + esc(rl) + '</td><td>' + esc(tw(x.at)) + '</td><td><button type="button" data-aa data-id="' + esc(x.id) + '">查看</button></td></tr>';
+    }).join('') + '</tbody></table>';
+    h += '<div class="aa-row aa-pager"><span>第 ' + r.page + ' / ' + r.pages + ' 頁，共 ' + r.total + ' 個</span>' + (r.page > 1 ? '<button type="button" data-aa id="hshAAPrev">上一頁</button>' : '') + (r.page < r.pages ? '<button type="button" data-aa id="hshAANext">下一頁</button>' : '') + '</div></div>';
+    $('hshAAHistory').innerHTML = h; $('hshAADetail').innerHTML = '';
+    var go = function () { query = $('hshAAQuery').value.trim(); page = 1; history(); };
+    $('hshAASearch').onclick = go; $('hshAAQuery').onkeydown = function (e) { if (e.key === 'Enter') go(); };
+    if ($('hshAAPrev')) $('hshAAPrev').onclick = function () { page--; history(); };
+    if ($('hshAANext')) $('hshAANext').onclick = function () { page++; history(); };
+    $('hshAAHistory').querySelectorAll('button[data-id]').forEach(function (b) { b.onclick = function () { detail(b.getAttribute('data-id')); }; });
+    $('hshAAHistory').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  async function detail(id) {
+    var r = await req('history', { year: year, id: id }); if (!r) return; msg('');
+    var b = currentBundle = r.bundle, h = '<div class="aa-card"><div class="aa-row" style="justify-content:space-between"><h3 style="margin:0">🔎 ' + esc(b.label || b.id) + '</h3><button type="button" data-aa id="hshAAAllCsv">📥 下載全部 CSV</button></div><p class="aa-muted">封存時間：' + esc(tw(b.archivedAt)) + '</p>';
+    if (cfg.summary) { try { h += cfg.summary(b, esc) || ''; } catch (e) { } }
+    Object.keys(b.tables).forEach(function (k) {
+      var t = b.tables[k], cols = visibleCols(t), lim = 300;
+      h += '<details class="aa-tbl"' + (Object.keys(b.tables).length === 1 ? ' open' : '') + '><summary><b>' + esc(t.title || k) + '</b>（' + t.rows.length + ' 筆）<button type="button" data-aa data-csv="' + esc(k) + '">📥 CSV</button></summary>';
+      if (!t.rows.length) h += '<p class="aa-muted">無資料</p>';
+      else h += '<div class="aa-scroll"><table class="aa-table"><thead><tr>' + cols.map(function (i) { return '<th>' + esc(t.headers[i]) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        t.rows.slice(0, lim).map(function (row) { return '<tr>' + cols.map(function (i) { return '<td>' + cell(row[i], t.headers[i]) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>' +
+        (t.rows.length > lim ? '<p class="aa-muted">畫面只顯示前 ' + lim + ' 筆，完整資料請下載 CSV。</p>' : '');
+      h += '</details>';
+    });
+    $('hshAADetail').innerHTML = h + '</div>';
+    $('hshAAAllCsv').onclick = function () { downloadCsv(''); };
+    $('hshAADetail').querySelectorAll('button[data-csv]').forEach(function (btn) { btn.onclick = function (e) { e.preventDefault(); e.stopPropagation(); downloadCsv(btn.getAttribute('data-csv')); }; });
+    $('hshAADetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function close() { if (busy && !confirm('封存仍在執行中（後端會繼續完成）。確定關閉視窗？')) return; destroy(); }
+  function destroy() { if (dlg) { try { dlg.close(); } catch (e) { } dlg.remove(); } dlg = null; busy = false; currentBundle = null; if (watch) clearInterval(watch); watch = null; }
+  var CSS = '#hshAnnualDialog{box-sizing:border-box;width:min(1080px,96vw);max-height:92vh;overflow:auto;border:1px solid var(--aa-line);border-radius:14px;padding:0;background:var(--aa-bg);color:var(--aa-ink);font:14px/1.65 "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;margin:auto;' +
+    '--aa-bg:var(--panel,#0f172a);--aa-card:var(--card-bg,var(--soft,#111c33));--aa-ink:var(--ink,#e2e8f0);--aa-muted:var(--muted,#94a3b8);--aa-line:var(--line,#334155);--aa-accent:var(--accent,#b91c1c)}' +
+    '#hshAnnualDialog::backdrop{background:rgba(2,6,23,.72)}#hshAnnualDialog *{box-sizing:border-box}' +
+    '#hshAnnualDialog details,#hshAnnualDialog table,#hshAnnualDialog tr{margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;padding:0}#hshAnnualDialog th,#hshAnnualDialog td{min-width:0;color:var(--aa-ink);background:transparent;font-size:12.5px}#hshAnnualDialog tbody tr:nth-child(even){background:rgba(127,127,127,.06)}' +
+    '#hshAnnualDialog .aa-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:var(--aa-bg);border-bottom:1px solid var(--aa-line)}' +
+    '#hshAnnualDialog .aa-head h2{margin:0;font-size:18px;font-weight:700}#hshAnnualDialog .aa-body{padding:16px 20px 22px}' +
+    '#hshAnnualDialog .aa-card{background:var(--aa-card);border:1px solid var(--aa-line);border-radius:12px;padding:14px 16px;margin:0 0 14px}#hshAnnualDialog h3{margin:0 0 8px;font-size:15px;font-weight:700}' +
+    '#hshAnnualDialog .aa-muted{color:var(--aa-muted);font-size:12.5px;margin:4px 0}#hshAnnualDialog .aa-bad{color:#f87171}#hshAnnualDialog .aa-list{margin:8px 0 10px;padding-left:20px}' +
+    '#hshAnnualDialog .aa-sched{font-size:13px;margin:8px 0;padding:7px 10px;border-radius:6px;border-left:3px solid #10b981;background:rgba(16,185,129,.1)}#hshAnnualDialog .aa-sched.off{border-left-color:#f59e0b;background:rgba(245,158,11,.1)}' +
+    '#hshAnnualDialog .aa-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0}' +
+    '#hshAnnualDialog button{font:inherit;font-size:13px;padding:6px 12px;border:1px solid var(--aa-line);border-radius:8px;background:transparent;color:var(--aa-ink);cursor:pointer}#hshAnnualDialog button:hover:not(:disabled){border-color:var(--aa-accent)}' +
+    '#hshAnnualDialog button.aa-primary{background:var(--aa-accent);border-color:var(--aa-accent);color:#fff;font-weight:700}#hshAnnualDialog button:disabled{opacity:.45;cursor:wait}' +
+    '#hshAnnualDialog input{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--aa-line);border-radius:8px;background:var(--input-bg,rgba(0,0,0,.25));color:var(--aa-ink);min-width:200px;width:auto;flex:0 1 320px;margin:0}' +
+    '#hshAnnualDialog a{color:#60a5fa;text-decoration:underline;font-size:12.5px;margin-left:8px}' +
+    '#hshAnnualDialog .aa-years{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}#hshAnnualDialog .aa-year{border:1px solid var(--aa-line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}#hshAnnualDialog .aa-year.sel{border-color:var(--aa-accent)}#hshAnnualDialog .aa-year span{color:var(--aa-muted);font-size:12.5px}' +
+    '#hshAnnualDialog .aa-tag{font-size:11px;padding:1px 8px;border-radius:99px;background:#f59e0b;color:#111}' +
+    '#hshAnnualDialog .aa-msg{margin:0 0 12px;padding:8px 12px;border-radius:8px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.35);white-space:pre-wrap}#hshAnnualDialog .aa-msg.bad{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.45)}#hshAnnualDialog .aa-msg.empty{display:none}' +
+    '#hshAnnualDialog .aa-scroll{overflow:auto;max-height:420px;border:1px solid var(--aa-line);border-radius:8px}#hshAnnualDialog table.aa-table{border-collapse:collapse;width:100%;font-size:12.5px}' +
+    '#hshAnnualDialog .aa-table th,#hshAnnualDialog .aa-table td{border-bottom:1px solid var(--aa-line);padding:5px 8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}#hshAnnualDialog .aa-scroll .aa-table th,#hshAnnualDialog .aa-scroll .aa-table td{white-space:nowrap}#hshAnnualDialog .aa-table th{position:sticky;top:0;background:var(--aa-card);font-weight:700}' +
+    '#hshAnnualDialog details.aa-tbl{margin:10px 0}#hshAnnualDialog details.aa-tbl>summary{cursor:pointer;display:flex;align-items:center;gap:10px;padding:4px 0}#hshAnnualDialog .aa-long{white-space:pre-wrap;max-width:520px;overflow-wrap:anywhere}' +
+    '#hshAnnualDialog .aa-pager span{color:var(--aa-muted);font-size:12.5px}' +
+    '@media (max-width:640px){#hshAnnualDialog .aa-body{padding:12px}#hshAnnualDialog input{min-width:0;flex:1}}';
+  function open() {
+    if (dlg) { dlg.focus(); return; }
+    if (cfg.loggedIn && !cfg.loggedIn()) { alert('請先登入管理員。'); return; }
+    year = ''; page = 1; query = ''; currentBundle = null;
+    dlg = document.createElement('dialog'); dlg.id = 'hshAnnualDialog'; dlg.setAttribute('aria-labelledby', 'hshAATitle');
+    dlg.innerHTML = '<style>' + CSS + '</style><div class="aa-head"><h2 id="hshAATitle">📦 年度歷史封存管理</h2><button type="button" id="hshAAClose">✕ 關閉</button></div>' +
+      '<div class="aa-body"><p class="aa-muted" style="margin-top:0">先寫入獨立年度試算表並讀回驗證，才從主資料表移出；中途失敗時主資料保留，下次重試會自動接續。</p>' +
+      '<p id="hshAAMsg" class="aa-msg empty" role="status" aria-live="polite"></p><div id="hshAAStatus"><p class="aa-muted">讀取中…</p></div><div id="hshAAHistory"></div><div id="hshAADetail"></div></div>';
+    document.body.appendChild(dlg);
+    dlg.querySelector('#hshAAClose').onclick = close;
+    dlg.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
+    dlg.showModal(); status();
+    watch = setInterval(function () { if (cfg.loggedIn && !cfg.loggedIn() && !busy) destroy(); }, 1500);
+  }
+  return { init: function (o) { cfg = o || {}; }, open: open, close: destroy };
+})();
+
+HshAnnualArchive.init({
+  fileName: '戰情室機台回報',
+  loggedIn: function () { return !!(ADMIN && ADMIN.unlocked); },
+  call: function (action, arg) { return adminCall({ action: 'annualArchive', op: action, arg: arg }).catch(function (e) { var m = e && e.message || String(e); if (/未知的 action/.test(m)) m = '後端還沒更新：請把最新 code.gs（v2.7.0）貼上並重新部署（新版本）。'; throw new Error(m); }); },
+  onChanged: function () { try { fetchTelemetryData(); } catch (e) {} }
+});
+</script>
 </body>
 </html>
