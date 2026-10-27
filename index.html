@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
@@ -6075,6 +6075,37 @@ function processCloudDrawQueue_(){
   if (!CLOUD_API_URL || !CLOUD_SESSION_ID) return;
   isFlushingCloudQueue = true;
 
+  // 最佳化：若佇列有多筆（連抽或多抽排隊），一口氣打包最多 50 筆批次同步，省下 90% 網路延遲
+  if (cloudDrawQueue.length > 1) {
+    var batch = cloudDrawQueue.splice(0, 50);
+    var payload = {
+      token: CLOUD_API_TOKEN,
+      action: 'batchAddDraws',
+      adminSession: ADMIN_SESSION,
+      items: batch
+    };
+    fetch(CLOUD_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      cloudRecResult_(res);
+      isFlushingCloudQueue = false;
+      if (cloudDrawQueue.length > 0) {
+        setTimeout(processCloudDrawQueue_, 100);
+      }
+    })
+    .catch(function(err){
+      isFlushingCloudQueue = false;
+      // 網路暫時中斷或 GAS 鎖定逾時：重新回隊列前方並稍後重試
+      cloudDrawQueue = batch.concat(cloudDrawQueue);
+      setTimeout(processCloudDrawQueue_, 2500);
+    });
+    return;
+  }
+
   var task = cloudDrawQueue.shift();
   fetch(CLOUD_API_URL, {
     method: 'POST',
@@ -6085,8 +6116,10 @@ function processCloudDrawQueue_(){
   .then(function(res){
     cloudRecResult_(res);
     isFlushingCloudQueue = false;
-    // 每次寫入間隔 180ms，避免連續抽獎時 Google Apps Script ScriptLock 互斥超時
-    setTimeout(processCloudDrawQueue_, 180);
+    // 每次寫入間隔 180ms，避免連續單筆抽獎時 Google Apps Script ScriptLock 互斥超時
+    if (cloudDrawQueue.length > 0) {
+      setTimeout(processCloudDrawQueue_, 180);
+    }
   })
   .catch(function(err){
     isFlushingCloudQueue = false;
